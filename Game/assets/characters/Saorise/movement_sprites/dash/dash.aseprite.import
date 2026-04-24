@@ -1,0 +1,25 @@
+[remap]
+
+importer="Aseprite AnimatedSprite2D Import"
+type="PackedScene"
+uid="uid://tlnvoaursp20"
+path="res://.godot/imported/dash.aseprite-96272ae68acfaac7fb3717dc3bbec5ee.scn"
+
+[deps]
+
+source_file="res://assets/characters/Saorise/movement_sprites/dash/dash.aseprite"
+dest_files=["res://.godot/imported/dash.aseprite-96272ae68acfaac7fb3717dc3bbec5ee.scn"]
+
+[params]
+
+spritesheet/layout=2
+spritesheet/fixed_rows_count=1
+spritesheet/fixed_columns_count=1
+spritesheet/border_type=0
+spritesheet/trim=false
+spritesheet/ignore_empty=false
+spritesheet/merge_duplicates=false
+animation/default/name="default"
+animation/default/direction=0
+animation/default/repeat_count=0
+animation/autoplay=""
