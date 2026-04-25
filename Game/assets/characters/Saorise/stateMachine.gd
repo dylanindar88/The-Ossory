@@ -7,6 +7,8 @@ extends CharacterBody2D
 @export var dash_cooldown = 0.75
 @export var attack_speed_modifier = 0.75
 @export var attack_damage = 10
+@export var block_speed_modifier = 0.75
+@export var block_cooldown = 0.5
 
 @onready var sprite = $AnimatedSprite2D
 @onready var health = $Health
@@ -30,6 +32,9 @@ func _ready():
 	states["move"] = preload("res://assets/characters/Saorise/state_machine/movementState.gd").new()
 	states["dash"] = preload("res://assets/characters/Saorise/state_machine/dashState.gd").new()
 	states["attack"] = preload("res://assets/characters/Saorise/state_machine/attackState.gd").new()
+	states["block"] = preload("res://assets/characters/Saorise/state_machine/blockState.gd").new()
+
+	health.block_cooldown = block_cooldown
 
 	hitbox_manager = preload("res://assets/characters/Saorise/combat/attackBoxManager.gd").new()
 	hitbox_manager.attack_box = attack_box

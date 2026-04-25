@@ -18,12 +18,7 @@ var hitbox_manager: Object
 
 func enter(player):
 	var mouse_pos = player.get_global_mouse_position()
-
-	if mouse_pos.x < player.global_position.x:
-		attack_direction = "left"
-	else:
-		attack_direction = "right"
-
+	attack_direction = get_attack_direction(player, mouse_pos)
 	player.last_facing = attack_direction
 
 	combo_part = 1
@@ -80,10 +75,38 @@ func exit(player):
 
 
 func play_attack_animation(player) -> float:
-	var anim_name = "unarmed_attack_%d" % combo_part
+	var anim_name = get_attack_animation_name(player, combo_part)
 	player.sprite.play(anim_name)
 	player.sprite.flip_h = attack_direction == "left"
 	return get_animation_duration(player, anim_name)
+
+
+func get_attack_direction(player, mouse_pos: Vector2) -> String:
+	var attack_vector: Vector2 = mouse_pos - player.global_position
+
+	if attack_vector.y > abs(attack_vector.x):
+		return "down"
+
+	if attack_vector.y < -abs(attack_vector.x):
+		return "up"
+
+	if attack_vector.x < 0:
+		return "left"
+
+	return "right"
+
+
+func get_attack_animation_name(player, part: int) -> String:
+	var side_anim_name := "unarmed_attack_%d" % part
+	if attack_direction == "left" or attack_direction == "right":
+		return side_anim_name
+
+	var vertical_anim_name := "unarmed_attack_%s%d" % [attack_direction, part]
+	var sprite_frames: SpriteFrames = player.sprite.sprite_frames
+	if sprite_frames != null and sprite_frames.has_animation(vertical_anim_name):
+		return vertical_anim_name
+
+	return side_anim_name
 
 
 func get_animation_duration(player, anim_name: String) -> float:

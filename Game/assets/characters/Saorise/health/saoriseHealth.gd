@@ -2,12 +2,16 @@ extends Node
 
 signal health_changed(current_health: int, max_health: int)
 signal died
+signal damage_blocked
 
 @export var max_health := 100
 var health := max_health
 
 var invulnerable := false
 var i_frame_timer := 0.0
+var blocking := false
+var block_cooldown := 0.5
+var block_cooldown_timer := 0.0
 
 func _ready():
 	health = max_health
@@ -20,8 +24,16 @@ func _process(delta):
 		if i_frame_timer <= 0:
 			end_invulnerability()
 
+	if block_cooldown_timer > 0:
+		block_cooldown_timer -= delta
+
 func take_damage(amount: int):
 	if invulnerable:
+		return
+
+	if can_block_damage():
+		block_cooldown_timer = block_cooldown
+		damage_blocked.emit()
 		return
 
 	health -= amount
@@ -46,6 +58,12 @@ func end_invulnerability():
 
 func is_invulnerable() -> bool:
 	return invulnerable
+
+func set_blocking(active: bool):
+	blocking = active
+
+func can_block_damage() -> bool:
+	return blocking and block_cooldown_timer <= 0
 
 func die():
 	died.emit()

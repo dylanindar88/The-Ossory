@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://drjmgqarh7vcy"
-path="res://.godot/imported/unarmed_side_part2.png-0391cfbde87c688952e9ec7264052044.ctex"
+uid="uid://d007u0suryyru"
+path="res://.godot/imported/unarmed_up.png-556efb1724de78d41c3ebcf66bf293a8.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/Saorise/movement_sprites/attack/unarmed/unarmed_side_part2.png"
-dest_files=["res://.godot/imported/unarmed_side_part2.png-0391cfbde87c688952e9ec7264052044.ctex"]
+source_file="res://assets/characters/Saorise/movement_sprites/attack/unarmed/unarmed_up.png"
+dest_files=["res://.godot/imported/unarmed_up.png-556efb1724de78d41c3ebcf66bf293a8.ctex"]
 
 [params]
 

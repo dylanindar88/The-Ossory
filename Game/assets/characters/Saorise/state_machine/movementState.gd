@@ -31,6 +31,11 @@ func physics_update(player, delta):
 		player.change_state("dash")
 		return
 
+	# Block
+	if Input.is_action_pressed("right_click"):
+		player.change_state("block")
+		return
+
 	# Run
 	var is_running = Input.is_action_pressed("run")
 	var current_speed = player.walk_speed
@@ -54,12 +59,12 @@ func update_last_move_axis(player):
 func update_animation(player, dir, is_running):
 	# Idle
 	if dir == Vector2.ZERO:
-		player.sprite.play("idle")
-
-		if player.last_facing == "left":
-			player.sprite.flip_h = true
-		else:
+		if player.last_facing == "up":
+			player.sprite.play("idle_up")
 			player.sprite.flip_h = false
+		else:
+			player.sprite.play("idle")
+			player.sprite.flip_h = player.last_facing == "left"
 
 		return
 
@@ -91,8 +96,10 @@ func update_animation(player, dir, is_running):
 	# Vertical movement
 	if dir.y < 0:
 		player.sprite.play("running_up" if is_running else "walking_up")
+		player.last_facing = "up"
 
 	elif dir.y > 0:
 		player.sprite.play("running_down" if is_running else "walking_down")
+		player.last_facing = "down"
 
-	player.sprite.flip_h = (player.last_facing == "left")
+	player.sprite.flip_h = false

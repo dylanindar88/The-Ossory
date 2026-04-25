@@ -72,7 +72,9 @@ func update_dash_animation(player):
 
 	if dash_direction.y < 0:
 		player.sprite.play("dash_up")
+		player.last_facing = "up"
 	else:
 		player.sprite.play("dash_down")
+		player.last_facing = "down"
 
-	player.sprite.flip_h = (player.last_facing == "left")
+	player.sprite.flip_h = false

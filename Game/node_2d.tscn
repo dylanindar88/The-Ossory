@@ -456,7 +456,7 @@ texture_region_size = Vector2i(32, 32)
 0:25/0/terrain = 0
 0:25/0/physics_layer_0/linear_velocity = Vector2(0, 0)
 0:25/0/physics_layer_0/angular_velocity = 0.0
-0:25/0/physics_layer_0/polygon_0/points = PackedVector2Array(-9.75, -16, 16, -16, 16, 16, 7.25, 13.75, 3.75, 16, -12, 16, -12, -8.25)
+0:25/0/physics_layer_0/polygon_0/points = PackedVector2Array(-11.5789, -16, 16, -16, 16, 16, 7.25, 13.75, 3.75, 16, -12, 16, -12, -8.25)
 0:25/0/terrains_peering_bit/right_side = 0
 0:25/0/terrains_peering_bit/top_side = 0
 1:25/0 = 0
@@ -833,6 +833,7 @@ y_sort_enabled = true
 z_as_relative = false
 y_sort_enabled = true
 texture_filter = 1
+position = Vector2(4.48987, 0)
 scale = Vector2(1.5, 1.5)
 tile_set = SubResource("TileSet_ru0lb")
 format = 2
@@ -1353,7 +1354,7 @@ y_sort_enabled = true
 [node name="Saorise" type="CharacterBody2D" parent="PlayableWorld/Characters"]
 y_sort_enabled = true
 texture_filter = 1
-position = Vector2(5.96423, 769.92)
+position = Vector2(4.25098, 133.113)
 collision_layer = 2
 script = ExtResource("12_ct2h5")
 
@@ -1363,8 +1364,8 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("13_p36jm")
-animation = &"unarmed_attack_3"
-frame_progress = 0.626326
+animation = &"unarmed_attack_down1"
+frame_progress = 0.145859
 offset = Vector2(0, -88)
 
 [node name="Camera2D" type="Camera2D" parent="PlayableWorld/Characters/Saorise"]
@@ -1403,6 +1404,7 @@ position = Vector2(382.119, 74.4648)
 [node name="Leaves" type="TileMap" parent="Foreground"]
 z_index = 2
 texture_filter = 1
+position = Vector2(4.48987, 0)
 scale = Vector2(1.5, 1.5)
 tile_set = SubResource("TileSet_c41xo")
 format = 2

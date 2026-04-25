@@ -1,0 +1,25 @@
+[remap]
+
+importer="Aseprite AnimatedSprite2D Import"
+type="PackedScene"
+uid="uid://dmm8mi78j5cyp"
+path="res://.godot/imported/unarmed_up_part3.aseprite-7d927ff40fca0739762184e10d253aaa.scn"
+
+[deps]
+
+source_file="res://assets/characters/Saorise/movement_sprites/attack/unarmed/unarmed_up_part3.aseprite"
+dest_files=["res://.godot/imported/unarmed_up_part3.aseprite-7d927ff40fca0739762184e10d253aaa.scn"]
+
+[params]
+
+spritesheet/layout=2
+spritesheet/fixed_rows_count=1
+spritesheet/fixed_columns_count=1
+spritesheet/border_type=0
+spritesheet/trim=false
+spritesheet/ignore_empty=false
+spritesheet/merge_duplicates=false
+animation/default/name="default"
+animation/default/direction=0
+animation/default/repeat_count=0
+animation/autoplay=""

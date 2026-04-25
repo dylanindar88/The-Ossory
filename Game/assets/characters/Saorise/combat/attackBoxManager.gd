@@ -8,14 +8,28 @@ var attack_damage := 10
 var active_attack_targets: Array[Node2D] = []
 var current_combo_part: int = 0
 
-# Part 1 + 3 hitbox. These defaults are replaced by the scene-authored
-# AttackBox shape in setup() when possible.
-var normal_hitbox_size := Vector2(21, 31)
-var normal_hitbox_position := Vector2(18, -32)
-
-# Part 2 hitbox: wider horizontal sweep
-var combo2_hitbox_size := Vector2(21, 36)
-var combo2_hitbox_position := Vector2(18, -32)
+var attack_profiles := {
+	"right": {
+		1: {"size": Vector2(21, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
+		2: {"size": Vector2(21, 41), "position": Vector2(23, -32), "rotation": -PI / 2.0},
+		3: {"size": Vector2(21, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
+	},
+	"left": {
+		1: {"size": Vector2(21, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
+		2: {"size": Vector2(21, 41), "position": Vector2(-23, -32), "rotation": -PI / 2.0},
+		3: {"size": Vector2(21, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
+	},
+	"down": {
+		1: {"size": Vector2(26, 52), "position": Vector2(0, -12), "rotation": 0.0},
+		2: {"size": Vector2(26, 62), "position": Vector2(0, -7), "rotation": 0.0},
+		3: {"size": Vector2(26, 52), "position": Vector2(0, -12), "rotation": 0.0},
+	},
+	"up": {
+		1: {"size": Vector2(21, 42), "position": Vector2(0, -43), "rotation": 0.0},
+		2: {"size": Vector2(21, 52), "position": Vector2(0, -48), "rotation": 0.0},
+		3: {"size": Vector2(21, 42), "position": Vector2(0, -43), "rotation": 0.0},
+	},
+}
 
 
 func setup():
@@ -26,11 +40,6 @@ func setup():
 
 	collision_shape = get_attack_collision_shape()
 	if collision_shape:
-		var shape = collision_shape.shape
-		if shape is RectangleShape2D:
-			normal_hitbox_size = shape.size
-			normal_hitbox_position = collision_shape.position
-
 		collision_shape.disabled = true
 
 	if not attack_box.area_entered.is_connected(_on_attack_hit):
@@ -72,20 +81,16 @@ func update_attackbox_shape(combo_part: int, direction: String):
 		push_warning("AttackBox CollisionShape2D must use RectangleShape2D.")
 		return
 
-	var hitbox_size := normal_hitbox_size
-	var hitbox_position := normal_hitbox_position
+	var profile := get_attack_profile(direction, combo_part)
 
-	if combo_part == 2:
-		hitbox_size = combo2_hitbox_size
-		hitbox_position = combo2_hitbox_position
+	shape.size = profile["size"]
+	collision_shape.position = profile["position"]
+	collision_shape.rotation = profile["rotation"]
 
-	if direction == "left":
-		hitbox_position.x = -abs(hitbox_position.x)
-	else:
-		hitbox_position.x = abs(hitbox_position.x)
 
-	shape.size = hitbox_size
-	collision_shape.position = hitbox_position
+func get_attack_profile(direction: String, combo_part: int) -> Dictionary:
+	var direction_profiles: Dictionary = attack_profiles.get(direction, attack_profiles["right"])
+	return direction_profiles.get(combo_part, direction_profiles[1])
 
 
 func get_attack_collision_shape() -> CollisionShape2D:
