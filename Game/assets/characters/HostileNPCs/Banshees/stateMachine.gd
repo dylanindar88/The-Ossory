@@ -12,6 +12,8 @@ extends CharacterBody2D
 @export var hurt_move_speed_modifier: float = 0.25
 @export var block_stun_duration: float = 1.0
 @export var block_stun_move_speed_modifier: float = 0.15
+@export var player_stop_distance: float = 20.0
+@export var facing_deadzone: float = 0.1
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health = $Health
@@ -229,11 +231,15 @@ func face_target():
 	if not has_player_target():
 		return
 
-	update_facing(player.global_position - global_position)
+	var offset: Vector2 = player.global_position - global_position
+	if offset.length() <= player_stop_distance:
+		return
+
+	update_facing(offset)
 
 
 func update_facing(direction: Vector2):
-	if direction.x == 0:
+	if abs(direction.x) <= facing_deadzone:
 		return
 
 	facing_left = direction.x < 0
@@ -246,7 +252,13 @@ func move_toward_player(speed_modifier: float):
 		move_and_slide()
 		return
 
-	var direction: Vector2 = get_direction_to_player()
+	var offset: Vector2 = player.global_position - global_position
+	if offset.length() <= player_stop_distance:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		return
+
+	var direction: Vector2 = offset.normalized()
 	velocity = direction * run_speed * speed_modifier
 	update_facing(direction)
 	move_and_slide()

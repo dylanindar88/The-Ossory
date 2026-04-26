@@ -9,9 +9,9 @@ extends CharacterBody2D
 @export var attack_damage = 10
 @export var combo_2_damage_bonus = 5
 @export var block_speed_modifier = 0.5
-@export var block_cooldown = 0.5
 
-@onready var sprite = $AnimatedSprite2D
+@onready var sprite = $Body
+@onready var effects: AnimatedSprite2D = $Effects
 @onready var health = $Health
 @onready var hurt_box = $HurtBox
 @onready var attack_box = $AttackBox
@@ -42,12 +42,14 @@ func _ready():
 	states["attack"] = preload("res://assets/characters/Saorise/state_machine/attackState.gd").new()
 	states["block"] = preload("res://assets/characters/Saorise/state_machine/blockState.gd").new()
 
-	health.block_cooldown = block_cooldown
+	effects.visible = false
+	effects.stop()
 
 	hitbox_manager = preload("res://assets/characters/Saorise/combat/attackBoxManager.gd").new()
 	hitbox_manager.attack_box = attack_box
 	hitbox_manager.attack_damage = attack_damage
 	hitbox_manager.combo_2_damage_bonus = combo_2_damage_bonus
+	hitbox_manager.player_health = health
 	hitbox_manager.setup()
 
 	states["attack"].hitbox_manager = hitbox_manager
@@ -73,6 +75,8 @@ func _physics_process(delta):
 	if current_state:
 		current_state.physics_update(self, delta)
 
+	update_effects()
+
 
 func change_state(state_name):
 	if current_state:
@@ -86,13 +90,47 @@ func take_damage(amount: int, ignore_invulnerability: bool = false):
 	if dead:
 		return "ignored"
 
+	if current_state and current_state.has_method("prepare_for_incoming_damage"):
+		current_state.prepare_for_incoming_damage(self)
+
 	return health.take_damage(amount, ignore_invulnerability)
+
+
+func update_effects():
+	if effects == null:
+		return
+
+	if health.has_parry_bonus():
+		play_effect("parry_bonus")
+		return
+
+	if health.is_block_effect_active():
+		play_effect("blocking")
+		return
+
+	effects.stop()
+	effects.visible = false
+
+
+func play_effect(anim_name: String):
+	if effects.sprite_frames == null or not effects.sprite_frames.has_animation(anim_name):
+		effects.stop()
+		effects.visible = false
+		return
+
+	effects.visible = true
+
+	if effects.animation != anim_name or not effects.is_playing():
+		effects.play(anim_name)
 
 
 func _on_died():
 	dead = true
 	velocity = Vector2.ZERO
 	health.set_blocking(false)
+	health.set_parry_window(false)
+	health.end_parry_bonus()
+	update_effects()
 
 	if hitbox_manager:
 		hitbox_manager.deactivate_attack_hitbox()

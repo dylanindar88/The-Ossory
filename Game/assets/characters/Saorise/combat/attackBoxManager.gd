@@ -5,6 +5,7 @@ var attack_box: Area2D
 var collision_shape: CollisionShape2D
 var attack_damage := 10
 var combo_2_damage_bonus := 5
+var player_health: Node
 
 var active_attack_targets: Array[Node2D] = []
 var current_combo_part: int = 0
@@ -155,10 +156,15 @@ func _hit_current_overlaps():
 
 
 func get_current_attack_damage() -> int:
-	if current_combo_part == 2:
-		return attack_damage + combo_2_damage_bonus
+	var damage := attack_damage
 
-	return attack_damage
+	if current_combo_part == 2:
+		damage += combo_2_damage_bonus
+
+	if player_health != null and player_health.has_method("get_attack_damage_multiplier"):
+		damage = int(round(float(damage) * player_health.get_attack_damage_multiplier()))
+
+	return damage
 
 
 func should_ignore_invulnerability() -> bool:

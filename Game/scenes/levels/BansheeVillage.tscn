@@ -9,7 +9,7 @@
 [ext_resource type="PackedScene" path="res://scenes/environment/buildings/SmallHouseRoof.tscn" id="19_4d4oc"]
 [ext_resource type="PackedScene" uid="uid://dfjpsxet38xfl" path="res://scenes/characters/Banshee.tscn" id="22_t6xdm"]
 [ext_resource type="PackedScene" uid="uid://u16duk15fe7q" path="res://scenes/characters/Saorise.tscn" id="23_yc8ub"]
-[ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="24_jku5t"]
+[ext_resource type="PackedScene" uid="uid://cd8kyptum0qfo" path="res://scenes/ui/HUD.tscn" id="24_jku5t"]
 [ext_resource type="TileSet" uid="uid://c7owttvmnh0h2" path="res://scenes/resources/tilesets/WaterTileSet.tres" id="25_vfn6k"]
 [ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://scenes/resources/tilesets/GroundTileSet.tres" id="26_nqd4b"]
 [ext_resource type="TileSet" uid="uid://bm2nceghxgf55" path="res://scenes/resources/tilesets/LogsTileSet.tres" id="27_uivry"]
@@ -26,7 +26,6 @@ size = Vector2(21.9688, 3.03253)
 
 [node name="Background" type="Node2D" parent="."]
 texture_filter = 1
-position = Vector2(382.119, 74.4648)
 
 [node name="Water" type="TileMap" parent="Background"]
 texture_filter = 1
@@ -53,7 +52,6 @@ layer_3/tile_data = PackedInt32Array(-131074, 65536, 2, -131073, 196608, 2, -196
 z_as_relative = false
 y_sort_enabled = true
 texture_filter = 1
-position = Vector2(382.119, 74.4648)
 
 [node name="Enviornment" type="Node2D" parent="PlayableWorld"]
 z_as_relative = false
@@ -294,7 +292,6 @@ position = Vector2(5.88101, 431.535)
 
 [node name="Foreground" type="Node2D" parent="."]
 texture_filter = 1
-position = Vector2(382.119, 74.4648)
 
 [node name="Leaves" type="TileMap" parent="Foreground"]
 z_index = 2

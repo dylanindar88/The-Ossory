@@ -25,8 +25,5 @@ func physics_update(banshee, _delta):
 
 		return
 
-	var direction: Vector2 = banshee.get_direction_to_player()
-	banshee.velocity = direction * banshee.run_speed
-	banshee.update_facing(direction)
 	banshee.sprite.play("run")
-	banshee.move_and_slide()
+	banshee.move_toward_player(1.0)

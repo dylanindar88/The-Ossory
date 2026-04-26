@@ -41,7 +41,7 @@ func physics_update(player, delta):
 		and attack_timer >= combo_window_end
 	)
 
-	if in_combo_window and Input.is_action_just_pressed("left_click"):
+	if in_combo_window and Input.is_action_pressed("left_click"):
 		next_combo_pressed = true
 
 	var input_vector = Vector2.ZERO

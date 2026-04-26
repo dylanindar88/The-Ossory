@@ -1,4 +1,4 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3 uid="uid://cd8kyptum0qfo"]
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/healthUI.gd" id="1_ue8h7"]
 
