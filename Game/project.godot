@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="The Ossory"
-run/main_scene="res://node_2d.tscn"
+run/main_scene="res://scenes/levels/BansheeVillage.tscn"
 config/features=PackedStringArray("4.2", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -100,6 +100,7 @@ right_click={
 
 2d_physics/layer_1="World"
 2d_physics/layer_2="Player"
+2d_physics/layer_3="HostileNPC"
 
 [rendering]
 

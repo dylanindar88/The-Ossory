@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Texture2D" uid="uid://bub3x6h563nc3" path="res://assets/buildings/Banshee village/House/roof.aseprite" id="1_roof"]
+
+[node name="HouseRoof" type="Node2D"]
+
+[node name="House-roof" type="Sprite2D" parent="."]
+position = Vector2(0, 97)
+texture = ExtResource("1_roof")

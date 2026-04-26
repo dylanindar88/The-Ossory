@@ -1,0 +1,39 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Texture2D" uid="uid://cxkofdr733oqh" path="res://assets/buildings/Banshee village/Small House/wall.aseprite" id="1_wall"]
+[ext_resource type="Texture2D" uid="uid://cej7mn3sjki40" path="res://assets/buildings/Banshee village/Small House/shadow.aseprite" id="2_shadow"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_2qg2f"]
+size = Vector2(124, 44.25)
+
+[node name="SmallHouse" type="Node2D"]
+texture_filter = 1
+
+[node name="House-wall" type="Node2D" parent="."]
+texture_filter = 1
+
+[node name="Wall" type="Sprite2D" parent="House-wall"]
+texture_filter = 1
+texture = ExtResource("1_wall")
+
+[node name="Shadows" type="Sprite2D" parent="House-wall"]
+z_index = 2
+texture_filter = 1
+texture = ExtResource("2_shadow")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="House-wall"]
+collision_mask = 0
+
+[node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="House-wall/StaticBody2D"]
+position = Vector2(0.0548638, -49.3245)
+polygon = PackedVector2Array(-0.120003, -25.2016, 46.6951, -22.1591, 88.5884, -11.5369, 104.441, 2.68933, 104.271, 10.7717, 104.006, 132.513, 103.887, 148.492, 98.1622, 150.733, 93.836, 150.733, 87.6849, 148.412, 87.6864, 136.85, 45.9503, 145.531, -46.272, 145.531, -87.7468, 137.039, -87.7467, 147.703, -93.9376, 150.721, -98.4637, 150.721, -104.395, 147.547, -104.395, 132.356, -104.091, 10.1831, -104.145, 1.92462, -86.5747, -13.1711, -47.7216, -21.3377)
+
+[node name="Area2D" type="Area2D" parent="."]
+position = Vector2(1.81749, -48.2912)
+collision_layer = 0
+collision_mask = 0
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+position = Vector2(-0.555556, 164.389)
+shape = SubResource("RectangleShape2D_2qg2f")
+

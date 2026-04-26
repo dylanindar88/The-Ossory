@@ -4,30 +4,31 @@ extends RefCounted
 var attack_box: Area2D
 var collision_shape: CollisionShape2D
 var attack_damage := 10
+var combo_2_damage_bonus := 5
 
 var active_attack_targets: Array[Node2D] = []
 var current_combo_part: int = 0
 
 var attack_profiles := {
 	"right": {
-		1: {"size": Vector2(21, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
-		2: {"size": Vector2(21, 41), "position": Vector2(23, -32), "rotation": -PI / 2.0},
-		3: {"size": Vector2(21, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
+		1: {"size": Vector2(41, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
+		2: {"size": Vector2(41, 41), "position": Vector2(23, -32), "rotation": -PI / 2.0},
+		3: {"size": Vector2(41, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
 	},
 	"left": {
-		1: {"size": Vector2(21, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
-		2: {"size": Vector2(21, 41), "position": Vector2(-23, -32), "rotation": -PI / 2.0},
-		3: {"size": Vector2(21, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
+		1: {"size": Vector2(41, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
+		2: {"size": Vector2(41, 41), "position": Vector2(-23, -32), "rotation": -PI / 2.0},
+		3: {"size": Vector2(41, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
 	},
 	"down": {
-		1: {"size": Vector2(26, 52), "position": Vector2(0, -12), "rotation": 0.0},
-		2: {"size": Vector2(26, 62), "position": Vector2(0, -7), "rotation": 0.0},
-		3: {"size": Vector2(26, 52), "position": Vector2(0, -12), "rotation": 0.0},
+		1: {"size": Vector2(36, 52), "position": Vector2(0, -7), "rotation": 0.0},
+		2: {"size": Vector2(36, 62), "position": Vector2(0, -2), "rotation": 0.0},
+		3: {"size": Vector2(36, 52), "position": Vector2(0, -7), "rotation": 0.0},
 	},
 	"up": {
-		1: {"size": Vector2(21, 42), "position": Vector2(0, -43), "rotation": 0.0},
-		2: {"size": Vector2(21, 52), "position": Vector2(0, -48), "rotation": 0.0},
-		3: {"size": Vector2(21, 42), "position": Vector2(0, -43), "rotation": 0.0},
+		1: {"size": Vector2(31, 42), "position": Vector2(0, -43), "rotation": 0.0},
+		2: {"size": Vector2(31, 52), "position": Vector2(0, -48), "rotation": 0.0},
+		3: {"size": Vector2(31, 42), "position": Vector2(0, -43), "rotation": 0.0},
 	},
 }
 
@@ -37,10 +38,14 @@ func setup():
 		return
 
 	attack_box.monitoring = true
+	attack_box.monitorable = true
+	attack_box.collision_layer = 0
+	attack_box.collision_mask = 4
 
 	collision_shape = get_attack_collision_shape()
 	if collision_shape:
-		collision_shape.disabled = true
+		collision_shape.set_deferred("disabled", true)
+		collision_shape.visible = false
 
 	if not attack_box.area_entered.is_connected(_on_attack_hit):
 		attack_box.area_entered.connect(_on_attack_hit)
@@ -56,7 +61,10 @@ func activate_attack_hitbox(combo_part: int, direction: String):
 	update_attackbox_shape(combo_part, direction)
 
 	if collision_shape:
-		collision_shape.disabled = false
+		collision_shape.set_deferred("disabled", false)
+		collision_shape.visible = true
+
+	call_deferred("_hit_current_overlaps")
 
 
 func deactivate_attack_hitbox():
@@ -64,7 +72,8 @@ func deactivate_attack_hitbox():
 		return
 
 	if collision_shape:
-		collision_shape.disabled = true
+		collision_shape.set_deferred("disabled", true)
+		collision_shape.visible = false
 
 	active_attack_targets.clear()
 	current_combo_part = 0
@@ -114,6 +123,9 @@ func register_hit(target: Node2D):
 
 
 func _on_attack_hit(area: Area2D):
+	if current_combo_part <= 0:
+		return
+
 	if area == null:
 		return
 
@@ -131,4 +143,23 @@ func _on_attack_hit(area: Area2D):
 	register_hit(target)
 
 	if target.has_method("take_damage"):
-		target.take_damage(attack_damage)
+		target.take_damage(get_current_attack_damage(), should_ignore_invulnerability())
+
+
+func _hit_current_overlaps():
+	if attack_box == null or current_combo_part <= 0:
+		return
+
+	for area in attack_box.get_overlapping_areas():
+		_on_attack_hit(area)
+
+
+func get_current_attack_damage() -> int:
+	if current_combo_part == 2:
+		return attack_damage + combo_2_damage_bonus
+
+	return attack_damage
+
+
+func should_ignore_invulnerability() -> bool:
+	return current_combo_part > 1

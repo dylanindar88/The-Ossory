@@ -5,6 +5,7 @@ signal died
 signal damage_blocked
 
 @export var max_health := 100
+@export var invulnerability_time := 0.75
 var health := max_health
 
 var invulnerable := false
@@ -12,6 +13,7 @@ var i_frame_timer := 0.0
 var blocking := false
 var block_cooldown := 0.5
 var block_cooldown_timer := 0.0
+var dead := false
 
 func _ready():
 	health = max_health
@@ -27,14 +29,17 @@ func _process(delta):
 	if block_cooldown_timer > 0:
 		block_cooldown_timer -= delta
 
-func take_damage(amount: int):
-	if invulnerable:
-		return
+func take_damage(amount: int, ignore_invulnerability: bool = false):
+	if dead:
+		return "ignored"
+
+	if invulnerable and not ignore_invulnerability:
+		return "ignored"
 
 	if can_block_damage():
 		block_cooldown_timer = block_cooldown
 		damage_blocked.emit()
-		return
+		return "blocked"
 
 	health -= amount
 	health = clamp(health, 0, max_health)
@@ -42,8 +47,15 @@ func take_damage(amount: int):
 
 	if health <= 0:
 		die()
+	else:
+		start_invulnerability(invulnerability_time)
+
+	return "damaged"
 
 func heal(amount: int):
+	if dead:
+		return
+
 	health += amount
 	health = clamp(health, 0, max_health)
 	health_changed.emit(health, max_health)
@@ -66,6 +78,10 @@ func can_block_damage() -> bool:
 	return blocking and block_cooldown_timer <= 0
 
 func die():
+	if dead:
+		return
+
+	dead = true
 	died.emit()
 	print("Player died")
 
