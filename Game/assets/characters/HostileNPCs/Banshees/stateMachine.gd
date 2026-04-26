@@ -1,19 +1,9 @@
 extends CharacterBody2D
 
 @export var patrol_path: NodePath
-@export var patrol_speed: float = 45.0
-@export var patrol_arrival_distance: float = 6.0
-@export var run_speed: float = 120.0
-@export var attack_damage: int = 5
-@export var combo_2_damage_bonus: int = 2
-@export var attack_cooldown: float = 0.5
-@export var attack_damage_start_frame: int = 3
-@export var attack_move_speed_modifier: float = 0.75
-@export var hurt_move_speed_modifier: float = 0.25
-@export var block_stun_duration: float = 1.0
-@export var block_stun_move_speed_modifier: float = 0.15
-@export var player_stop_distance: float = 20.0
-@export var facing_deadzone: float = 0.1
+const DEFAULT_TUNING: BansheeTuning = preload("res://assets/characters/HostileNPCs/Banshees/banshee_tuning.tres")
+
+@export var tuning: BansheeTuning = DEFAULT_TUNING
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health = $Health
@@ -38,9 +28,24 @@ var hurt_duration_override: float = -1.0
 var hurt_speed_modifier_override: float = -1.0
 var patrol_points: Array[Vector2] = []
 var patrol_point_index: int = 0
+var patrol_speed: float
+var patrol_arrival_distance: float
+var run_speed: float
+var attack_damage: int
+var combo_2_damage_bonus: int
+var attack_cooldown: float
+var attack_damage_start_frame: int
+var attack_move_speed_modifier: float
+var hurt_move_speed_modifier: float
+var block_stun_duration: float
+var block_stun_move_speed_modifier: float
+var player_stop_distance: float
+var facing_deadzone: float
 
 
 func _ready():
+	apply_tuning()
+
 	add_to_group("hostile_npcs")
 	configure_collision()
 	connect_ranges()
@@ -59,12 +64,34 @@ func _ready():
 	states["hurt"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/hurtState.gd").new()
 	states["death"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/deathState.gd").new()
 
+	if health.has_method("set_tuning"):
+		health.set_tuning(tuning)
+
 	if not health.died.is_connected(_on_died):
 		health.died.connect(_on_died)
 
 	player = get_tree().get_first_node_in_group("player")
 	refresh_patrol_points()
 	change_state(get_default_state())
+
+
+func apply_tuning():
+	if tuning == null:
+		tuning = DEFAULT_TUNING
+
+	patrol_speed = tuning.patrol_speed
+	patrol_arrival_distance = tuning.patrol_arrival_distance
+	run_speed = tuning.run_speed
+	attack_damage = tuning.attack_damage
+	combo_2_damage_bonus = tuning.combo_2_damage_bonus
+	attack_cooldown = tuning.attack_cooldown
+	attack_damage_start_frame = tuning.attack_damage_start_frame
+	attack_move_speed_modifier = tuning.attack_move_speed_modifier
+	hurt_move_speed_modifier = tuning.hurt_move_speed_modifier
+	block_stun_duration = tuning.block_stun_duration
+	block_stun_move_speed_modifier = tuning.block_stun_move_speed_modifier
+	player_stop_distance = tuning.player_stop_distance
+	facing_deadzone = tuning.facing_deadzone
 
 
 func _physics_process(delta):

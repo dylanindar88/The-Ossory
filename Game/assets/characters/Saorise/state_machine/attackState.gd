@@ -1,7 +1,5 @@
 extends RefCounted
 
-@export var attack_speed_modifier: float = 0.75
-
 var combo_part: int = 0
 var attack_timer: float = 0.0
 var animation_duration: float = 0.4
@@ -49,7 +47,7 @@ func physics_update(player, delta):
 	input_vector.y = Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
 	input_vector = input_vector.normalized()
 
-	player.velocity = input_vector * player.walk_speed * attack_speed_modifier
+	player.velocity = input_vector * player.walk_speed * player.attack_speed_modifier
 	player.move_and_slide()
 
 	if attack_timer <= 0:

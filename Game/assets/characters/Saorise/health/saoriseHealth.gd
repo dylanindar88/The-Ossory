@@ -5,14 +5,18 @@ signal stamina_changed(current_stamina: float, max_stamina: float)
 signal died
 signal damage_blocked
 
-@export var max_health := 100
-@export var max_stamina := 100.0
-@export var invulnerability_time := 0.75
-@export var block_invulnerability_time := 0.35
-@export var block_stamina_cost := 20.0
-@export var stamina_regen_rate := 25.0
-@export var parry_bonus_time := 2.0
-@export var parry_damage_multiplier := 1.5
+const DEFAULT_TUNING: PlayerTuning = preload("res://assets/characters/Saorise/player_tuning.tres")
+
+@export var tuning: PlayerTuning = DEFAULT_TUNING
+
+var max_health := 100
+var max_stamina := 100.0
+var invulnerability_time := 0.75
+var block_invulnerability_time := 0.35
+var block_stamina_cost := 20.0
+var stamina_regen_rate := 25.0
+var parry_bonus_time := 2.0
+var parry_damage_multiplier := 1.5
 var health := max_health
 var stamina := max_stamina
 
@@ -26,10 +30,35 @@ var parry_bonus_timer := 0.0
 var dead := false
 
 func _ready():
+	apply_tuning()
 	health = max_health
 	stamina = max_stamina
 	health_changed.emit(health, max_health)
 	stamina_changed.emit(stamina, max_stamina)
+
+func set_tuning(new_tuning: PlayerTuning):
+	var was_at_full_health := health >= max_health
+	var was_at_full_stamina := stamina >= max_stamina
+
+	tuning = new_tuning
+	apply_tuning()
+	health = max_health if was_at_full_health else clamp(health, 0, max_health)
+	stamina = max_stamina if was_at_full_stamina else clamp(stamina, 0.0, max_stamina)
+	health_changed.emit(health, max_health)
+	stamina_changed.emit(stamina, max_stamina)
+
+func apply_tuning():
+	if tuning == null:
+		tuning = DEFAULT_TUNING
+
+	max_health = tuning.max_health
+	max_stamina = tuning.max_stamina
+	invulnerability_time = tuning.invulnerability_time
+	block_invulnerability_time = tuning.block_invulnerability_time
+	block_stamina_cost = tuning.block_stamina_cost
+	stamina_regen_rate = tuning.stamina_regen_rate
+	parry_bonus_time = tuning.parry_bonus_time
+	parry_damage_multiplier = tuning.parry_damage_multiplier
 
 func _process(delta):
 	if invulnerable:

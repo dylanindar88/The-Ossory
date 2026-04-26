@@ -1,14 +1,8 @@
 extends CharacterBody2D
 
-@export var walk_speed = 85
-@export var run_speed = 210
-@export var dash_speed = 420
-@export var dash_duration = 0.18
-@export var dash_cooldown = 0.75
-@export var attack_speed_modifier = 0.75
-@export var attack_damage = 10
-@export var combo_2_damage_bonus = 5
-@export var block_speed_modifier = 0.5
+const DEFAULT_TUNING: PlayerTuning = preload("res://assets/characters/Saorise/player_tuning.tres")
+
+@export var tuning: PlayerTuning = DEFAULT_TUNING
 
 @onready var sprite = $Body
 @onready var effects: AnimatedSprite2D = $Effects
@@ -27,9 +21,20 @@ var last_input_direction = Vector2.RIGHT
 
 var can_dash = true
 var dash_cooldown_timer = 0.0
+var walk_speed: float
+var run_speed: float
+var dash_speed: float
+var dash_duration: float
+var dash_cooldown: float
+var attack_speed_modifier: float
+var attack_damage: int
+var combo_2_damage_bonus: int
+var block_speed_modifier: float
 
 
 func _ready():
+	apply_tuning()
+
 	add_to_group("player")
 	hurt_box.add_to_group("player_hurtboxes")
 	hurt_box.monitoring = true
@@ -53,12 +58,29 @@ func _ready():
 	hitbox_manager.setup()
 
 	states["attack"].hitbox_manager = hitbox_manager
-	states["attack"].attack_speed_modifier = attack_speed_modifier
+
+	if health.has_method("set_tuning"):
+		health.set_tuning(tuning)
 
 	if not health.died.is_connected(_on_died):
 		health.died.connect(_on_died)
 
 	change_state("move")
+
+
+func apply_tuning():
+	if tuning == null:
+		tuning = DEFAULT_TUNING
+
+	walk_speed = tuning.walk_speed
+	run_speed = tuning.run_speed
+	dash_speed = tuning.dash_speed
+	dash_duration = tuning.dash_duration
+	dash_cooldown = tuning.dash_cooldown
+	attack_speed_modifier = tuning.attack_speed_modifier
+	attack_damage = tuning.attack_damage
+	combo_2_damage_bonus = tuning.combo_2_damage_bonus
+	block_speed_modifier = tuning.block_speed_modifier
 
 
 func _physics_process(delta):

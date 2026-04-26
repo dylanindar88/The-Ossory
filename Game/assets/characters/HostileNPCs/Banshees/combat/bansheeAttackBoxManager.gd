@@ -3,8 +3,8 @@ extends RefCounted
 
 var attack_box: Area2D
 var collision_shape: CollisionShape2D
-var attack_damage: int = 5
-var combo_2_damage_bonus: int = 2
+var attack_damage: int
+var combo_2_damage_bonus: int
 var current_combo_part: int = 0
 var banshee: Node
 var active_attack_targets: Array[Node2D] = []
