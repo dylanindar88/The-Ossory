@@ -269,6 +269,16 @@ scale = Vector2(0.9, 0.9)
 position = Vector2(448.467, 1425.13)
 scale = Vector2(0.9, 0.9)
 
+[node name="PatrolPaths" type="Node2D" parent="PlayableWorld"]
+
+[node name="BottomLeftNode" type="Node2D" parent="PlayableWorld/PatrolPaths"]
+
+[node name="TopLeftLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
+
+[node name="BottomMiddleLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
+
+[node name="GraveyardLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
+
 [node name="Characters" type="Node2D" parent="PlayableWorld"]
 z_as_relative = false
 y_sort_enabled = true
@@ -280,13 +290,17 @@ position = Vector2(0.486331, 103.177)
 z_as_relative = false
 y_sort_enabled = true
 
-[node name="PatrolPaths" type="Node2D" parent="PlayableWorld/Characters/HostileNPCs"]
-
 [node name="Banshee" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
 position = Vector2(-447.737, -56.5221)
 
 [node name="Banshee2" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
 position = Vector2(5.88101, 431.535)
+
+[node name="Banshee3" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(736, -20)
+
+[node name="Banshee4" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(-636, 678)
 
 [node name="NPCs" type="Node2D" parent="PlayableWorld/Characters"]
 

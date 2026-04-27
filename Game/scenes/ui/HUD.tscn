@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3 uid="uid://cd8kyptum0qfo"]
+[gd_scene load_steps=8 format=3 uid="uid://cd8kyptum0qfo"]
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/healthUI.gd" id="1_ue8h7"]
 
@@ -17,13 +17,21 @@ colors = PackedColorArray(1, 0.0588235, 0, 1, 0.0898802, 0.94315, 0, 1, 0.031372
 gradient = SubResource("Gradient_sh1xw")
 width = 139
 
+[sub_resource type="Gradient" id="Gradient_3i2co"]
+offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
+colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_7i3ij"]
+gradient = SubResource("Gradient_3i2co")
+width = 139
+
 [node name="HUD" type="CanvasLayer"]
 
 [node name="HealthUI" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
-offset_bottom = 40.0
+offset_bottom = 80.0
 script = ExtResource("1_ue8h7")
 
 [node name="HealthBar" type="TextureProgressBar" parent="HealthUI"]
@@ -37,3 +45,15 @@ rounded = true
 nine_patch_stretch = true
 texture_under = SubResource("GradientTexture2D_m3wux")
 texture_progress = SubResource("GradientTexture2D_1gu6o")
+
+[node name="staminabar" type="TextureProgressBar" parent="HealthUI"]
+layout_mode = 1
+offset_left = 10.0
+offset_top = 48.0
+offset_right = 270.0
+offset_bottom = 58.0
+value = 50.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_m3wux")
+texture_progress = SubResource("GradientTexture2D_7i3ij")

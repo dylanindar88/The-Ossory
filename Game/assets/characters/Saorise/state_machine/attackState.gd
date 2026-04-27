@@ -15,9 +15,9 @@ var hitbox_manager: Object
 
 
 func enter(player):
-	var mouse_pos = player.get_global_mouse_position()
-	attack_direction = get_attack_direction(player, mouse_pos)
-	player.last_facing = attack_direction
+	player.can_attack_from_hold = false
+
+	update_attack_direction(player, false)
 
 	combo_part = 1
 	next_combo_pressed = false
@@ -30,7 +30,7 @@ func enter(player):
 
 
 func physics_update(player, delta):
-	player.sprite.flip_h = attack_direction == "left"
+	update_attack_direction(player)
 
 	attack_timer -= delta
 
@@ -55,13 +55,14 @@ func physics_update(player, delta):
 			combo_part += 1
 			next_combo_pressed = false
 
+			update_attack_direction(player, false)
 			animation_duration = play_attack_animation(player)
 			attack_timer = animation_duration
 
 			if hitbox_manager:
 				hitbox_manager.activate_attack_hitbox(combo_part, attack_direction)
 		else:
-			player.change_state("move")
+			finish_combo(player)
 
 
 func exit(player):
@@ -72,9 +73,52 @@ func exit(player):
 	next_combo_pressed = false
 
 
+func finish_combo(player):
+	player.attack_cooldown_timer = player.attack_combo_restart_delay
+	player.can_attack_from_hold = Input.is_action_pressed("left_click")
+	player.change_state("move")
+
+
 func play_attack_animation(player) -> float:
 	var anim_name = get_attack_animation_name(player, combo_part)
 	player.sprite.play(anim_name)
+	player.sprite.flip_h = attack_direction == "left"
+	return get_animation_duration(player, anim_name)
+
+
+func update_attack_direction(player, preserve_animation_progress: bool = true):
+	var new_attack_direction = get_attack_direction(player, player.get_global_mouse_position())
+	if new_attack_direction == attack_direction:
+		player.last_facing = attack_direction
+		player.sprite.flip_h = attack_direction == "left"
+		return
+
+	attack_direction = new_attack_direction
+	player.last_facing = attack_direction
+
+	if combo_part <= 0:
+		return
+
+	if preserve_animation_progress:
+		var elapsed_attack_time: float = animation_duration - attack_timer
+		animation_duration = transition_attack_animation(player)
+		attack_timer = max(animation_duration - elapsed_attack_time, 0.0)
+
+	if preserve_animation_progress and hitbox_manager and hitbox_manager.has_method("update_attack_direction"):
+		hitbox_manager.update_attack_direction(combo_part, attack_direction)
+
+
+func transition_attack_animation(player) -> float:
+	var previous_frame: int = player.sprite.frame
+	var previous_frame_progress: float = player.sprite.frame_progress
+	var anim_name = get_attack_animation_name(player, combo_part)
+	player.sprite.play(anim_name)
+
+	var sprite_frames: SpriteFrames = player.sprite.sprite_frames
+	if sprite_frames != null and sprite_frames.has_animation(anim_name):
+		previous_frame = min(previous_frame, sprite_frames.get_frame_count(anim_name) - 1)
+
+	player.sprite.set_frame_and_progress(previous_frame, previous_frame_progress)
 	player.sprite.flip_h = attack_direction == "left"
 	return get_animation_duration(player, anim_name)
 

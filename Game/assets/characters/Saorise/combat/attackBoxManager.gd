@@ -68,6 +68,14 @@ func activate_attack_hitbox(combo_part: int, direction: String):
 	call_deferred("_hit_current_overlaps")
 
 
+func update_attack_direction(combo_part: int, direction: String):
+	if attack_box == null or current_combo_part <= 0:
+		return
+
+	update_attackbox_shape(combo_part, direction)
+	call_deferred("_hit_current_overlaps")
+
+
 func deactivate_attack_hitbox():
 	if attack_box == null:
 		return

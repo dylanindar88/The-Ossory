@@ -7,6 +7,7 @@ var dash_direction = Vector2.ZERO
 func enter(player):
 	player.can_dash = false
 	player.dash_cooldown_timer = player.dash_cooldown
+	player.health.on_dash_started()
 
 	dash_timer = player.dash_duration
 
@@ -42,6 +43,7 @@ func enter(player):
 
 func exit(player):
 	# Optional safety: ensure i-frames end cleanly
+	player.health.set_dashing(false)
 	player.health.end_invulnerability()
 
 

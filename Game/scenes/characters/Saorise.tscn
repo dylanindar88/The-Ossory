@@ -1,9 +1,9 @@
 [gd_scene load_steps=9 format=3 uid="uid://u16duk15fe7q"]
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/stateMachine.gd" id="1_e5y1c"]
+[ext_resource type="PackedScene" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
 [ext_resource type="SpriteFrames" uid="uid://bq7x1kr2nahdp" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
-[ext_resource type="SpriteFrames" uid="uid://ci70t58v86wc6" path="res://assets/effect icons/effects.tres" id="3_e27jn"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_res46"]
@@ -33,13 +33,8 @@ sprite_frames = ExtResource("2_injfk")
 animation = &"block_action"
 offset = Vector2(0, -88)
 
-[node name="Effects" type="AnimatedSprite2D" parent="."]
-z_as_relative = false
-y_sort_enabled = true
+[node name="Effects" parent="." instance=ExtResource("2_1beex")]
 position = Vector2(0, 5)
-scale = Vector2(0.5, 0.5)
-sprite_frames = ExtResource("3_e27jn")
-animation = &"parry_bonus"
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -24)

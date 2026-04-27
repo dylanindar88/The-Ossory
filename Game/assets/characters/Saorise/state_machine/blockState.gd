@@ -55,7 +55,7 @@ func physics_update(player, delta):
 	elif phase == Phase.IDLE:
 		play_block_idle(player)
 
-		if not Input.is_action_pressed("right_click"):
+		if player.health.stamina <= 0.0 or not Input.is_action_pressed("right_click"):
 			start_releasing(player)
 
 	elif phase == Phase.RELEASING:

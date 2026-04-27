@@ -2,11 +2,11 @@ class_name BansheeTuning
 extends Resource
 
 @export_group("Patrol")
-@export var patrol_speed: float = 45.0
+@export var patrol_speed: float = 55.0
 @export var patrol_arrival_distance: float = 6.0
 
 @export_group("Movement")
-@export var run_speed: float = 120.0
+@export var run_speed: float = 130.0
 @export var player_stop_distance: float = 20.0
 @export var facing_deadzone: float = 0.1
 
@@ -15,7 +15,7 @@ extends Resource
 @export var combo_2_damage_bonus: int = 2
 @export var attack_cooldown: float = 0.5
 @export var attack_damage_start_frame: int = 3
-@export var attack_move_speed_modifier: float = 0.75
+@export var attack_move_speed_modifier: float = 0.8
 
 @export_group("Hurt")
 @export var hurt_move_speed_modifier: float = 0.25

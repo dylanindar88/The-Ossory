@@ -5,7 +5,7 @@ const DEFAULT_TUNING: PlayerTuning = preload("res://assets/characters/Saorise/pl
 @export var tuning: PlayerTuning = DEFAULT_TUNING
 
 @onready var sprite = $Body
-@onready var effects: AnimatedSprite2D = $Effects
+@onready var effects: EffectList = $Effects
 @onready var health = $Health
 @onready var hurt_box = $HurtBox
 @onready var attack_box = $AttackBox
@@ -29,6 +29,9 @@ var dash_cooldown: float
 var attack_speed_modifier: float
 var attack_damage: int
 var combo_2_damage_bonus: int
+var attack_combo_restart_delay: float
+var attack_cooldown_timer := 0.0
+var can_attack_from_hold := false
 var block_speed_modifier: float
 
 
@@ -47,8 +50,7 @@ func _ready():
 	states["attack"] = preload("res://assets/characters/Saorise/state_machine/attackState.gd").new()
 	states["block"] = preload("res://assets/characters/Saorise/state_machine/blockState.gd").new()
 
-	effects.visible = false
-	effects.stop()
+	effects.clear_effects()
 
 	hitbox_manager = preload("res://assets/characters/Saorise/combat/attackBoxManager.gd").new()
 	hitbox_manager.attack_box = attack_box
@@ -80,6 +82,7 @@ func apply_tuning():
 	attack_speed_modifier = tuning.attack_speed_modifier
 	attack_damage = tuning.attack_damage
 	combo_2_damage_bonus = tuning.combo_2_damage_bonus
+	attack_combo_restart_delay = tuning.attack_combo_restart_delay
 	block_speed_modifier = tuning.block_speed_modifier
 
 
@@ -93,6 +96,9 @@ func _physics_process(delta):
 
 		if dash_cooldown_timer <= 0:
 			can_dash = true
+
+	if attack_cooldown_timer > 0:
+		attack_cooldown_timer -= delta
 
 	if current_state:
 		current_state.physics_update(self, delta)
@@ -122,28 +128,7 @@ func update_effects():
 	if effects == null:
 		return
 
-	if health.has_parry_bonus():
-		play_effect("parry_bonus")
-		return
-
-	if health.is_block_effect_active():
-		play_effect("blocking")
-		return
-
-	effects.stop()
-	effects.visible = false
-
-
-func play_effect(anim_name: String):
-	if effects.sprite_frames == null or not effects.sprite_frames.has_animation(anim_name):
-		effects.stop()
-		effects.visible = false
-		return
-
-	effects.visible = true
-
-	if effects.animation != anim_name or not effects.is_playing():
-		effects.play(anim_name)
+	effects.set_effects(health.get_active_effects())
 
 
 func _on_died():

@@ -4,7 +4,7 @@ func enter(player):
 	pass
 
 func exit(player):
-	pass
+	player.health.set_running(false)
 
 func physics_update(player, delta):
 	var input_vector = Vector2.ZERO
@@ -21,28 +21,40 @@ func physics_update(player, delta):
 
 	update_last_move_axis(player)
 
+	if Input.is_action_pressed("left_click") and player.attack_cooldown_timer > 0.0:
+		player.can_attack_from_hold = true
+	elif not Input.is_action_pressed("left_click"):
+		player.can_attack_from_hold = false
+
 	# Attack
-	if Input.is_action_just_pressed("left_click"):
+	var can_start_attack: bool = player.attack_cooldown_timer <= 0.0
+	var wants_attack: bool = (
+		Input.is_action_just_pressed("left_click")
+		or (Input.is_action_pressed("left_click") and player.can_attack_from_hold)
+	)
+	if can_start_attack and wants_attack:
 		player.change_state("attack")
 		return
 
 	# Dash
-	if (Input.is_action_just_pressed("dash") or Input.is_action_just_pressed("ui_accept")) and player.can_dash:
+	var wants_dash: bool = Input.is_action_just_pressed("dash") or Input.is_action_just_pressed("ui_accept")
+	if wants_dash and player.can_dash and player.health.can_dash():
 		player.change_state("dash")
 		return
 
 	# Block
-	if Input.is_action_pressed("right_click"):
+	if Input.is_action_pressed("right_click") and player.health.can_start_block():
 		player.change_state("block")
 		return
 
 	# Run
-	var is_running = Input.is_action_pressed("run")
+	var is_running = input_vector != Vector2.ZERO and Input.is_action_pressed("run") and player.health.can_run()
 	var current_speed = player.walk_speed
 
 	if is_running:
 		current_speed = player.run_speed
 
+	player.health.set_running(is_running)
 	player.velocity = input_vector * current_speed
 
 	update_animation(player, input_vector, is_running)

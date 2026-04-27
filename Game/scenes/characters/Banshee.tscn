@@ -16,7 +16,7 @@ height = 43.3264
 size = Vector2(27.634, 51.0283)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o744d"]
-radius = 222.746
+radius = 120.016
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qh50h"]
 radius = 48.2532
@@ -55,7 +55,6 @@ position = Vector2(0, -17.489)
 shape = SubResource("CapsuleShape2D_gwosy")
 
 [node name="AttackBox" type="Area2D" parent="."]
-visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackBox"]
 position = Vector2(-0.00112915, -20.3286)
@@ -64,15 +63,13 @@ shape = SubResource("RectangleShape2D_pe0u1")
 debug_color = Color(0.984314, 0, 0.337255, 0.419608)
 
 [node name="PlayerDetectionArea" type="Area2D" parent="."]
-visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetectionArea"]
-position = Vector2(0, -18)
+position = Vector2(0, -19.06)
 shape = SubResource("CircleShape2D_o744d")
 debug_color = Color(0.631373, 0.529412, 0, 0.419608)
 
 [node name="AttackRange" type="Area2D" parent="."]
-visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackRange"]
 position = Vector2(0, -20.35)
@@ -81,8 +78,9 @@ shape = SubResource("CapsuleShape2D_qh50h")
 debug_color = Color(0.360784, 0.00392157, 0, 0.419608)
 
 [node name="TrackingRange" type="Area2D" parent="."]
-visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TrackingRange"]
+visible = false
+position = Vector2(0, -19.07)
 shape = SubResource("CircleShape2D_6bfd2")
 debug_color = Color(0, 0.627451, 0.501961, 0.419608)
