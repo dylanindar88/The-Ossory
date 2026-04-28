@@ -18,7 +18,7 @@ var block_stamina_cost := 20.0
 var block_stamina_drain_rate := 8.0
 var run_stamina_drain_rate := 8.0
 var stamina_regen_rate := 25.0
-var stamina_exhaustion_duration := 1.0
+var stamina_exhaustion_recovery_ratio := 0.8
 var parry_bonus_time := 2.0
 var parry_damage_multiplier := 1.5
 var parry_incoming_damage_multiplier := 0.5
@@ -34,8 +34,7 @@ var parry_window_active := false
 var block_invulnerable := false
 var block_invulnerability_timer := 0.0
 var parry_bonus_timer := 0.0
-var stamina_exhaustion_timer := 0.0
-var block_recovery_required := false
+var stamina_exhausted := false
 var dead := false
 
 func _ready():
@@ -69,7 +68,7 @@ func apply_tuning():
 	block_stamina_drain_rate = tuning.block_stamina_drain_rate
 	run_stamina_drain_rate = tuning.run_stamina_drain_rate
 	stamina_regen_rate = tuning.stamina_regen_rate
-	stamina_exhaustion_duration = tuning.stamina_exhaustion_duration
+	stamina_exhaustion_recovery_ratio = tuning.stamina_exhaustion_recovery_ratio
 	parry_bonus_time = tuning.parry_bonus_time
 	parry_damage_multiplier = tuning.parry_damage_multiplier
 	parry_incoming_damage_multiplier = tuning.parry_incoming_damage_multiplier
@@ -89,9 +88,6 @@ func _process(delta):
 
 	if parry_bonus_timer > 0:
 		parry_bonus_timer -= delta
-
-	if stamina_exhaustion_timer > 0:
-		stamina_exhaustion_timer -= delta
 
 	if blocking:
 		drain_block_stamina(delta)
@@ -176,17 +172,16 @@ func drain_stamina(rate: float, delta: float):
 	set_stamina(stamina - rate * delta)
 
 func set_stamina(value: float):
-	var was_exhausted: bool = stamina <= 0.0
 	var new_stamina: float = clamp(value, 0.0, max_stamina)
 	if is_equal_approx(stamina, new_stamina):
 		return
 
 	stamina = new_stamina
 
-	if not was_exhausted and stamina <= 0.0:
+	if not stamina_exhausted and stamina <= 0.0:
 		start_stamina_exhaustion()
-	elif block_recovery_required and stamina > block_stamina_cost:
-		block_recovery_required = false
+	elif stamina_exhausted and stamina >= get_stamina_exhaustion_recovery_threshold():
+		end_stamina_exhaustion()
 
 	stamina_changed.emit(stamina, max_stamina)
 
@@ -194,12 +189,18 @@ func spend_stamina(amount: float):
 	set_stamina(stamina - amount)
 
 func start_stamina_exhaustion():
-	stamina_exhaustion_timer = stamina_exhaustion_duration
-	block_recovery_required = true
+	stamina_exhausted = true
+	set_blocking(false)
 	set_running(false)
 
+func end_stamina_exhaustion():
+	stamina_exhausted = false
+
 func is_stamina_exhausted() -> bool:
-	return stamina_exhaustion_timer > 0.0
+	return stamina_exhausted
+
+func get_stamina_exhaustion_recovery_threshold() -> float:
+	return max_stamina * stamina_exhaustion_recovery_ratio
 
 func has_enough_block_stamina() -> bool:
 	return stamina >= block_stamina_cost
@@ -208,7 +209,7 @@ func has_enough_dash_stamina() -> bool:
 	return stamina >= dash_stamina_cost
 
 func can_start_block() -> bool:
-	return not is_stamina_exhausted() and not block_recovery_required and stamina > 0.0
+	return not is_stamina_exhausted() and stamina > 0.0
 
 func can_dash() -> bool:
 	return not is_stamina_exhausted() and has_enough_dash_stamina()
@@ -269,6 +270,9 @@ func has_parry_bonus() -> bool:
 
 func get_active_effects() -> Array[String]:
 	var active_effects: Array[String] = []
+
+	if is_stamina_exhausted():
+		active_effects.append("exhausted")
 
 	if is_block_effect_active():
 		active_effects.append("blocking")

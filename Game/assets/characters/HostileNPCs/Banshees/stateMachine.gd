@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 @export var patrol_path: NodePath
+@export var patrol_ping_pong: bool = false
 const DEFAULT_TUNING: BansheeTuning = preload("res://assets/characters/HostileNPCs/Banshees/banshee_tuning.tres")
 
 @export var tuning: BansheeTuning = DEFAULT_TUNING
@@ -26,8 +27,18 @@ var attack_cooldown_timer: float = 0.0
 var dead: bool = false
 var hurt_duration_override: float = -1.0
 var hurt_speed_modifier_override: float = -1.0
+var patrol_path_node: Path2D
+var patrol_curve: Curve2D
+var patrol_route_loaded: bool = false
+var patrol_path_offset: float = 0.0
+var patrol_path_length: float = 0.0
+var patrol_ping_pong_direction: float = 1.0
 var patrol_points: Array[Vector2] = []
 var patrol_point_index: int = 0
+var patrol_point_direction: int = 1
+var return_patrol_target: Vector2
+var return_patrol_path_offset: float = 0.0
+var return_patrol_point_index: int = 0
 var patrol_speed: float
 var patrol_arrival_distance: float
 var run_speed: float
@@ -59,6 +70,7 @@ func _ready():
 
 	states["idle"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/idleState.gd").new()
 	states["patrol"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/patrolState.gd").new()
+	states["return_to_patrol"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/returnToPatrolState.gd").new()
 	states["chase"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/chaseState.gd").new()
 	states["attack"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/attackState.gd").new()
 	states["hurt"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/hurtState.gd").new()
@@ -204,25 +216,67 @@ func clear_hurt_state_overrides():
 
 func refresh_patrol_points():
 	patrol_points.clear()
+	patrol_path_node = null
+	patrol_curve = null
+	patrol_route_loaded = false
+	patrol_path_offset = 0.0
+	patrol_path_length = 0.0
 
 	if str(patrol_path) == "":
 		patrol_point_index = 0
 		return
 
-	var path: Path2D = get_node_or_null(patrol_path) as Path2D
-	if path == null or path.curve == null:
+	var path_node: Node = get_node_or_null(patrol_path)
+	if path_node == null:
 		patrol_point_index = 0
 		return
 
-	for point in path.curve.get_baked_points():
-		patrol_points.append(path.to_global(point))
+	var route_path: Path2D = get_route_path(path_node)
+	if route_path != null and route_path.curve != null:
+		set_patrol_curve(route_path)
+
+	if patrol_curve == null:
+		add_marker_patrol_points(path_node)
 
 	if patrol_point_index >= patrol_points.size():
 		patrol_point_index = 0
 
+	patrol_route_loaded = has_patrol_route()
+
+
+func get_route_path(path_node: Node) -> Path2D:
+	if path_node is Path2D:
+		return path_node as Path2D
+
+	return path_node.get_node_or_null("Path") as Path2D
+
+
+func set_patrol_curve(path: Path2D):
+	patrol_path_node = path
+	patrol_curve = path.curve
+	patrol_path_length = patrol_curve.get_baked_length()
+
+	if patrol_path_length <= 0.0:
+		patrol_path_node = null
+		patrol_curve = null
+		patrol_path_length = 0.0
+		return
+
+	patrol_path_offset = get_nearest_patrol_path_offset(global_position)
+
+
+func add_marker_patrol_points(path_node: Node):
+	for child in path_node.get_children():
+		if child is Marker2D:
+			patrol_points.append(child.global_position)
+
 
 func has_patrol_route() -> bool:
-	return patrol_points.size() > 0
+	return patrol_curve != null or patrol_points.size() > 0
+
+
+func has_smooth_patrol_route() -> bool:
+	return patrol_path_node != null and patrol_curve != null and patrol_path_length > 0.0
 
 
 func get_current_patrol_point() -> Vector2:
@@ -236,7 +290,162 @@ func advance_patrol_point():
 	if not has_patrol_route():
 		return
 
+	if patrol_ping_pong and patrol_points.size() > 1:
+		patrol_point_index += patrol_point_direction
+
+		if patrol_point_index >= patrol_points.size():
+			patrol_point_direction = -1
+			patrol_point_index = patrol_points.size() - 2
+		elif patrol_point_index < 0:
+			patrol_point_direction = 1
+			patrol_point_index = 1
+
+		return
+
 	patrol_point_index = (patrol_point_index + 1) % patrol_points.size()
+
+
+func select_nearest_patrol_point():
+	if not has_patrol_route():
+		return
+
+	if has_smooth_patrol_route():
+		patrol_path_offset = get_nearest_patrol_path_offset(global_position)
+		return
+
+	var nearest_index := 0
+	var nearest_distance := global_position.distance_squared_to(patrol_points[0])
+
+	for index in range(1, patrol_points.size()):
+		var distance := global_position.distance_squared_to(patrol_points[index])
+		if distance < nearest_distance:
+			nearest_distance = distance
+			nearest_index = index
+
+	patrol_point_index = nearest_index
+
+
+func return_to_default_state():
+	if has_patrol_route():
+		begin_return_to_patrol()
+		return
+
+	change_state(get_default_state())
+
+
+func begin_return_to_patrol():
+	if not has_patrol_route():
+		change_state("idle")
+		return
+
+	return_patrol_path_offset = patrol_path_offset
+	return_patrol_point_index = patrol_point_index
+	return_patrol_target = get_return_patrol_target()
+	change_state("return_to_patrol")
+
+
+func get_return_patrol_target() -> Vector2:
+	if has_smooth_patrol_route():
+		return get_patrol_position_at_offset(return_patrol_path_offset)
+
+	return get_current_patrol_point()
+
+
+func complete_return_to_patrol():
+	if has_smooth_patrol_route():
+		patrol_path_offset = return_patrol_path_offset
+	elif patrol_points.size() > 0:
+		patrol_point_index = clamp(return_patrol_point_index, 0, patrol_points.size() - 1)
+
+	velocity = Vector2.ZERO
+	change_state("patrol")
+
+
+func move_toward_return_patrol_target(delta: float) -> bool:
+	var to_target := return_patrol_target - global_position
+	var return_arrival_distance := 1.0
+	if to_target.length() <= return_arrival_distance:
+		velocity = Vector2.ZERO
+		move_and_slide()
+		return true
+
+	var direction := to_target.normalized()
+	var return_speed := run_speed
+	if delta > 0.0:
+		return_speed = min(run_speed, to_target.length() / delta)
+
+	velocity = direction * return_speed
+	update_facing(direction)
+	sprite.play("run")
+	move_and_slide()
+	return global_position.distance_to(return_patrol_target) <= return_arrival_distance
+
+
+func move_along_patrol_route(delta: float):
+	if not has_smooth_patrol_route():
+		move_along_marker_patrol_route()
+		return
+
+	advance_patrol_path_offset(delta)
+	var target_position := get_patrol_position_at_offset(patrol_path_offset)
+	var to_target := target_position - global_position
+
+	if delta > 0.0:
+		velocity = to_target / delta
+	else:
+		velocity = Vector2.ZERO
+
+	if to_target != Vector2.ZERO:
+		update_facing(to_target.normalized())
+
+	sprite.play("walk")
+	move_and_slide()
+
+
+func advance_patrol_path_offset(delta: float):
+	if patrol_ping_pong:
+		patrol_path_offset += patrol_speed * delta * patrol_ping_pong_direction
+
+		if patrol_path_offset >= patrol_path_length:
+			patrol_path_offset = patrol_path_length
+			patrol_ping_pong_direction = -1.0
+		elif patrol_path_offset <= 0.0:
+			patrol_path_offset = 0.0
+			patrol_ping_pong_direction = 1.0
+
+		return
+
+	patrol_path_offset = wrapf(patrol_path_offset + patrol_speed * delta, 0.0, patrol_path_length)
+
+
+func move_along_marker_patrol_route():
+	var target_position: Vector2 = get_current_patrol_point()
+	var to_target: Vector2 = target_position - global_position
+
+	if to_target.length() <= patrol_arrival_distance:
+		advance_patrol_point()
+		target_position = get_current_patrol_point()
+		to_target = target_position - global_position
+
+	var direction: Vector2 = to_target.normalized()
+	velocity = direction * patrol_speed
+	update_facing(direction)
+	sprite.play("walk")
+	move_and_slide()
+
+
+func get_patrol_position_at_offset(offset: float) -> Vector2:
+	if not has_smooth_patrol_route():
+		return global_position
+
+	return patrol_path_node.to_global(patrol_curve.sample_baked(offset, true))
+
+
+func get_nearest_patrol_path_offset(world_position: Vector2) -> float:
+	if patrol_path_node == null or patrol_curve == null:
+		return 0.0
+
+	return patrol_curve.get_closest_offset(patrol_path_node.to_local(world_position))
 
 
 func can_attack() -> bool:

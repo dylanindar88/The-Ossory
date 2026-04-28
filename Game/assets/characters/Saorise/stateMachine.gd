@@ -16,6 +16,7 @@ var hitbox_manager: Object
 var dead := false
 
 var last_facing = "right"
+var last_horizontal_facing = "right"
 var last_move_axis = "horizontal"
 var last_input_direction = Vector2.RIGHT
 

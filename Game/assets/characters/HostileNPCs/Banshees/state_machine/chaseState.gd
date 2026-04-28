@@ -11,7 +11,7 @@ func exit(_banshee):
 
 func physics_update(banshee, _delta):
 	if not banshee.has_player_target() or not banshee.player_in_tracking:
-		banshee.change_state(banshee.get_default_state())
+		banshee.return_to_default_state()
 		return
 
 	if banshee.player_in_attack_range:

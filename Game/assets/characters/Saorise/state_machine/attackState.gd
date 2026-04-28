@@ -90,11 +90,13 @@ func update_attack_direction(player, preserve_animation_progress: bool = true):
 	var new_attack_direction = get_attack_direction(player, player.get_global_mouse_position())
 	if new_attack_direction == attack_direction:
 		player.last_facing = attack_direction
+		update_horizontal_facing_memory(player)
 		player.sprite.flip_h = attack_direction == "left"
 		return
 
 	attack_direction = new_attack_direction
 	player.last_facing = attack_direction
+	update_horizontal_facing_memory(player)
 
 	if combo_part <= 0:
 		return
@@ -136,6 +138,11 @@ func get_attack_direction(player, mouse_pos: Vector2) -> String:
 		return "left"
 
 	return "right"
+
+
+func update_horizontal_facing_memory(player):
+	if attack_direction == "left" or attack_direction == "right":
+		player.last_horizontal_facing = attack_direction
 
 
 func get_attack_animation_name(player, part: int) -> String:

@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=4 format=3 uid="uid://b1yijop0xfpma"]
 
 [ext_resource type="Texture2D" uid="uid://cxkofdr733oqh" path="res://assets/buildings/Banshee village/Small House/wall.aseprite" id="1_wall"]
 [ext_resource type="Texture2D" uid="uid://cej7mn3sjki40" path="res://assets/buildings/Banshee village/Small House/shadow.aseprite" id="2_shadow"]
@@ -22,7 +22,7 @@ texture_filter = 1
 texture = ExtResource("2_shadow")
 
 [node name="StaticBody2D" type="StaticBody2D" parent="House-wall"]
-collision_mask = 0
+collision_mask = 14
 
 [node name="CollisionPolygon2D" type="CollisionPolygon2D" parent="House-wall/StaticBody2D"]
 position = Vector2(0.0548638, -49.3245)
@@ -36,4 +36,3 @@ collision_mask = 0
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
 position = Vector2(-0.555556, 164.389)
 shape = SubResource("RectangleShape2D_2qg2f")
-

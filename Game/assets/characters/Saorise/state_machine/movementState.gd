@@ -76,7 +76,7 @@ func update_animation(player, dir, is_running):
 			player.sprite.flip_h = false
 		else:
 			player.sprite.play("idle")
-			player.sprite.flip_h = player.last_facing == "left"
+			player.sprite.flip_h = player.last_horizontal_facing == "left"
 
 		return
 
@@ -99,9 +99,11 @@ func update_animation(player, dir, is_running):
 		if dir.x < 0:
 			player.sprite.flip_h = true
 			player.last_facing = "left"
+			player.last_horizontal_facing = "left"
 		else:
 			player.sprite.flip_h = false
 			player.last_facing = "right"
+			player.last_horizontal_facing = "right"
 
 		return
 

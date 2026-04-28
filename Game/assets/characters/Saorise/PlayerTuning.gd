@@ -2,7 +2,7 @@ class_name PlayerTuning
 extends Resource
 
 @export_group("Movement")
-@export var walk_speed: float = 85.0
+@export var walk_speed: float = 75.0
 @export var run_speed: float = 210.0
 
 @export_group("Dash")
@@ -32,8 +32,8 @@ extends Resource
 
 @export_group("Stamina")
 @export var max_stamina: float = 100.0
-@export var stamina_regen_rate: float = 20.0
-@export var stamina_exhaustion_duration: float = 1.5
+@export var stamina_regen_rate: float = 15.0
+@export_range(0.0, 1.0, 0.05) var stamina_exhaustion_recovery_ratio: float = 0.8
 
 @export_group("Parry")
 @export var parry_bonus_time: float = 2.25

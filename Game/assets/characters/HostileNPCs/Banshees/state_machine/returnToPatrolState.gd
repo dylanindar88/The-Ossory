@@ -2,23 +2,21 @@ extends RefCounted
 
 
 func enter(banshee):
-	banshee.sprite.play("walk")
-	if not banshee.patrol_route_loaded:
-		banshee.refresh_patrol_points()
+	banshee.sprite.play("run")
 
 
 func exit(_banshee):
 	pass
 
 
-func physics_update(banshee, _delta):
+func physics_update(banshee, delta):
 	if banshee.has_player_target() and banshee.player_in_detection:
 		banshee.change_state("chase")
 		return
 
 	if not banshee.has_patrol_route():
-		banshee.patrol_route_loaded = false
 		banshee.change_state("idle")
 		return
 
-	banshee.move_along_patrol_route(_delta)
+	if banshee.move_toward_return_patrol_target(delta):
+		banshee.complete_return_to_patrol()

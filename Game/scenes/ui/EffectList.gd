@@ -16,16 +16,21 @@ func _ready():
 
 func set_effects(active_effects: Array[String]):
 	var active_lookup := {}
-	visible = not active_effects.is_empty()
+	var visible_effects: Array[String] = []
 
-	for index in range(active_effects.size()):
-		var anim_name: String = active_effects[index]
+	for anim_name in active_effects:
+		if effect_sprite_frames != null and effect_sprite_frames.has_animation(anim_name):
+			visible_effects.append(anim_name)
+
+	visible = not visible_effects.is_empty()
+
+	for index in range(visible_effects.size()):
+		var anim_name: String = visible_effects[index]
 		var effect_sprite := get_effect_sprite(anim_name)
-		if effect_sprite == null:
-			continue
 
 		active_lookup[anim_name] = true
-		effect_sprite.position = Vector2(0, index * icon_spacing)
+		var list_width := float(visible_effects.size() - 1) * icon_spacing
+		effect_sprite.position = Vector2(index * icon_spacing - list_width * 0.5, 0)
 		effect_sprite.visible = true
 
 		if effect_sprite.animation != anim_name or not effect_sprite.is_playing():

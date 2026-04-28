@@ -1,10 +1,27 @@
-[gd_scene load_steps=9 format=3 uid="uid://u16duk15fe7q"]
+[gd_scene load_steps=14 format=3 uid="uid://u16duk15fe7q"]
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/stateMachine.gd" id="1_e5y1c"]
 [ext_resource type="PackedScene" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
 [ext_resource type="SpriteFrames" uid="uid://bq7x1kr2nahdp" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
+[ext_resource type="Script" path="res://scenes/ui/PlayerStaminaBar.gd" id="5_2813q"]
+
+[sub_resource type="Gradient" id="Gradient_stamina_under"]
+offsets = PackedFloat32Array(0.609195)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_stamina_under"]
+gradient = SubResource("Gradient_stamina_under")
+width = 44
+
+[sub_resource type="Gradient" id="Gradient_stamina_progress"]
+offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
+colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_stamina_progress"]
+gradient = SubResource("Gradient_stamina_progress")
+width = 44
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_res46"]
 radius = 3.79308
@@ -21,7 +38,7 @@ size = Vector2(41, 31)
 y_sort_enabled = true
 texture_filter = 1
 collision_layer = 2
-collision_mask = 5
+collision_mask = 13
 script = ExtResource("1_e5y1c")
 
 [node name="Body" type="AnimatedSprite2D" parent="."]
@@ -34,7 +51,20 @@ animation = &"block_action"
 offset = Vector2(0, -88)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]
-position = Vector2(0, 5)
+position = Vector2(0, -68)
+
+[node name="StaminaBar" type="TextureProgressBar" parent="."]
+z_as_relative = false
+offset_left = -14.0
+offset_top = 2.0
+offset_right = 14.0
+offset_bottom = 5.0
+value = 50.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_stamina_under")
+texture_progress = SubResource("GradientTexture2D_stamina_progress")
+script = ExtResource("5_2813q")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -24)

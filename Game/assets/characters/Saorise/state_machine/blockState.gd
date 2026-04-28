@@ -120,6 +120,8 @@ func prepare_for_incoming_damage(player):
 func update_block_direction(player):
 	block_direction = get_block_direction(player)
 	player.last_facing = block_direction
+	if block_direction == "left" or block_direction == "right":
+		player.last_horizontal_facing = block_direction
 
 
 func update_block_facing(player):

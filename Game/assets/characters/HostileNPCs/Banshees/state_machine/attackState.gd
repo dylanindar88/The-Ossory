@@ -41,7 +41,7 @@ func physics_update(banshee, delta):
 		if banshee.has_player_target() and banshee.player_in_tracking:
 			banshee.change_state("chase")
 		else:
-			banshee.change_state(banshee.get_default_state())
+			banshee.return_to_default_state()
 
 
 func start_attack_part(banshee):

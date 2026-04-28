@@ -29,8 +29,10 @@ func enter(player):
 
 		if dir.x < 0:
 			player.last_facing = "left"
+			player.last_horizontal_facing = "left"
 		else:
 			player.last_facing = "right"
+			player.last_horizontal_facing = "right"
 	else:
 		dash_direction = Vector2(0, sign(dir.y))
 
@@ -66,9 +68,11 @@ func update_dash_animation(player):
 		if dash_direction.x < 0:
 			player.sprite.flip_h = true
 			player.last_facing = "left"
+			player.last_horizontal_facing = "left"
 		else:
 			player.sprite.flip_h = false
 			player.last_facing = "right"
+			player.last_horizontal_facing = "right"
 
 		return
 
