@@ -1,10 +1,11 @@
 extends TextureProgressBar
 
-@onready var health_node: Node = get_parent().get_node_or_null("Health")
+@onready var stamina_container: Node = get_parent()
+@onready var health_node: Node = stamina_container.get_parent().get_node_or_null("Health")
 
 
 func _ready():
-	visible = false
+	stamina_container.visible = false
 
 	if health_node == null:
 		return
@@ -25,4 +26,4 @@ func _on_stamina_changed(current_stamina: float, max_stamina: float):
 
 
 func update_visibility():
-	visible = value < max_value
+	stamina_container.visible = value < max_value

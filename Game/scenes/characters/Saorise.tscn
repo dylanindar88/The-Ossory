@@ -1,4 +1,4 @@
-[gd_scene load_steps=14 format=3 uid="uid://u16duk15fe7q"]
+[gd_scene load_steps=15 format=3 uid="uid://u16duk15fe7q"]
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/stateMachine.gd" id="1_e5y1c"]
 [ext_resource type="PackedScene" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
@@ -6,6 +6,7 @@
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
 [ext_resource type="Script" path="res://scenes/ui/PlayerStaminaBar.gd" id="5_2813q"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StaminaBarBorder.aseprite" id="5_ir03o"]
 
 [sub_resource type="Gradient" id="Gradient_stamina_under"]
 offsets = PackedFloat32Array(0.609195)
@@ -48,12 +49,18 @@ position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
 animation = &"block_action"
+frame = 4
+frame_progress = 1.0
 offset = Vector2(0, -88)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]
-position = Vector2(0, -68)
+position = Vector2(0, -57.75)
 
-[node name="StaminaBar" type="TextureProgressBar" parent="."]
+[node name="Stamina" type="Node2D" parent="."]
+texture_filter = 2
+scale = Vector2(0.832062, 1)
+
+[node name="StaminaBar" type="TextureProgressBar" parent="Stamina"]
 z_as_relative = false
 offset_left = -14.0
 offset_top = 2.0
@@ -65,6 +72,14 @@ nine_patch_stretch = true
 texture_under = SubResource("GradientTexture2D_stamina_under")
 texture_progress = SubResource("GradientTexture2D_stamina_progress")
 script = ExtResource("5_2813q")
+
+[node name="StaminaBarBorder" type="TextureRect" parent="Stamina"]
+offset_left = -21.0
+offset_top = -3.0
+offset_right = 363.0
+offset_bottom = 125.0
+scale = Vector2(0.109314, 0.102298)
+texture = ExtResource("5_ir03o")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -24)

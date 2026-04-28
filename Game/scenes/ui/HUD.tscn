@@ -23,15 +23,15 @@ width = 139
 [node name="HealthUI" type="Control" parent="."]
 layout_mode = 3
 anchors_preset = 0
-scale = Vector2(1.25, 1.25)
+scale = Vector2(2, 2)
 script = ExtResource("1_ue8h7")
 
 [node name="HealthBar" type="TextureProgressBar" parent="HealthUI"]
 layout_mode = 1
-offset_left = 24.0
-offset_top = 22.4
-offset_right = 284.0
-offset_bottom = 54.4
+offset_left = 34.5
+offset_top = 22.9
+offset_right = 294.5
+offset_bottom = 54.9
 scale = Vector2(0.702076, 1.00791)
 value = 100.0
 rounded = true
@@ -41,7 +41,9 @@ texture_progress = SubResource("GradientTexture2D_1gu6o")
 
 [node name="Container" type="TextureRect" parent="HealthUI"]
 layout_mode = 0
-offset_right = 384.0
-offset_bottom = 128.0
+offset_left = 10.5
+offset_top = 0.5
+offset_right = 394.5
+offset_bottom = 128.5
 scale = Vector2(0.6, 0.6)
 texture = ExtResource("2_bi2l4")

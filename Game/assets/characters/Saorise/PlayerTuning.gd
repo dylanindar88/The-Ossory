@@ -33,9 +33,9 @@ extends Resource
 @export_group("Stamina")
 @export var max_stamina: float = 100.0
 @export var stamina_regen_rate: float = 15.0
-@export_range(0.0, 1.0, 0.05) var stamina_exhaustion_recovery_ratio: float = 0.8
+@export_range(0.0, 1.0, 0.05) var stamina_exhaustion_recovery_ratio: float = 0.75
 
 @export_group("Parry")
-@export var parry_bonus_time: float = 2.25
+@export var parry_bonus_time: float = 2.5
 @export var parry_damage_multiplier: float = 1.5
 @export_range(0.0, 1.0, 0.05) var parry_incoming_damage_multiplier: float = 0.5

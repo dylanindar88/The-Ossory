@@ -265,6 +265,9 @@ func can_block_damage() -> bool:
 func is_block_effect_active() -> bool:
 	return block_invulnerable or can_block_damage()
 
+func is_dash_effect_active() -> bool:
+	return dashing and invulnerable
+
 func has_parry_bonus() -> bool:
 	return parry_bonus_timer > 0
 
@@ -276,6 +279,9 @@ func get_active_effects() -> Array[String]:
 
 	if is_block_effect_active():
 		active_effects.append("blocking")
+
+	if is_dash_effect_active():
+		active_effects.append("dash")
 
 	if has_parry_bonus():
 		active_effects.append("parry_bonus")

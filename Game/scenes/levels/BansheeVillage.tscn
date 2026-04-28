@@ -253,7 +253,7 @@ position = Vector2(-0.00837708, -94.6776)
 y_sort_enabled = true
 
 [node name="House1" parent="PlayableWorld/Enviornment/Buildings/Houses" instance=ExtResource("30_house")]
-position = Vector2(-898.413, 72.7254)
+position = Vector2(-896, 107.334)
 scale = Vector2(0.9, 0.9)
 
 [node name="House2" parent="PlayableWorld/Enviornment/Buildings/Houses" instance=ExtResource("30_house")]
@@ -461,7 +461,7 @@ position = Vector2(-0.00837708, -94.6776)
 [node name="Houses" type="Node2D" parent="Foreground/BuildingRoofs"]
 
 [node name="House1" parent="Foreground/BuildingRoofs/Houses" instance=ExtResource("16_uad8s")]
-position = Vector2(-896.421, -10.6086)
+position = Vector2(-894.008, 24)
 scale = Vector2(0.9, 0.9)
 
 [node name="House2" parent="Foreground/BuildingRoofs/Houses" instance=ExtResource("16_uad8s")]
