@@ -41,7 +41,7 @@ func physics_update(player, delta):
 		player.change_state("attack")
 		return
 
-	update_movement(player)
+	update_movement(player, delta)
 	update_block_direction(player)
 	update_block_facing(player)
 
@@ -182,9 +182,9 @@ func get_block_animation_name(player, base_anim_name: String) -> String:
 	return base_anim_name
 
 
-func update_movement(player):
+func update_movement(player, delta: float):
 	var input_vector: Vector2 = player.get_move_input_vector()
 	player.remember_input_direction(input_vector)
 
 	player.velocity = input_vector * player.walk_speed * player.block_speed_modifier
-	player.move_and_slide()
+	player.move_with_villager_blocking(delta)

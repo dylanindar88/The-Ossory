@@ -50,7 +50,7 @@ func physics_update(player, delta):
 
 	update_animation(player, input_vector, is_running)
 
-	player.move_and_slide()
+	player.move_with_villager_blocking(delta)
 
 func update_last_move_axis(player):
 	if Input.is_action_just_pressed("move_left") or Input.is_action_just_pressed("move_right"):

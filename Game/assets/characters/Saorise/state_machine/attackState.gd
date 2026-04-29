@@ -44,7 +44,7 @@ func physics_update(player, delta):
 
 	var input_vector: Vector2 = player.get_move_input_vector()
 	player.velocity = input_vector * player.walk_speed * player.attack_speed_modifier
-	player.move_and_slide()
+	player.move_with_villager_blocking(delta)
 
 	if attack_timer <= 0:
 		if next_combo_pressed and combo_part < 3:

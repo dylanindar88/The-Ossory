@@ -30,6 +30,9 @@ y_sort_enabled = true
 collision_layer = 0
 collision_mask = 0
 script = ExtResource("1_q8xm5")
+villager_follow_target_distance = 28.0
+villager_follow_distance_tolerance = 28.0
+villager_reversal_front_buffer = 0.0
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 y_sort_enabled = true

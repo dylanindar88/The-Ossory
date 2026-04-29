@@ -2,6 +2,11 @@ extends CharacterBody2D
 
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false
+@export var assigned_villager_path: NodePath
+@export var villager_follow_target_distance: float = 36.0
+@export var villager_follow_distance_tolerance: float = 24.0
+@export var villager_follow_speed_modifier: float = 0.35
+@export var villager_reversal_front_buffer: float = 4.0
 const DEFAULT_TUNING: BansheeTuning = preload("res://assets/characters/HostileNPCs/Banshees/banshee_tuning.tres")
 
 @export var tuning: BansheeTuning = DEFAULT_TUNING
@@ -18,10 +23,14 @@ var current_state
 var states: Dictionary = {}
 var hitbox_manager: BansheeAttackBoxManager
 var player: Node2D
+var assigned_villager: Node2D
 
 var player_in_detection: bool = false
 var player_in_attack_range: bool = false
 var player_in_tracking: bool = false
+var assigned_villager_paused: bool = false
+var last_villager_stalk_direction: Vector2 = Vector2.ZERO
+var holding_for_villager_reversal: bool = false
 var facing_left: bool = false
 var attack_cooldown_timer: float = 0.0
 var dead: bool = false
@@ -84,6 +93,7 @@ func _ready():
 		health.died.connect(_on_died)
 
 	player = get_tree().get_first_node_in_group("player")
+	resolve_assigned_villager()
 	refresh_patrol_points()
 	change_state(get_default_state())
 
@@ -378,6 +388,7 @@ func complete_return_to_patrol():
 		patrol_point_index = clamp(return_patrol_point_index, 0, patrol_points.size() - 1)
 
 	velocity = Vector2.ZERO
+	resume_assigned_villager()
 	change_state("patrol")
 
 
@@ -472,6 +483,141 @@ func can_attack() -> bool:
 	return attack_cooldown_timer <= 0
 
 
+func resolve_assigned_villager():
+	assigned_villager = null
+	assigned_villager_paused = false
+	last_villager_stalk_direction = Vector2.ZERO
+	holding_for_villager_reversal = false
+
+	if str(assigned_villager_path) == "":
+		return
+
+	assigned_villager = get_node_or_null(assigned_villager_path) as Node2D
+	if assigned_villager == null:
+		push_warning("%s could not find assigned villager at %s" % [name, assigned_villager_path])
+
+
+func has_assigned_villager() -> bool:
+	return (
+		assigned_villager != null
+		and is_instance_valid(assigned_villager)
+		and assigned_villager.is_inside_tree()
+		and assigned_villager.visible
+	)
+
+
+func pause_assigned_villager():
+	if not has_assigned_villager() or assigned_villager_paused:
+		return
+
+	assigned_villager_paused = true
+	if assigned_villager.has_method("pause_for_banshee"):
+		assigned_villager.pause_for_banshee()
+
+
+func resume_assigned_villager():
+	if not assigned_villager_paused:
+		return
+
+	assigned_villager_paused = false
+	if has_assigned_villager() and assigned_villager.has_method("resume_from_banshee"):
+		assigned_villager.resume_from_banshee()
+
+
+func notify_assigned_villager_banshee_defeated():
+	assigned_villager_paused = false
+	if has_assigned_villager() and assigned_villager.has_method("on_assigned_banshee_defeated"):
+		assigned_villager.on_assigned_banshee_defeated()
+
+
+func move_toward_assigned_villager():
+	if not has_assigned_villager():
+		velocity = Vector2.ZERO
+		sprite.play("walk")
+		move_and_slide()
+		return
+
+	var stalk_direction: Vector2 = get_assigned_villager_stalk_direction()
+	if should_hold_for_villager_reversal(stalk_direction):
+		hold_assigned_villager_stalk()
+		last_villager_stalk_direction = stalk_direction
+		return
+
+	holding_for_villager_reversal = false
+	last_villager_stalk_direction = stalk_direction
+
+	var villager_distance: float = global_position.distance_to(assigned_villager.global_position)
+	if villager_distance <= villager_follow_distance_tolerance:
+		hold_assigned_villager_stalk()
+		return
+
+	var target_position: Vector2 = get_assigned_villager_stalk_anchor_position()
+	var offset: Vector2 = target_position - global_position
+	var distance: float = offset.length()
+	if distance <= villager_follow_distance_tolerance:
+		hold_assigned_villager_stalk()
+		return
+
+	var direction: Vector2 = offset.normalized()
+	velocity = direction * run_speed * villager_follow_speed_modifier
+	update_facing(direction)
+	sprite.play("walk")
+	move_and_slide()
+
+
+func get_assigned_villager_stalk_direction() -> Vector2:
+	if has_assigned_villager() and assigned_villager.has_method("get_stalk_direction"):
+		var raw_stalk_direction: Variant = assigned_villager.call("get_stalk_direction")
+		if not (raw_stalk_direction is Vector2):
+			return last_villager_stalk_direction
+
+		var stalk_direction: Vector2 = raw_stalk_direction
+		if stalk_direction != Vector2.ZERO:
+			return stalk_direction
+
+	return last_villager_stalk_direction
+
+
+func get_assigned_villager_stalk_anchor_position() -> Vector2:
+	if has_assigned_villager() and assigned_villager.has_method("get_stalk_anchor_position"):
+		var raw_anchor_position: Variant = assigned_villager.call("get_stalk_anchor_position", villager_follow_target_distance)
+		if raw_anchor_position is Vector2:
+			var anchor_position: Vector2 = raw_anchor_position
+			return anchor_position
+
+	if has_assigned_villager():
+		return assigned_villager.global_position
+
+	return global_position
+
+
+func should_hold_for_villager_reversal(stalk_direction: Vector2) -> bool:
+	if stalk_direction == Vector2.ZERO or last_villager_stalk_direction == Vector2.ZERO:
+		return false
+
+	if holding_for_villager_reversal:
+		return get_banshee_position_along_villager_direction(stalk_direction) >= -villager_reversal_front_buffer
+
+	if last_villager_stalk_direction.dot(stalk_direction) < -0.6:
+		holding_for_villager_reversal = get_banshee_position_along_villager_direction(stalk_direction) >= -villager_reversal_front_buffer
+		return holding_for_villager_reversal
+
+	return false
+
+
+func get_banshee_position_along_villager_direction(stalk_direction: Vector2) -> float:
+	if not has_assigned_villager():
+		return 0.0
+
+	return (global_position - assigned_villager.global_position).dot(stalk_direction)
+
+
+func hold_assigned_villager_stalk():
+	velocity = Vector2.ZERO
+	sprite.play("walk")
+	move_and_slide()
+
+
 func has_player_target() -> bool:
 	return player != null and is_instance_valid(player) and player.is_inside_tree() and player.visible
 
@@ -562,6 +708,7 @@ func disable_combat_areas():
 
 func _on_died():
 	dead = true
+	notify_assigned_villager_banshee_defeated()
 	change_state("death")
 
 

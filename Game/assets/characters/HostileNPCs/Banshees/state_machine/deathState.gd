@@ -5,6 +5,7 @@ var death_timer: float = 0.0
 
 func enter(banshee):
 	banshee.velocity = Vector2.ZERO
+	banshee.notify_assigned_villager_banshee_defeated()
 	banshee.disable_combat_areas()
 	death_timer = banshee.get_animation_duration("death", 0.5)
 	banshee.sprite.play("death")

@@ -1,0 +1,39 @@
+[gd_scene load_steps=5 format=3 uid="uid://c0y1cuxwefgpj"]
+
+[ext_resource type="SpriteFrames" uid="uid://bu3fr7lt77n16" path="res://assets/characters/NPCs/female_villager.tres" id="1_87ki4"]
+[ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_0nf60"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_ta4wc"]
+radius = 4.0
+height = 16.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_7vq1l"]
+radius = 32.0
+
+[node name="FemaleVillager" type="CharacterBody2D"]
+y_sort_enabled = true
+texture_filter = 1
+collision_layer = 8
+collision_mask = 15
+script = ExtResource("2_0nf60")
+
+[node name="Body" type="AnimatedSprite2D" parent="."]
+y_sort_enabled = true
+scale = Vector2(0.2, 0.2)
+sprite_frames = ExtResource("1_87ki4")
+animation = &"idle"
+frame_progress = 0.917711
+offset = Vector2(0, -156)
+
+[node name="MovementBox" type="CollisionShape2D" parent="."]
+top_level = true
+position = Vector2(0, -4)
+rotation = 1.5708
+shape = SubResource("CapsuleShape2D_ta4wc")
+
+[node name="PlayerProximityArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
+shape = SubResource("CircleShape2D_7vq1l")

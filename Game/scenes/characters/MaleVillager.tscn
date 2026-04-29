@@ -1,0 +1,39 @@
+[gd_scene load_steps=5 format=3 uid="uid://dyvbu4ijn2dlw"]
+
+[ext_resource type="SpriteFrames" uid="uid://dfblj0cvbk4bs" path="res://assets/characters/NPCs/male_villager.tres" id="1_5c7ri"]
+[ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_os5rw"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_r8bi5"]
+radius = 5.0
+height = 28.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_1l80d"]
+radius = 32.0
+
+[node name="MaleVillager" type="CharacterBody2D"]
+y_sort_enabled = true
+texture_filter = 1
+collision_layer = 8
+collision_mask = 15
+script = ExtResource("2_os5rw")
+
+[node name="Body" type="AnimatedSprite2D" parent="."]
+y_sort_enabled = true
+scale = Vector2(0.2, 0.2)
+sprite_frames = ExtResource("1_5c7ri")
+animation = &"walk"
+frame_progress = 0.569112
+offset = Vector2(0, -156)
+
+[node name="MovementBox" type="CollisionShape2D" parent="."]
+top_level = true
+position = Vector2(0, -5.285)
+rotation = 1.5708
+shape = SubResource("CapsuleShape2D_r8bi5")
+
+[node name="PlayerProximityArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
+shape = SubResource("CircleShape2D_1l80d")

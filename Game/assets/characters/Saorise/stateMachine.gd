@@ -169,6 +169,37 @@ func get_sprite_animation_duration(anim_name: String, fallback: float) -> float:
 	return float(sprite_frames.get_frame_count(anim_name)) / animation_speed
 
 
+func move_with_villager_blocking(delta: float):
+	var motion: Vector2 = velocity * delta
+	if should_stop_for_villager(motion):
+		velocity = Vector2.ZERO
+		return
+
+	move_and_slide()
+
+
+func should_stop_for_villager(motion: Vector2) -> bool:
+	if motion == Vector2.ZERO:
+		return false
+
+	var collision: KinematicCollision2D = move_and_collide(motion, true)
+	if collision == null:
+		return false
+
+	var collider: Object = collision.get_collider()
+	if not (collider is Node2D):
+		return false
+
+	var collider_node: Node2D = collider as Node2D
+	return collider_node.is_in_group("villagers") and is_motion_toward_node(collider_node, motion)
+
+
+func is_motion_toward_node(node: Node2D, motion: Vector2) -> bool:
+	var current_distance: float = global_position.distance_squared_to(node.global_position)
+	var next_distance: float = (global_position + motion).distance_squared_to(node.global_position)
+	return next_distance < current_distance
+
+
 func update_effects():
 	if effects == null:
 		return

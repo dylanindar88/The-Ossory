@@ -56,7 +56,7 @@ func physics_update(player, delta):
 
 	update_dash_animation(player)
 
-	player.move_and_slide()
+	player.move_with_villager_blocking(delta)
 
 	if dash_timer <= 0:
 		player.change_state("move")

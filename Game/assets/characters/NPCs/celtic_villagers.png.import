@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bajbe5u8ugfhf"
-path="res://.godot/imported/default_villager.aseprite-85a222313435a4f83faaa1220d445f8f.ctex"
+uid="uid://bb7r27d1vao4h"
+path="res://.godot/imported/celtic_villagers.png-f8db88145bcad7d59a4a7ba7d08ce4ee.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/NPCs/default_villager.aseprite"
-dest_files=["res://.godot/imported/default_villager.aseprite-85a222313435a4f83faaa1220d445f8f.ctex"]
+source_file="res://assets/characters/NPCs/celtic_villagers.png"
+dest_files=["res://.godot/imported/celtic_villagers.png-f8db88145bcad7d59a4a7ba7d08ce4ee.ctex"]
 
 [params]
 

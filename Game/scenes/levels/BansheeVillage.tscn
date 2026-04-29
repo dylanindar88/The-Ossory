@@ -1,4 +1,4 @@
-[gd_scene load_steps=26 format=3 uid="uid://tm3ttab50kd3"]
+[gd_scene load_steps=28 format=3 uid="uid://tm3ttab50kd3"]
 
 [ext_resource type="Texture2D" uid="uid://brkmctvq1u5iw" path="res://assets/terrain/Graves/grave1.aseprite" id="2_v2wya"]
 [ext_resource type="Texture2D" uid="uid://cbuinl7rlsyqa" path="res://assets/terrain/Graves/grave2.aseprite" id="3_l450g"]
@@ -18,6 +18,8 @@
 [ext_resource type="PackedScene" uid="uid://ceiybnrppsope" path="res://scenes/environment/buildings/House.tscn" id="30_house"]
 [ext_resource type="PackedScene" uid="uid://b1yijop0xfpma" path="res://scenes/environment/buildings/SmallHouse.tscn" id="31_small"]
 [ext_resource type="PackedScene" uid="uid://g14myfiixmlt" path="res://scenes/environment/buildings/MainHouse.tscn" id="32_main"]
+[ext_resource type="PackedScene" uid="uid://dyvbu4ijn2dlw" path="res://scenes/characters/MaleVillager.tscn" id="33_male"]
+[ext_resource type="PackedScene" uid="uid://c0y1cuxwefgpj" path="res://scenes/characters/FemaleVillager.tscn" id="34_female"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jdcol"]
 size = Vector2(21.9688, 3.03253)
@@ -36,7 +38,7 @@ point_count = 5
 
 [sub_resource type="Curve2D" id="Curve2D_top_left_loop"]
 _data = {
-"points": PackedVector2Array(32.5, -0.167, -32.5, 0.167, -449, -65, 23.667, -26.333, -23.667, 26.333, -552, -16, -17.333, -26.167, 17.333, 26.167, -591, 93, -47.333, -0.5, 47.333, 0.5, -448, 141, -15.167, 26.333, 15.167, -26.333, -307, 96, 23.667, 26.833, -23.667, -26.833, -357, -17, 32.5, -0.167, 0, 0, -449, -65)
+"points": PackedVector2Array(32.5, -0.167, -32.5, 0.167, -452, -58, 23.667, -26.333, -23.667, 26.333, -579, 0, -17.333, -26.167, 17.333, 26.167, -591, 93, -47.333, -0.5, 47.333, 0.5, -448, 141, -15.167, 26.333, 15.167, -26.333, -307, 96, 23.667, 26.833, -23.667, -26.833, -328, 5, 32.5, -0.167, 0, 0, -452, -58)
 }
 point_count = 7
 
@@ -293,7 +295,6 @@ position = Vector2(800.76, 689.719)
 scale = Vector2(0.9, 0.9)
 
 [node name="House7" parent="PlayableWorld/Environment/Buildings/SmallHouses" instance=ExtResource("31_small")]
-y_sort_enabled = true
 position = Vector2(-1473.3, -323.803)
 scale = Vector2(0.9, 0.9)
 
@@ -304,6 +305,79 @@ scale = Vector2(0.9, 0.9)
 [node name="House9" parent="PlayableWorld/Environment/Buildings/SmallHouses" instance=ExtResource("31_small")]
 position = Vector2(448.467, 1425.13)
 scale = Vector2(0.9, 0.9)
+
+[node name="Characters" type="Node2D" parent="PlayableWorld/Environment"]
+z_as_relative = false
+y_sort_enabled = true
+
+[node name="Saorise" parent="PlayableWorld/Environment/Characters" instance=ExtResource("23_yc8ub")]
+
+[node name="HostileNPCs" type="Node2D" parent="PlayableWorld/Environment/Characters"]
+z_as_relative = false
+y_sort_enabled = true
+
+[node name="Banshee" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(-448, -37)
+patrol_path = NodePath("../../../../PatrolPaths/TopLeftLoop")
+assigned_villager_path = NodePath("../../NPCs/MaleVillagerTopLeft")
+
+[node name="Banshee2" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(224, 795)
+patrol_path = NodePath("../../../../PatrolPaths/BottomMiddleLoop")
+patrol_ping_pong = true
+assigned_villager_path = NodePath("../../NPCs/FemaleVillagerBottomMiddle")
+
+[node name="Banshee3" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(729, -40)
+patrol_path = NodePath("../../../../PatrolPaths/GraveyardLoop")
+assigned_villager_path = NodePath("../../NPCs/MaleVillagerGraveyard")
+
+[node name="Banshee4" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(-588, 796)
+patrol_path = NodePath("../../../../PatrolPaths/BottomLeftLoop")
+assigned_villager_path = NodePath("../../NPCs/FemaleVillagerBottomLeft")
+
+[node name="Banshee5" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(-863, 358)
+patrol_path = NodePath("../../../../PatrolPaths/LeftMiddleLoop")
+patrol_ping_pong = true
+assigned_villager_path = NodePath("../../NPCs/MaleVillagerLeftMiddle")
+
+[node name="Banshee6" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(497, 451)
+patrol_path = NodePath("../../../../PatrolPaths/BottomRightLoop")
+patrol_ping_pong = true
+assigned_villager_path = NodePath("../../NPCs/FemaleVillagerBottomRight")
+
+[node name="NPCs" type="Node2D" parent="PlayableWorld/Environment/Characters"]
+y_sort_enabled = true
+
+[node name="MaleVillagerTopLeft" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("33_male")]
+position = Vector2(-483, -28)
+patrol_path = NodePath("../../../../PatrolPaths/TopLeftLoop")
+
+[node name="FemaleVillagerBottomMiddle" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("34_female")]
+position = Vector2(190, 800)
+patrol_path = NodePath("../../../../PatrolPaths/BottomMiddleLoop")
+patrol_ping_pong = true
+
+[node name="MaleVillagerGraveyard" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("33_male")]
+position = Vector2(698, -28)
+patrol_path = NodePath("../../../../PatrolPaths/GraveyardLoop")
+
+[node name="FemaleVillagerBottomLeft" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("34_female")]
+position = Vector2(-600, 778)
+patrol_path = NodePath("../../../../PatrolPaths/BottomLeftLoop")
+
+[node name="MaleVillagerLeftMiddle" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("33_male")]
+position = Vector2(-824, 361)
+patrol_path = NodePath("../../../../PatrolPaths/LeftMiddleLoop")
+patrol_ping_pong = true
+
+[node name="FemaleVillagerBottomRight" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("34_female")]
+position = Vector2(496, 423)
+patrol_path = NodePath("../../../../PatrolPaths/BottomRightLoop")
+patrol_ping_pong = true
 
 [node name="PatrolPaths" type="Node2D" parent="PlayableWorld"]
 
@@ -377,24 +451,25 @@ curve = SubResource("Curve2D_m48o6")
 [node name="Stops" type="Node2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop"]
 
 [node name="Point1" type="Marker2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop/Stops"]
-position = Vector2(-449, -65)
+position = Vector2(-448, -38)
 
 [node name="Point2" type="Marker2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop/Stops"]
-position = Vector2(-552, -16)
+position = Vector2(-575, 20)
 
 [node name="Point3" type="Marker2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop/Stops"]
-position = Vector2(-591, 93)
+position = Vector2(-595, 95)
 
 [node name="Point4" type="Marker2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop/Stops"]
-position = Vector2(-448, 141)
+position = Vector2(-447, 160)
 
 [node name="Point5" type="Marker2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop/Stops"]
-position = Vector2(-307, 96)
+position = Vector2(-303, 117)
 
 [node name="Point6" type="Marker2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop/Stops"]
-position = Vector2(-357, -17)
+position = Vector2(-325, 23)
 
 [node name="Path" type="Path2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop"]
+position = Vector2(4, 20)
 curve = SubResource("Curve2D_top_left_loop")
 
 [node name="BottomMiddleLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
@@ -468,45 +543,6 @@ position = Vector2(272, 215)
 
 [node name="Path" type="Path2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop"]
 curve = SubResource("Curve2D_iaeyl")
-
-[node name="Characters" type="Node2D" parent="PlayableWorld"]
-z_as_relative = false
-y_sort_enabled = true
-
-[node name="Saorise" parent="PlayableWorld/Characters" instance=ExtResource("23_yc8ub")]
-
-[node name="HostileNPCs" type="Node2D" parent="PlayableWorld/Characters"]
-z_as_relative = false
-y_sort_enabled = true
-
-[node name="Banshee" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
-position = Vector2(-449, -65)
-patrol_path = NodePath("../../../PatrolPaths/TopLeftLoop")
-
-[node name="Banshee2" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
-position = Vector2(224, 795)
-patrol_path = NodePath("../../../PatrolPaths/BottomMiddleLoop")
-patrol_ping_pong = true
-
-[node name="Banshee3" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
-position = Vector2(729, -40)
-patrol_path = NodePath("../../../PatrolPaths/GraveyardLoop")
-
-[node name="Banshee4" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
-position = Vector2(-588, 796)
-patrol_path = NodePath("../../../PatrolPaths/BottomLeftLoop")
-
-[node name="Banshee5" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
-position = Vector2(-863, 358)
-patrol_path = NodePath("../../../PatrolPaths/LeftMiddleLoop")
-patrol_ping_pong = true
-
-[node name="Banshee6" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
-position = Vector2(271, 215)
-patrol_path = NodePath("../../../PatrolPaths/BottomRightLoop")
-patrol_ping_pong = true
-
-[node name="NPCs" type="Node2D" parent="PlayableWorld/Characters"]
 
 [node name="Foreground" type="Node2D" parent="."]
 texture_filter = 1
