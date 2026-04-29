@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cej7mn3sjki40"
-path="res://.godot/imported/shadow.aseprite-100eca5b35655e3cdf3f332d11d157e6.ctex"
+path="res://.godot/imported/shadow.aseprite-8ff46b8b65eb3b6b4c5e71e475eba0cc.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/buildings/Banshee village/Small House/shadow.aseprite"
-dest_files=["res://.godot/imported/shadow.aseprite-100eca5b35655e3cdf3f332d11d157e6.ctex"]
+source_file="res://assets/buildings/banshee_village/small_house/shadow.aseprite"
+dest_files=["res://.godot/imported/shadow.aseprite-8ff46b8b65eb3b6b4c5e71e475eba0cc.ctex"]
 
 [params]
 

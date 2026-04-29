@@ -35,7 +35,8 @@ script = ExtResource("1_q8xm5")
 y_sort_enabled = true
 scale = Vector2(0.45, 0.45)
 sprite_frames = ExtResource("2_wpb6y")
-animation = &"walk"
+animation = &"scream"
+frame_progress = 0.739362
 offset = Vector2(0, -48.21)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]

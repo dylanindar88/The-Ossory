@@ -11,7 +11,7 @@ func exit(_banshee):
 
 func physics_update(banshee, delta):
 	if banshee.has_player_target() and banshee.player_in_detection:
-		banshee.change_state("chase")
+		banshee.change_state("scream")
 		return
 
 	if not banshee.has_patrol_route():

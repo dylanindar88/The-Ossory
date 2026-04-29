@@ -3,12 +3,12 @@
 importer="Aseprite AnimatedSprite2D Import"
 type="PackedScene"
 uid="uid://bovy2wwhtj657"
-path="res://.godot/imported/effects.aseprite-df7ef897ba216ec66978d03d19d3a65a.scn"
+path="res://.godot/imported/effects.aseprite-fa6a178fd8b066ad437bd85147bebb5c.scn"
 
 [deps]
 
-source_file="res://assets/effect icons/effects.aseprite"
-dest_files=["res://.godot/imported/effects.aseprite-df7ef897ba216ec66978d03d19d3a65a.scn"]
+source_file="res://assets/effect_icons/effects.aseprite"
+dest_files=["res://.godot/imported/effects.aseprite-fa6a178fd8b066ad437bd85147bebb5c.scn"]
 
 [params]
 

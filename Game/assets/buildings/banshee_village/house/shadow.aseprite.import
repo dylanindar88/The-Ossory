@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dfvclswua0o54"
-path="res://.godot/imported/roof.aseprite-f41bd79c3e4a9f3f3c3c9d984445ced2.ctex"
+uid="uid://ina70056adta"
+path="res://.godot/imported/shadow.aseprite-a2e259d4cca889230999f407cccd3ace.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/buildings/Banshee village/Small House/roof.aseprite"
-dest_files=["res://.godot/imported/roof.aseprite-f41bd79c3e4a9f3f3c3c9d984445ced2.ctex"]
+source_file="res://assets/buildings/banshee_village/house/shadow.aseprite"
+dest_files=["res://.godot/imported/shadow.aseprite-a2e259d4cca889230999f407cccd3ace.ctex"]
 
 [params]
 

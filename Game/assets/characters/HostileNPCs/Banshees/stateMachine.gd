@@ -71,6 +71,7 @@ func _ready():
 	states["idle"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/idleState.gd").new()
 	states["patrol"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/patrolState.gd").new()
 	states["return_to_patrol"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/returnToPatrolState.gd").new()
+	states["scream"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/screamState.gd").new()
 	states["chase"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/chaseState.gd").new()
 	states["attack"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/attackState.gd").new()
 	states["hurt"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/hurtState.gd").new()

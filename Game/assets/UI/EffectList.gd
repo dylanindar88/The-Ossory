@@ -1,7 +1,7 @@
 class_name EffectList
 extends Node2D
 
-const DEFAULT_EFFECT_SPRITE_FRAMES: SpriteFrames = preload("res://assets/effect icons/effects.tres")
+const DEFAULT_EFFECT_SPRITE_FRAMES: SpriteFrames = preload("res://assets/effect_icons/effects.tres")
 
 @export var effect_sprite_frames: SpriteFrames = DEFAULT_EFFECT_SPRITE_FRAMES
 @export var icon_spacing: float = 18.0

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://kt72q73n5whk"
-path="res://.godot/imported/wall.aseprite-c4505cff16d836610b0ea5eafcf02f5b.ctex"
+uid="uid://crd6y5s5bmp4v"
+path="res://.godot/imported/effects.png-252f8835d9a8e980ffd35b5034b3bf2b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/buildings/Banshee village/Main House/wall.aseprite"
-dest_files=["res://.godot/imported/wall.aseprite-c4505cff16d836610b0ea5eafcf02f5b.ctex"]
+source_file="res://assets/effect_icons/effects.png"
+dest_files=["res://.godot/imported/effects.png-252f8835d9a8e980ffd35b5034b3bf2b.ctex"]
 
 [params]
 

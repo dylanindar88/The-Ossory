@@ -15,4 +15,4 @@ func physics_update(banshee, _delta):
 	banshee.move_and_slide()
 
 	if banshee.has_player_target() and banshee.player_in_detection:
-		banshee.change_state("chase")
+		banshee.change_state("scream")

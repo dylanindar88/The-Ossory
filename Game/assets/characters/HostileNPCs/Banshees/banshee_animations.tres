@@ -1,4 +1,4 @@
-[gd_resource type="SpriteFrames" load_steps=32 format=3 uid="uid://db1m0u34k1o83"]
+[gd_resource type="SpriteFrames" load_steps=36 format=3 uid="uid://db1m0u34k1o83"]
 
 [ext_resource type="Texture2D" uid="uid://ctgq1mcuw30we" path="res://assets/characters/HostileNPCs/Banshees/banshee_sprites.png" id="1_7jmpm"]
 
@@ -101,6 +101,22 @@ region = Rect2(336, 224, 112, 112)
 [sub_resource type="AtlasTexture" id="AtlasTexture_u4k3x"]
 atlas = ExtResource("1_7jmpm")
 region = Rect2(448, 224, 112, 112)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7om3s"]
+atlas = ExtResource("1_7jmpm")
+region = Rect2(0, 798, 112, 114)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_w64me"]
+atlas = ExtResource("1_7jmpm")
+region = Rect2(112, 798, 112, 114)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ygb02"]
+atlas = ExtResource("1_7jmpm")
+region = Rect2(224, 798, 112, 114)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_s6mhg"]
+atlas = ExtResource("1_7jmpm")
+region = Rect2(336, 798, 112, 114)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_wtljg"]
 atlas = ExtResource("1_7jmpm")
@@ -228,6 +244,23 @@ animations = [{
 "loop": true,
 "name": &"run",
 "speed": 15.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7om3s")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_w64me")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ygb02")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_s6mhg")
+}],
+"loop": false,
+"name": &"scream",
+"speed": 5.0
 }, {
 "frames": [{
 "duration": 1.0,

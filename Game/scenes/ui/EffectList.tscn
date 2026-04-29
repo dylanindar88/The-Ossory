@@ -1,7 +1,7 @@
 [gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://assets/UI/EffectList.gd" id="1_hjly0"]
-[ext_resource type="SpriteFrames" uid="uid://ci70t58v86wc6" path="res://assets/effect icons/effects.tres" id="2_i16xy"]
+[ext_resource type="SpriteFrames" uid="uid://ci70t58v86wc6" path="res://assets/effect_icons/effects.tres" id="2_i16xy"]
 
 [node name="EffectList" type="Node2D"]
 z_as_relative = false
