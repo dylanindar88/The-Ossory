@@ -22,8 +22,8 @@ func enter(player):
 	block_action_anim_name = get_block_animation_name(player, "block_action")
 	block_release_anim_name = get_block_animation_name(player, "block_release")
 	block_idle_anim_name = get_block_animation_name(player, "block_idle")
-	action_duration = get_animation_duration(player, block_action_anim_name)
-	release_duration = get_animation_duration(player, block_release_anim_name)
+	action_duration = player.get_sprite_animation_duration(block_action_anim_name, action_duration)
+	release_duration = player.get_sprite_animation_duration(block_release_anim_name, release_duration)
 	phase_timer = action_duration
 	player.health.set_blocking(false)
 	player.health.set_parry_window(false)
@@ -84,7 +84,7 @@ func start_releasing(player):
 		elapsed_action_ratio = clamp(elapsed_action_time / action_duration, 0.0, 1.0)
 
 	block_release_anim_name = get_block_animation_name(player, "block_release")
-	release_duration = get_animation_duration(player, block_release_anim_name)
+	release_duration = player.get_sprite_animation_duration(block_release_anim_name, release_duration)
 
 	phase = Phase.RELEASING
 	phase_timer = release_duration * elapsed_action_ratio if was_raising else release_duration
@@ -161,29 +161,13 @@ func can_interrupt_with_attack(player) -> bool:
 
 
 func update_block_direction(player):
-	block_direction = get_block_direction(player)
+	block_direction = player.get_cardinal_direction_to(player.get_global_mouse_position())
 	player.last_facing = block_direction
-	if block_direction == "left" or block_direction == "right":
-		player.last_horizontal_facing = block_direction
+	player.remember_horizontal_facing(block_direction)
 
 
 func update_block_facing(player):
 	player.sprite.flip_h = block_direction == "left"
-
-
-func get_block_direction(player) -> String:
-	var block_vector: Vector2 = player.get_global_mouse_position() - player.global_position
-
-	if block_vector.y > abs(block_vector.x):
-		return "down"
-
-	if block_vector.y < -abs(block_vector.x):
-		return "up"
-
-	if block_vector.x < 0:
-		return "left"
-
-	return "right"
 
 
 func get_block_animation_name(player, base_anim_name: String) -> String:
@@ -199,25 +183,8 @@ func get_block_animation_name(player, base_anim_name: String) -> String:
 
 
 func update_movement(player):
-	var input_vector: Vector2 = Vector2.ZERO
-	input_vector.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-	input_vector.y = Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
-	input_vector = input_vector.normalized()
-
-	if input_vector != Vector2.ZERO:
-		player.last_input_direction = input_vector
+	var input_vector: Vector2 = player.get_move_input_vector()
+	player.remember_input_direction(input_vector)
 
 	player.velocity = input_vector * player.walk_speed * player.block_speed_modifier
 	player.move_and_slide()
-
-
-func get_animation_duration(player, anim_name: String) -> float:
-	var sprite_frames: SpriteFrames = player.sprite.sprite_frames
-	if sprite_frames == null or not sprite_frames.has_animation(anim_name):
-		return action_duration
-
-	var animation_speed: float = sprite_frames.get_animation_speed(anim_name)
-	if animation_speed <= 0:
-		return action_duration
-
-	return float(sprite_frames.get_frame_count(anim_name)) / animation_speed

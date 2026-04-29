@@ -125,6 +125,50 @@ func take_damage(amount: int, ignore_invulnerability: bool = false):
 	return health.take_damage(amount, ignore_invulnerability)
 
 
+func get_move_input_vector() -> Vector2:
+	var input_vector := Vector2.ZERO
+	input_vector.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
+	input_vector.y = Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
+	return input_vector.normalized()
+
+
+func remember_input_direction(input_vector: Vector2):
+	if input_vector != Vector2.ZERO:
+		last_input_direction = input_vector
+
+
+func get_cardinal_direction_to(world_position: Vector2) -> String:
+	var direction_vector: Vector2 = world_position - global_position
+
+	if direction_vector.y > abs(direction_vector.x):
+		return "down"
+
+	if direction_vector.y < -abs(direction_vector.x):
+		return "up"
+
+	if direction_vector.x < 0:
+		return "left"
+
+	return "right"
+
+
+func remember_horizontal_facing(facing: String):
+	if facing == "left" or facing == "right":
+		last_horizontal_facing = facing
+
+
+func get_sprite_animation_duration(anim_name: String, fallback: float) -> float:
+	var sprite_frames: SpriteFrames = sprite.sprite_frames
+	if sprite_frames == null or not sprite_frames.has_animation(anim_name):
+		return fallback
+
+	var animation_speed := sprite_frames.get_animation_speed(anim_name)
+	if animation_speed <= 0:
+		return fallback
+
+	return float(sprite_frames.get_frame_count(anim_name)) / animation_speed
+
+
 func update_effects():
 	if effects == null:
 		return

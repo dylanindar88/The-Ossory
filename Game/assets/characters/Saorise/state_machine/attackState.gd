@@ -42,11 +42,7 @@ func physics_update(player, delta):
 	if in_combo_window and Input.is_action_pressed("left_click"):
 		next_combo_pressed = true
 
-	var input_vector = Vector2.ZERO
-	input_vector.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-	input_vector.y = Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
-	input_vector = input_vector.normalized()
-
+	var input_vector: Vector2 = player.get_move_input_vector()
 	player.velocity = input_vector * player.walk_speed * player.attack_speed_modifier
 	player.move_and_slide()
 
@@ -83,20 +79,20 @@ func play_attack_animation(player) -> float:
 	var anim_name = get_attack_animation_name(player, combo_part)
 	player.sprite.play(anim_name)
 	player.sprite.flip_h = attack_direction == "left"
-	return get_animation_duration(player, anim_name)
+	return player.get_sprite_animation_duration(anim_name, animation_duration)
 
 
 func update_attack_direction(player, preserve_animation_progress: bool = true):
-	var new_attack_direction = get_attack_direction(player, player.get_global_mouse_position())
+	var new_attack_direction: String = player.get_cardinal_direction_to(player.get_global_mouse_position())
 	if new_attack_direction == attack_direction:
 		player.last_facing = attack_direction
-		update_horizontal_facing_memory(player)
+		player.remember_horizontal_facing(attack_direction)
 		player.sprite.flip_h = attack_direction == "left"
 		return
 
 	attack_direction = new_attack_direction
 	player.last_facing = attack_direction
-	update_horizontal_facing_memory(player)
+	player.remember_horizontal_facing(attack_direction)
 
 	if combo_part <= 0:
 		return
@@ -122,27 +118,7 @@ func transition_attack_animation(player) -> float:
 
 	player.sprite.set_frame_and_progress(previous_frame, previous_frame_progress)
 	player.sprite.flip_h = attack_direction == "left"
-	return get_animation_duration(player, anim_name)
-
-
-func get_attack_direction(player, mouse_pos: Vector2) -> String:
-	var attack_vector: Vector2 = mouse_pos - player.global_position
-
-	if attack_vector.y > abs(attack_vector.x):
-		return "down"
-
-	if attack_vector.y < -abs(attack_vector.x):
-		return "up"
-
-	if attack_vector.x < 0:
-		return "left"
-
-	return "right"
-
-
-func update_horizontal_facing_memory(player):
-	if attack_direction == "left" or attack_direction == "right":
-		player.last_horizontal_facing = attack_direction
+	return player.get_sprite_animation_duration(anim_name, animation_duration)
 
 
 func get_attack_animation_name(player, part: int) -> String:
@@ -156,15 +132,3 @@ func get_attack_animation_name(player, part: int) -> String:
 		return vertical_anim_name
 
 	return side_anim_name
-
-
-func get_animation_duration(player, anim_name: String) -> float:
-	var sprite_frames: SpriteFrames = player.sprite.sprite_frames
-	if sprite_frames == null or not sprite_frames.has_animation(anim_name):
-		return animation_duration
-
-	var animation_speed := sprite_frames.get_animation_speed(anim_name)
-	if animation_speed <= 0:
-		return animation_duration
-
-	return float(sprite_frames.get_frame_count(anim_name)) / animation_speed

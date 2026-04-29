@@ -5,7 +5,7 @@
 [ext_resource type="SpriteFrames" uid="uid://bq7x1kr2nahdp" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
-[ext_resource type="Script" path="res://scenes/ui/PlayerStaminaBar.gd" id="5_2813q"]
+[ext_resource type="Script" path="res://assets/UI/PlayerStaminaBar.gd" id="5_2813q"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StaminaBarBorder.aseprite" id="5_ir03o"]
 
 [sub_resource type="Gradient" id="Gradient_stamina_under"]
@@ -48,9 +48,7 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"block_action"
-frame = 4
-frame_progress = 1.0
+animation = &"dash_up"
 offset = Vector2(0, -88)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]

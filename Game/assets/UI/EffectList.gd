@@ -23,13 +23,13 @@ func set_effects(active_effects: Array[String]):
 			visible_effects.append(anim_name)
 
 	visible = not visible_effects.is_empty()
+	var list_width := float(visible_effects.size() - 1) * icon_spacing
 
 	for index in range(visible_effects.size()):
 		var anim_name: String = visible_effects[index]
 		var effect_sprite := get_effect_sprite(anim_name)
 
 		active_lookup[anim_name] = true
-		var list_width := float(visible_effects.size() - 1) * icon_spacing
 		effect_sprite.position = Vector2(index * icon_spacing - list_width * 0.5, 0)
 		effect_sprite.visible = true
 

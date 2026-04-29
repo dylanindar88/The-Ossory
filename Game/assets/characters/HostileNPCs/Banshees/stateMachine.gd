@@ -266,9 +266,28 @@ func set_patrol_curve(path: Path2D):
 
 
 func add_marker_patrol_points(path_node: Node):
-	for child in path_node.get_children():
+	var stops_node := path_node.get_node_or_null("Stops")
+	if stops_node != null:
+		add_marker_patrol_points_from(stops_node)
+		if not patrol_points.is_empty():
+			return
+
+	add_marker_patrol_points_from(path_node)
+
+
+func add_marker_patrol_points_from(marker_parent: Node):
+	var marker_points: Array[Marker2D] = []
+	for child in marker_parent.get_children():
 		if child is Marker2D:
-			patrol_points.append(child.global_position)
+			marker_points.append(child as Marker2D)
+
+	marker_points.sort_custom(
+		func(a: Marker2D, b: Marker2D):
+			return String(a.name).naturalnocasecmp_to(String(b.name)) < 0
+	)
+
+	for marker in marker_points:
+		patrol_points.append(marker.global_position)
 
 
 func has_patrol_route() -> bool:

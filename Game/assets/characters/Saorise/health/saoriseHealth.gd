@@ -306,14 +306,11 @@ func die():
 	end_block_invulnerability()
 	end_parry_bonus()
 	died.emit()
-	print("Player died")
 
 # Temporary test:
 # Press Enter to lose 10 HP
 func _input(event):
 	if event.is_action_pressed("test_damage"):
 		take_damage(10)
-		print("Current HP:", health)
 	if event.is_action_pressed("test_healing"):
 		heal(10)
-		print("Current HP:", health)

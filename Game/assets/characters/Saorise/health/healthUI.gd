@@ -7,18 +7,14 @@ var health_node
 
 func _ready():
 	if player == null:
-		print("Player not found")
 		return
 
-	health_node = player.get_node("Health")
+	health_node = player.get_node_or_null("Health")
 
 	if health_node == null:
-		print("Health node not found")
 		return
 
 	setup_health_bar()
-
-	print("HUD connected successfully")
 
 
 func setup_health_bar():

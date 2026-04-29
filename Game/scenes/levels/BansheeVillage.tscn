@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://tm3ttab50kd3"]
+[gd_scene load_steps=26 format=3 uid="uid://tm3ttab50kd3"]
 
 [ext_resource type="Texture2D" uid="uid://brkmctvq1u5iw" path="res://assets/terrain/Graves/grave1.aseprite" id="2_v2wya"]
 [ext_resource type="Texture2D" uid="uid://cbuinl7rlsyqa" path="res://assets/terrain/Graves/grave2.aseprite" id="3_l450g"]
@@ -10,11 +10,11 @@
 [ext_resource type="PackedScene" uid="uid://dfjpsxet38xfl" path="res://scenes/characters/Banshee.tscn" id="22_t6xdm"]
 [ext_resource type="PackedScene" uid="uid://u16duk15fe7q" path="res://scenes/characters/Saorise.tscn" id="23_yc8ub"]
 [ext_resource type="PackedScene" uid="uid://cd8kyptum0qfo" path="res://scenes/ui/HUD.tscn" id="24_jku5t"]
-[ext_resource type="TileSet" uid="uid://c7owttvmnh0h2" path="res://scenes/resources/tilesets/WaterTileSet.tres" id="25_vfn6k"]
-[ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://scenes/resources/tilesets/GroundTileSet.tres" id="26_nqd4b"]
-[ext_resource type="TileSet" uid="uid://bm2nceghxgf55" path="res://scenes/resources/tilesets/LogsTileSet.tres" id="27_uivry"]
-[ext_resource type="TileSet" uid="uid://d36pruf4qbb75" path="res://scenes/resources/tilesets/FenceTileSet.tres" id="28_vyx4k"]
-[ext_resource type="TileSet" uid="uid://1j0q0y2urv5u" path="res://scenes/resources/tilesets/LeavesTileSet.tres" id="29_jk1v0"]
+[ext_resource type="TileSet" uid="uid://c7owttvmnh0h2" path="res://assets/terrain/WaterTileSet.tres" id="25_vfn6k"]
+[ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://assets/terrain/GroundTileSet.tres" id="26_nqd4b"]
+[ext_resource type="TileSet" uid="uid://bm2nceghxgf55" path="res://assets/terrain/LogsTileSet.tres" id="27_uivry"]
+[ext_resource type="TileSet" uid="uid://d36pruf4qbb75" path="res://assets/terrain/FenceTileSet.tres" id="28_vyx4k"]
+[ext_resource type="TileSet" uid="uid://1j0q0y2urv5u" path="res://assets/terrain/LeavesTileSet.tres" id="29_jk1v0"]
 [ext_resource type="PackedScene" uid="uid://ceiybnrppsope" path="res://scenes/environment/buildings/House.tscn" id="30_house"]
 [ext_resource type="PackedScene" uid="uid://b1yijop0xfpma" path="res://scenes/environment/buildings/SmallHouse.tscn" id="31_small"]
 [ext_resource type="PackedScene" uid="uid://g14myfiixmlt" path="res://scenes/environment/buildings/MainHouse.tscn" id="32_main"]
@@ -24,9 +24,15 @@ size = Vector2(21.9688, 3.03253)
 
 [sub_resource type="Curve2D" id="Curve2D_qe4un"]
 _data = {
-"points": PackedVector2Array(1.60216, 14.2403, -1.60216, -14.2403, -588, 796, 43, -6.333, -43, 6.333, -654, 766, 31, -21.333, -31, 21.333, -846, 834, -13.333, -10.167, 13.333, 10.167, -842, 891, -21.1681, 5.33216, 21.1681, -5.33216, -766, 895, -7.51243, 30.4982, 7.51243, -30.4982, -719, 854, 25.333, 25, -25.333, -25, -787, 704, 17, -10.667, -17, 10.667, -871, 704, -8.83169, -15.0524, 8.83169, 15.0524, -889, 768, -22.833, -8.667, 22.833, 8.667, -850, 796, -35.167, -7.667, 35.167, 7.667, -752, 820, -26.667, -0.167, 26.667, 0.167, -639, 842, -6.61225, 9.31878, 6.61225, -9.31878, -592, 821, 0.708, 12.042, -0.708, -12.042, -588, 796)
+"points": PackedVector2Array(1.60216, 14.2403, -1.60216, -14.2403, -588, 796, 43, -6.333, -43, 6.333, -654, 766, 31, -21.333, -31, 21.333, -846, 834, -16.1614, -8.04568, 16.1614, 8.04568, -842, 891, -21.1681, 5.33216, 21.1681, -5.33216, -766, 895, -7.51243, 30.4982, 7.51243, -30.4982, -719, 854, 27.1008, 17.9289, -27.1008, -17.9289, -787, 704, 17, -10.667, -17, 10.667, -871, 704, -8.83169, -15.0524, 8.83169, 15.0524, -889, 768, -22.833, -8.667, 22.833, 8.667, -850, 796, -35.167, -7.667, 35.167, 7.667, -752, 820, -26.667, -0.167, 26.667, 0.167, -639, 842, -6.61225, 9.31878, 6.61225, -9.31878, -592, 821, 0.708, 12.042, -0.708, -12.042, -588, 796)
 }
 point_count = 14
+
+[sub_resource type="Curve2D" id="Curve2D_m48o6"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -863, 358, 0, 0, 0, 0, -670, 358, 0, 0, 0, 0, -668, 154, 0, 0, 0, 0, -736, 151, 0, 0, 0, 0, -736, -89)
+}
+point_count = 5
 
 [sub_resource type="Curve2D" id="Curve2D_top_left_loop"]
 _data = {
@@ -45,6 +51,12 @@ _data = {
 "points": PackedVector2Array(47.667, -11, -47.667, 11, 729, -40, 22.167, -42, -22.167, 42, 620, 50, -23, -45.167, 23, 45.167, 596, 212, -55.5, -15.667, 55.5, 15.667, 758, 321, -45.667, 34.5, 45.667, -34.5, 929, 306, 9.02431, 54.6109, -9.02431, -54.6109, 1032, 114, 50.5, 25.667, -50.5, -25.667, 906, -16, 47.667, -11, 0, 0, 729, -40)
 }
 point_count = 8
+
+[sub_resource type="Curve2D" id="Curve2D_iaeyl"]
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 1042, 577, 0, 0, 0, 0, 496, 580, 0, 0, 0, 0, 497, 423, 0, 0, 0, 0, 0, 422, 0, 0, 0, 0, 0, 214, 0, 0, 0, 0, 272, 215)
+}
+point_count = 6
 
 [node name="Level-BansheeVillage" type="Node2D"]
 
@@ -338,6 +350,28 @@ position = Vector2(-639, 842)
 [node name="Path" type="Path2D" parent="PlayableWorld/PatrolPaths/BottomLeftLoop"]
 curve = SubResource("Curve2D_qe4un")
 
+[node name="LeftMiddleLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
+
+[node name="Stops" type="Node2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop"]
+
+[node name="Point1" type="Marker2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop/Stops"]
+position = Vector2(-863, 358)
+
+[node name="Point2" type="Marker2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop/Stops"]
+position = Vector2(-670, 358)
+
+[node name="Point3" type="Marker2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop/Stops"]
+position = Vector2(-668, 154)
+
+[node name="Point4" type="Marker2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop/Stops"]
+position = Vector2(-736, 151)
+
+[node name="Point5" type="Marker2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop/Stops"]
+position = Vector2(-736, -89)
+
+[node name="Path" type="Path2D" parent="PlayableWorld/PatrolPaths/LeftMiddleLoop"]
+curve = SubResource("Curve2D_m48o6")
+
 [node name="TopLeftLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
 
 [node name="Stops" type="Node2D" parent="PlayableWorld/PatrolPaths/TopLeftLoop"]
@@ -410,12 +444,36 @@ position = Vector2(906, -16)
 [node name="Path" type="Path2D" parent="PlayableWorld/PatrolPaths/GraveyardLoop"]
 curve = SubResource("Curve2D_cs628")
 
+[node name="BottomRightLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
+
+[node name="Stops" type="Node2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop"]
+
+[node name="Point1" type="Marker2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop/Stops"]
+position = Vector2(1042, 577)
+
+[node name="Point2" type="Marker2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop/Stops"]
+position = Vector2(496, 580)
+
+[node name="Point3" type="Marker2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop/Stops"]
+position = Vector2(497, 423)
+
+[node name="Point4" type="Marker2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop/Stops"]
+position = Vector2(0, 422)
+
+[node name="Point5" type="Marker2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop/Stops"]
+position = Vector2(0, 214)
+
+[node name="Point6" type="Marker2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop/Stops"]
+position = Vector2(272, 215)
+
+[node name="Path" type="Path2D" parent="PlayableWorld/PatrolPaths/BottomRightLoop"]
+curve = SubResource("Curve2D_iaeyl")
+
 [node name="Characters" type="Node2D" parent="PlayableWorld"]
 z_as_relative = false
 y_sort_enabled = true
 
 [node name="Saorise" parent="PlayableWorld/Characters" instance=ExtResource("23_yc8ub")]
-position = Vector2(0.486331, 103.177)
 
 [node name="HostileNPCs" type="Node2D" parent="PlayableWorld/Characters"]
 z_as_relative = false
@@ -437,6 +495,16 @@ patrol_path = NodePath("../../../PatrolPaths/GraveyardLoop")
 [node name="Banshee4" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
 position = Vector2(-588, 796)
 patrol_path = NodePath("../../../PatrolPaths/BottomLeftLoop")
+
+[node name="Banshee5" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(-863, 358)
+patrol_path = NodePath("../../../PatrolPaths/LeftMiddleLoop")
+patrol_ping_pong = true
+
+[node name="Banshee6" parent="PlayableWorld/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
+position = Vector2(271, 215)
+patrol_path = NodePath("../../../PatrolPaths/BottomRightLoop")
+patrol_ping_pong = true
 
 [node name="NPCs" type="Node2D" parent="PlayableWorld/Characters"]
 

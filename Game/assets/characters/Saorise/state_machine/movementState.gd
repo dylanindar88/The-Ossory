@@ -7,17 +7,8 @@ func exit(player):
 	player.health.set_running(false)
 
 func physics_update(player, delta):
-	var input_vector = Vector2.ZERO
-
-	# WASD movement
-	input_vector.x = Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
-	input_vector.y = Input.get_action_strength("move_down") - Input.get_action_strength("move_up")
-
-	input_vector = input_vector.normalized()
-
-	# Save last direction for dash memory
-	if input_vector != Vector2.ZERO:
-		player.last_input_direction = input_vector
+	var input_vector: Vector2 = player.get_move_input_vector()
+	player.remember_input_direction(input_vector)
 
 	update_last_move_axis(player)
 
