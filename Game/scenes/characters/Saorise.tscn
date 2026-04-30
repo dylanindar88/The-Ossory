@@ -5,8 +5,8 @@
 [ext_resource type="SpriteFrames" uid="uid://bq7x1kr2nahdp" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StatBarBorder.aseprite" id="5_61k8r"]
 [ext_resource type="Script" path="res://assets/UI/PlayerStaminaBar.gd" id="5_2813q"]
-[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StaminaBarBorder.aseprite" id="5_ir03o"]
 
 [sub_resource type="Gradient" id="Gradient_stamina_under"]
 offsets = PackedFloat32Array(0.609195)
@@ -48,7 +48,7 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"dash_up"
+animation = &"unarmed_attack_1"
 offset = Vector2(0, -88)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]
@@ -79,7 +79,7 @@ offset_top = -3.0
 offset_right = 363.0
 offset_bottom = 125.0
 scale = Vector2(0.109314, 0.102298)
-texture = ExtResource("5_ir03o")
+texture = ExtResource("5_61k8r")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -24)

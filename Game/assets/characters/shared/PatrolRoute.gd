@@ -195,3 +195,33 @@ func get_anchor_path_offset(distance: float, ping_pong: bool) -> float:
 		return clamp(path_offset - ping_pong_direction * safe_distance, 0.0, path_length)
 
 	return wrapf(path_offset - safe_distance, 0.0, path_length)
+
+
+func to_save_data() -> Dictionary:
+	return {
+		"path_offset": path_offset,
+		"ping_pong_direction": ping_pong_direction,
+		"point_index": point_index,
+		"point_direction": point_direction,
+	}
+
+
+func apply_save_data(data: Variant):
+	if not (data is Dictionary):
+		return
+
+	var saved_data: Dictionary = data
+	if has_smooth_route():
+		path_offset = clamp(float(saved_data.get("path_offset", path_offset)), 0.0, path_length)
+		ping_pong_direction = get_saved_direction(float(saved_data.get("ping_pong_direction", ping_pong_direction)))
+
+	if not points.is_empty():
+		point_index = clamp(int(saved_data.get("point_index", point_index)), 0, points.size() - 1)
+		point_direction = int(get_saved_direction(float(saved_data.get("point_direction", point_direction))))
+
+
+func get_saved_direction(value: float) -> float:
+	if value < 0.0:
+		return -1.0
+
+	return 1.0

@@ -229,14 +229,12 @@ func update_effects():
 		return
 
 	var active_effects: Array[String] = health.get_active_effects()
-	var controlled_frames: Dictionary = {}
 	current_interactable = get_current_interactable()
 
 	if current_interactable != null:
-		active_effects.append("interactable")
-		controlled_frames["interactable"] = 1 if Input.is_action_pressed("interact") else 0
+		active_effects.append("interactable_pressed" if Input.is_action_pressed("interact") else "interactable")
 
-	effects.set_effects(active_effects, controlled_frames)
+	effects.set_effects(active_effects)
 
 
 func register_interactable(interactable: Node2D):

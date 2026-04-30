@@ -1,9 +1,15 @@
 extends CharacterBody2D
 
+signal dialogue_finished(villager: Node)
+
+const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
+
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false
 @export var walk_speed: float = 45.0
 @export var arrival_distance: float = 6.0
+@export var dialogue_bank: DialogueBank
+@export var dialogue_override_sequence: DialogueSequence
 
 @onready var sprite: AnimatedSprite2D = $Body
 @onready var player_proximity_area: Area2D = get_node_or_null("PlayerProximityArea") as Area2D
@@ -16,6 +22,9 @@ var player_proximity_needs_resync: bool = false
 var last_facing: String = "down"
 var last_horizontal_facing: String = "right"
 var last_move_direction: Vector2 = Vector2.ZERO
+var dialogue_active: bool = false
+var active_dialogue_bubble: DialogueBubble
+var current_dialogue_player: Node2D
 
 
 func _ready():
@@ -53,16 +62,101 @@ func complete_external_pause():
 	play_idle_animation()
 
 
-func pause_for_banshee():
+func set_dialogue_override(sequence: DialogueSequence):
+	dialogue_override_sequence = sequence
+
+
+func clear_dialogue_override():
+	dialogue_override_sequence = null
+
+
+func pause_for_story():
 	pause_for_external_actor()
 
 
-func resume_from_banshee():
+func resume_from_story():
 	resume_from_external_actor()
 
 
-func on_assigned_banshee_defeated():
+func complete_story_pause():
 	complete_external_pause()
+
+
+func reset_story_pause():
+	external_pause_completed = false
+	paused_by_external_actor = false
+	velocity = Vector2.ZERO
+	resync_patrol_route_to_current_position()
+
+
+func apply_saved_story_pause_state(paused: bool, completed: bool):
+	paused_by_external_actor = paused
+	external_pause_completed = completed
+	if external_pause_completed or paused_by_external_actor:
+		velocity = Vector2.ZERO
+		play_idle_animation()
+
+
+func collect_story_save_state() -> Dictionary:
+	return {
+		"position": vector_to_data(global_position),
+		"last_facing": last_facing,
+		"last_horizontal_facing": last_horizontal_facing,
+		"last_move_direction": vector_to_data(last_move_direction),
+		"paused_by_external_actor": paused_by_external_actor,
+		"external_pause_completed": external_pause_completed,
+		"patrol_route": patrol_route.to_save_data(),
+	}
+
+
+func apply_story_save_state(state: Dictionary):
+	if dialogue_active:
+		end_dialogue()
+
+	global_position = data_to_vector(state.get("position", {}), global_position)
+	velocity = Vector2.ZERO
+	last_facing = str(state.get("last_facing", last_facing))
+	last_horizontal_facing = str(state.get("last_horizontal_facing", last_horizontal_facing))
+	last_move_direction = data_to_vector(state.get("last_move_direction", {}), last_move_direction)
+	paused_by_external_actor = bool(state.get("paused_by_external_actor", false))
+	external_pause_completed = bool(state.get("external_pause_completed", false))
+	player_in_proximity = false
+	player_proximity_needs_resync = false
+	current_dialogue_player = null
+	refresh_patrol_points()
+	patrol_route.apply_save_data(state.get("patrol_route", {}))
+	play_idle_animation()
+
+
+func vector_to_data(value: Vector2) -> Dictionary:
+	return {
+		"x": value.x,
+		"y": value.y,
+	}
+
+
+func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
+	if not (value is Dictionary):
+		return fallback
+
+	var data: Dictionary = value
+	return Vector2(float(data.get("x", fallback.x)), float(data.get("y", fallback.y)))
+
+
+func pause_for_banshee():
+	pause_for_story()
+
+
+func resume_from_banshee():
+	resume_from_story()
+
+
+func on_assigned_banshee_defeated():
+	complete_story_pause()
+
+
+func reset_banshee_stalk_state():
+	reset_story_pause()
 
 
 func connect_player_proximity_area():
@@ -81,7 +175,7 @@ func connect_player_proximity_area():
 
 
 func should_idle() -> bool:
-	return external_pause_completed or paused_by_external_actor or player_in_proximity
+	return external_pause_completed or paused_by_external_actor or player_in_proximity or dialogue_active
 
 
 func is_player_nearby() -> bool:
@@ -106,8 +200,8 @@ func move_along_patrol_route(delta: float):
 		return
 
 	patrol_route.advance_path_offset(walk_speed, delta, patrol_ping_pong)
-	var target_position := get_patrol_position_at_offset(patrol_route.path_offset)
-	var to_target := target_position - global_position
+	var target_position: Vector2 = get_patrol_position_at_offset(patrol_route.path_offset)
+	var to_target: Vector2 = target_position - global_position
 
 	if delta > 0.0:
 		velocity = to_target / delta
@@ -132,7 +226,7 @@ func move_along_marker_patrol_route(delta: float):
 		target_position = patrol_route.get_current_point(global_position)
 		to_target = target_position - global_position
 
-	var direction := to_target.normalized()
+	var direction: Vector2 = to_target.normalized()
 	last_move_direction = direction
 	velocity = direction * walk_speed
 	update_animation(direction)
@@ -227,6 +321,76 @@ func has_animation(anim_name: String) -> bool:
 	return sprite.sprite_frames != null and sprite.sprite_frames.has_animation(anim_name)
 
 
+func interact(player: Node2D):
+	if dialogue_active:
+		if active_dialogue_bubble != null:
+			active_dialogue_bubble.advance()
+		return
+
+	var sequence: DialogueSequence = get_dialogue_sequence()
+	if sequence == null or sequence.is_empty():
+		return
+
+	start_dialogue(player, sequence)
+
+
+func get_dialogue_sequence() -> DialogueSequence:
+	if dialogue_override_sequence != null:
+		return dialogue_override_sequence
+
+	if dialogue_bank != null:
+		return dialogue_bank.get_sequence()
+
+	return null
+
+
+func start_dialogue(player: Node2D, sequence: DialogueSequence):
+	current_dialogue_player = player
+	dialogue_active = true
+	velocity = Vector2.ZERO
+	face_node(player)
+	play_idle_animation()
+
+	active_dialogue_bubble = DIALOGUE_BUBBLE_SCENE.instantiate() as DialogueBubble
+	add_child(active_dialogue_bubble)
+	if not active_dialogue_bubble.closed.is_connected(_on_dialogue_bubble_closed):
+		active_dialogue_bubble.closed.connect(_on_dialogue_bubble_closed)
+	active_dialogue_bubble.open(sequence)
+
+
+func end_dialogue():
+	if active_dialogue_bubble != null and is_instance_valid(active_dialogue_bubble):
+		active_dialogue_bubble.close(false)
+		return
+
+	_on_dialogue_bubble_closed(false)
+
+
+func face_node(node: Node2D):
+	if node == null or not is_instance_valid(node):
+		return
+
+	var offset: Vector2 = node.global_position - global_position
+	if offset == Vector2.ZERO:
+		return
+
+	if abs(offset.y) > abs(offset.x):
+		last_facing = "up" if offset.y < 0.0 else "down"
+		return
+
+	last_facing = "left" if offset.x < 0.0 else "right"
+	last_horizontal_facing = last_facing
+
+
+func _on_dialogue_bubble_closed(completed: bool = false):
+	active_dialogue_bubble = null
+	var was_dialogue_active: bool = dialogue_active
+	dialogue_active = false
+	current_dialogue_player = null
+	if was_dialogue_active and completed:
+		dialogue_finished.emit(self)
+
+
 func _on_player_proximity_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
@@ -238,6 +402,9 @@ func _on_player_proximity_body_entered(body: Node2D):
 func _on_player_proximity_body_exited(body: Node2D):
 	if not body.is_in_group("player"):
 		return
+
+	if dialogue_active:
+		end_dialogue()
 
 	player_in_proximity = false
 	if player_proximity_needs_resync:

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bsyprchjp8urt"
-path="res://.godot/imported/StaminaBarBorder.aseprite-12def5c4ea65fe36060f90129bb16318.ctex"
+uid="uid://crd6y5s5bmp4v"
+path="res://.godot/imported/effects.png-c091c0e30f40c28ba0562e0518e62779.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/UI/StaminaBarBorder.aseprite"
-dest_files=["res://.godot/imported/StaminaBarBorder.aseprite-12def5c4ea65fe36060f90129bb16318.ctex"]
+source_file="res://assets/icons/effects.png"
+dest_files=["res://.godot/imported/effects.png-c091c0e30f40c28ba0562e0518e62779.ctex"]
 
 [params]
 

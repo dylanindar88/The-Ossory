@@ -28,7 +28,7 @@ extends Resource
 
 @export_group("Health")
 @export var max_health: int = 100
-@export_range(1, 20, 1) var hits_to_die: int = 8
+@export_range(1, 20, 1) var hits_to_die: int = 5
 @export var invulnerability_time: float = 0.75
 
 @export_group("Stamina")

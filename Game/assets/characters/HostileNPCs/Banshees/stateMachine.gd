@@ -1,5 +1,8 @@
 extends CharacterBody2D
 
+signal defeated(banshee: Node)
+signal player_detected_for_reveal(banshee: Node)
+
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false
 @export var assigned_villager_path: NodePath
@@ -48,10 +51,16 @@ var block_stun_duration: float
 var block_stun_move_speed_modifier: float
 var player_stop_distance: float
 var facing_deadzone: float
+var combat_enabled: bool = true
+var story_revealed: bool = false
+var story_spawn_position: Vector2
+var story_spawn_facing_left: bool = false
 
 
 func _ready():
 	apply_tuning()
+	story_spawn_position = global_position
+	story_spawn_facing_left = facing_left
 
 	add_to_group("hostile_npcs")
 	configure_collision()
@@ -175,9 +184,10 @@ func get_default_state() -> String:
 
 
 func take_damage(amount: int, ignore_invulnerability: bool = false):
-	if dead:
+	if dead or not combat_enabled:
 		return
 
+	stop_health_regeneration()
 	var damage_applied: bool = health.take_damage(amount, ignore_invulnerability)
 	if damage_applied and not dead:
 		enter_hurt_state()
@@ -248,7 +258,15 @@ func return_to_default_state():
 		begin_return_to_patrol()
 		return
 
+	return_to_static_position()
+
+
+func return_to_static_position():
+	global_position = story_spawn_position
+	velocity = Vector2.ZERO
+	resume_assigned_villager()
 	change_state(get_default_state())
+	start_health_regeneration()
 
 
 func begin_return_to_patrol():
@@ -281,6 +299,7 @@ func complete_return_to_patrol():
 	velocity = Vector2.ZERO
 	resume_assigned_villager()
 	change_state("patrol")
+	start_health_regeneration()
 
 
 func move_toward_return_patrol_target(delta: float) -> bool:
@@ -351,12 +370,30 @@ func get_nearest_patrol_path_offset(world_position: Vector2) -> float:
 	return patrol_route.get_nearest_path_offset(world_position)
 
 
+func get_nearest_patrol_position(world_position: Vector2) -> Vector2:
+	if not has_patrol_route():
+		return global_position
+
+	patrol_route.select_nearest(world_position)
+	if has_smooth_patrol_route():
+		return get_patrol_position_at_offset(patrol_route.path_offset)
+
+	return get_current_patrol_point()
+
+
 func can_attack() -> bool:
 	return attack_cooldown_timer <= 0
 
 
 func has_assigned_villager() -> bool:
 	return villager_stalk_behavior != null and villager_stalk_behavior.is_active()
+
+
+func get_assigned_villager() -> Node:
+	if villager_stalk_behavior == null or not villager_stalk_behavior.has_assigned_villager():
+		return null
+
+	return villager_stalk_behavior.assigned_villager
 
 
 func keep_assigned_villager_waiting():
@@ -477,6 +514,90 @@ func enable_combat_areas():
 				child.set_deferred("disabled", false)
 
 
+func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
+	combat_enabled = enabled
+	modulate.a = visible_alpha
+	if not enabled:
+		story_revealed = false
+		stop_health_regeneration()
+	player_in_detection = false
+	player_in_attack_range = false
+	player_in_tracking = false
+
+	if enabled and not dead:
+		enable_combat_areas()
+	else:
+		disable_combat_areas()
+
+
+func enable_story_combat(visible_alpha: float = 1.0):
+	set_story_combat_enabled(true, visible_alpha)
+
+
+func disable_story_combat(visible_alpha: float):
+	set_story_combat_enabled(false, visible_alpha)
+
+
+#
+# Story and save lifecycle
+#
+
+
+func set_story_revealed(revealed: bool, hidden_alpha: float):
+	story_revealed = revealed
+	if story_revealed:
+		modulate.a = 1.0
+	else:
+		modulate.a = hidden_alpha
+
+
+func hide_as_story_defeated(hidden_alpha: float):
+	dead = true
+	visible = false
+	velocity = Vector2.ZERO
+	stop_health_regeneration()
+	set_physics_process(false)
+	disable_combat_areas()
+	set_story_revealed(false, hidden_alpha)
+
+	var health_node: Node = health
+	if health_node != null:
+		health_node.set("dead", true)
+		health_node.set("health", 0)
+
+
+func collect_story_save_state() -> Dictionary:
+	var health_node: Node = health
+	var current_health: int = 0
+	var max_health_value: int = 0
+	var health_is_dead: bool = false
+	if health_node != null:
+		current_health = int(health_node.get("health"))
+		max_health_value = int(health_node.get("max_health"))
+		health_is_dead = bool(health_node.get("dead"))
+
+	return {
+		"position": vector_to_data(global_position),
+		"health": current_health,
+		"max_health": max_health_value,
+		"dead": dead or health_is_dead,
+		"revealed": story_revealed,
+		"combat_enabled": combat_enabled,
+		"facing_left": facing_left,
+		"patrol_route": patrol_route.to_save_data(),
+		"villager_stalk": villager_stalk_behavior.to_save_data(),
+	}
+
+
+func reveal_for_story_detection():
+	if dead or not combat_enabled or story_revealed:
+		return
+
+	story_revealed = true
+	modulate.a = 1.0
+	player_detected_for_reveal.emit(self)
+
+
 func restore_after_load():
 	dead = false
 	visible = true
@@ -485,6 +606,7 @@ func restore_after_load():
 	player_in_detection = false
 	player_in_attack_range = false
 	player_in_tracking = false
+	story_revealed = false
 	clear_hurt_state_overrides()
 	set_physics_process(true)
 
@@ -494,6 +616,8 @@ func restore_after_load():
 	var health_node: Node = health
 	if health_node != null:
 		health_node.set("dead", false)
+		if health_node.has_method("stop_regeneration"):
+			health_node.stop_regeneration()
 		health_node.set("invulnerable", false)
 		health_node.set("i_frame_timer", 0.0)
 		health_node.set("health", int(health_node.get("max_health")))
@@ -508,10 +632,116 @@ func restore_after_load():
 	change_state(get_default_state())
 
 
+func respawn_for_story(hidden_alpha: float):
+	var respawn_position: Vector2 = get_story_respawn_position()
+	global_position = respawn_position
+	restore_after_load()
+	global_position = respawn_position
+	facing_left = story_spawn_facing_left
+	if sprite != null:
+		sprite.flip_h = facing_left
+	set_story_combat_enabled(true, hidden_alpha)
+	set_story_revealed(false, hidden_alpha)
+	stop_health_regeneration()
+
+
+func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
+	var restore_position: Vector2 = get_story_respawn_position()
+	global_position = restore_position
+	restore_after_load()
+	global_position = restore_position
+	facing_left = story_spawn_facing_left
+	if sprite != null:
+		sprite.flip_h = facing_left
+
+	var visible_alpha: float = hidden_alpha
+	if combat_should_be_enabled and should_be_revealed:
+		visible_alpha = 1.0
+
+	set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
+	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
+	stop_health_regeneration()
+
+
+func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
+	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
+	var saved_health: int = int(state.get("health", health.get("max_health")))
+	var saved_facing_left: bool = bool(state.get("facing_left", facing_left))
+
+	global_position = saved_position
+	restore_after_load()
+	global_position = saved_position
+	patrol_route.apply_save_data(state.get("patrol_route", {}))
+	villager_stalk_behavior.apply_save_data(state.get("villager_stalk", {}))
+	facing_left = saved_facing_left
+
+	if sprite != null:
+		sprite.flip_h = facing_left
+
+	var health_node: Node = health
+	if health_node != null:
+		var max_health_value: int = int(health_node.get("max_health"))
+		var restored_health: int = int(clamp(saved_health, 1, max_health_value))
+		health_node.set("health", restored_health)
+		health_node.set("dead", false)
+		health_node.set("invulnerable", false)
+		health_node.set("i_frame_timer", 0.0)
+		if health_node.has_signal("health_changed"):
+			health_node.emit_signal("health_changed", restored_health, max_health_value)
+
+	var visible_alpha: float = hidden_alpha
+	if combat_should_be_enabled and should_be_revealed:
+		visible_alpha = 1.0
+
+	set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
+	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
+	stop_health_regeneration()
+
+
+func restore_dead_from_story_save(state: Dictionary, hidden_alpha: float):
+	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
+	global_position = saved_position
+	facing_left = bool(state.get("facing_left", facing_left))
+	if sprite != null:
+		sprite.flip_h = facing_left
+
+	refresh_patrol_points()
+	patrol_route.apply_save_data(state.get("patrol_route", {}))
+	setup_villager_stalk_behavior()
+	villager_stalk_behavior.apply_save_data(state.get("villager_stalk", {}))
+	hide_as_story_defeated(hidden_alpha)
+
+
+func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
+	if not (value is Dictionary):
+		return fallback
+
+	var data: Dictionary = value
+	return Vector2(float(data.get("x", fallback.x)), float(data.get("y", fallback.y)))
+
+
+func vector_to_data(value: Vector2) -> Dictionary:
+	return {
+		"x": value.x,
+		"y": value.y,
+	}
+
+
+func get_story_respawn_position() -> Vector2:
+	var villager: Node = get_assigned_villager()
+	if villager is Node2D and has_patrol_route():
+		var villager_node: Node2D = villager as Node2D
+		return get_nearest_patrol_position(villager_node.global_position)
+
+	return story_spawn_position
+
+
 func _on_died():
 	dead = true
+	stop_health_regeneration()
 	notify_assigned_villager_banshee_defeated()
 	change_state("death")
+	defeated.emit(self)
 
 
 func _on_player_detection_body_entered(body: Node2D):
@@ -521,6 +751,8 @@ func _on_player_detection_body_entered(body: Node2D):
 	player = body
 	player_in_detection = true
 	player_in_tracking = true
+	stop_health_regeneration()
+	reveal_for_story_detection()
 
 
 func _on_player_detection_body_exited(body: Node2D):
@@ -535,6 +767,7 @@ func _on_attack_range_body_entered(body: Node2D):
 	player = body
 	player_in_attack_range = true
 	player_in_tracking = true
+	stop_health_regeneration()
 
 
 func _on_attack_range_body_exited(body: Node2D):
@@ -548,6 +781,7 @@ func _on_tracking_range_body_entered(body: Node2D):
 
 	player = body
 	player_in_tracking = true
+	stop_health_regeneration()
 
 
 func _on_tracking_range_body_exited(body: Node2D):
@@ -557,3 +791,13 @@ func _on_tracking_range_body_exited(body: Node2D):
 	player_in_tracking = false
 	player_in_detection = false
 	player_in_attack_range = false
+
+
+func start_health_regeneration():
+	if health != null and health.has_method("start_regeneration"):
+		health.start_regeneration()
+
+
+func stop_health_regeneration():
+	if health != null and health.has_method("stop_regeneration"):
+		health.stop_regeneration()

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=2 format=3 uid="uid://biyj2p1gn6pl0"]
+
+[ext_resource type="Script" path="res://assets/dialogue/DialogueSequence.gd" id="1_sequence"]
+
+[resource]
+script = ExtResource("1_sequence")
+pages = Array[String](["The crying has stopped. I had almost forgotten what quiet felt like."])

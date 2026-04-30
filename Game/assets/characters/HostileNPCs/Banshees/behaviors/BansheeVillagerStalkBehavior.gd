@@ -204,3 +204,36 @@ func face_assigned_villager():
 		return
 
 	banshee.update_facing(offset)
+
+
+func to_save_data() -> Dictionary:
+	return {
+		"assigned_villager_paused": assigned_villager_paused,
+		"last_villager_stalk_direction": vector_to_data(last_villager_stalk_direction),
+		"holding_for_villager_reversal": holding_for_villager_reversal,
+	}
+
+
+func apply_save_data(data: Variant):
+	if not (data is Dictionary):
+		return
+
+	var saved_data: Dictionary = data
+	assigned_villager_paused = bool(saved_data.get("assigned_villager_paused", assigned_villager_paused))
+	last_villager_stalk_direction = data_to_vector(saved_data.get("last_villager_stalk_direction", {}), last_villager_stalk_direction)
+	holding_for_villager_reversal = bool(saved_data.get("holding_for_villager_reversal", holding_for_villager_reversal))
+
+
+func vector_to_data(value: Vector2) -> Dictionary:
+	return {
+		"x": value.x,
+		"y": value.y,
+	}
+
+
+func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
+	if not (value is Dictionary):
+		return fallback
+
+	var data: Dictionary = value
+	return Vector2(float(data.get("x", fallback.x)), float(data.get("y", fallback.y)))

@@ -1,8 +1,10 @@
-[gd_scene load_steps=11 format=3 uid="uid://b8egi4524xjg"]
+[gd_scene load_steps=13 format=3 uid="uid://b8egi4524xjg"]
 
 [ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://assets/characters/NPCs/celtic_villagers.png" id="1_pgo3k"]
 [ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_nltpa"]
 [ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="4_4u3lr"]
+[ext_resource type="Resource" uid="uid://mx581ub27hfh" path="res://assets/dialogue/villager_elder_default.tres" id="4_dialogue"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_r5oaa"]
 atlas = ExtResource("1_pgo3k")
@@ -45,11 +47,12 @@ radius = 3.0
 height = 18.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_yssrr"]
-radius = 33.0
+radius = 48.0104
 
 [node name="ElderVillager" type="CharacterBody2D"]
 y_sort_enabled = true
 script = ExtResource("2_nltpa")
+dialogue_bank = ExtResource("4_dialogue")
 
 [node name="Body" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.3, 0.3)
@@ -57,6 +60,10 @@ sprite_frames = SubResource("SpriteFrames_vy51q")
 animation = &"idle"
 frame_progress = 0.890568
 offset = Vector2(0, -153)
+
+[node name="Flag" parent="." instance=ExtResource("4_4u3lr")]
+position = Vector2(0, -60)
+scale = Vector2(1.5, 1.5)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]
 position = Vector2(0, -3)

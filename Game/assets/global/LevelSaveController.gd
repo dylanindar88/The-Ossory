@@ -28,8 +28,8 @@ func autosave_level_entered():
 
 func _unhandled_input(event: InputEvent):
 	if is_dev_reset_event(event):
-		SaveManager.reset_current_level_for_dev()
 		get_viewport().set_input_as_handled()
+		SaveManager.reset_current_level_for_dev()
 
 
 func is_dev_reset_event(event: InputEvent) -> bool:

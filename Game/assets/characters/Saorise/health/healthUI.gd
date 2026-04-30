@@ -1,5 +1,7 @@
 extends Control
 
+const HEALTH_BAR_COLOR = preload("res://assets/UI/HealthBarColor.gd")
+
 @onready var health_bar = $HealthBar
 @onready var player = get_tree().get_first_node_in_group("player")
 
@@ -21,6 +23,7 @@ func setup_health_bar():
 	health_bar.min_value = 0
 	health_bar.max_value = health_node.max_health
 	health_bar.value = health_node.health
+	update_health_bar_color()
 
 	if not health_node.health_changed.is_connected(_on_health_changed):
 		health_node.health_changed.connect(_on_health_changed)
@@ -29,3 +32,8 @@ func setup_health_bar():
 func _on_health_changed(current_health: int, max_health: int):
 	health_bar.max_value = max_health
 	health_bar.value = current_health
+	update_health_bar_color()
+
+
+func update_health_bar_color():
+	HEALTH_BAR_COLOR.apply_to_bar(health_bar, float(health_bar.value), float(health_bar.max_value))

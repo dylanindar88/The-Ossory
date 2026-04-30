@@ -1,12 +1,22 @@
-[gd_scene load_steps=10 format=3 uid="uid://dfjpsxet38xfl"]
+[gd_scene load_steps=14 format=3 uid="uid://dfjpsxet38xfl"]
 
 [ext_resource type="Script" path="res://assets/characters/HostileNPCs/Banshees/stateMachine.gd" id="1_q8xm5"]
 [ext_resource type="SpriteFrames" uid="uid://db1m0u34k1o83" path="res://assets/characters/HostileNPCs/Banshees/banshee_animations.tres" id="2_wpb6y"]
 [ext_resource type="Script" path="res://assets/characters/HostileNPCs/Banshees/health/bansheeHealth.gd" id="3_7g3hi"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StatBarBorder.aseprite" id="4_border"]
+[ext_resource type="Script" path="res://assets/characters/HostileNPCs/Banshees/health/bansheeHealthBar.gd" id="5_health_bar"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_k78ad"]
 radius = 3.82135
 height = 15.5251
+
+[sub_resource type="Gradient" id="Gradient_health_under"]
+offsets = PackedFloat32Array(0.609195)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_health_under"]
+gradient = SubResource("Gradient_health_under")
+width = 44
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_gwosy"]
 radius = 18.1544
@@ -51,6 +61,33 @@ debug_color = Color(0, 0.466667, 0.286275, 0.419608)
 
 [node name="Health" type="Node2D" parent="."]
 script = ExtResource("3_7g3hi")
+
+[node name="HealthBarDisplay" type="Node2D" parent="."]
+visible = false
+texture_filter = 2
+position = Vector2(0, 4)
+scale = Vector2(0.832062, 1)
+
+[node name="HealthBar" type="TextureProgressBar" parent="HealthBarDisplay"]
+z_as_relative = false
+offset_left = -14.0
+offset_top = 2.0
+offset_right = 14.0
+offset_bottom = 5.0
+value = 50.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_health_under")
+texture_progress = SubResource("GradientTexture2D_health_under")
+script = ExtResource("5_health_bar")
+
+[node name="HealthBarBorder" type="TextureRect" parent="HealthBarDisplay"]
+offset_left = -21.0
+offset_top = -3.0
+offset_right = 363.0
+offset_bottom = 125.0
+scale = Vector2(0.109314, 0.102298)
+texture = ExtResource("4_border")
 
 [node name="HurtBox" type="Area2D" parent="."]
 

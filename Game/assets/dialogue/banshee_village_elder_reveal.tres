@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=2 format=3 uid="uid://lp08d8p3rarf"]
+
+[ext_resource type="Script" path="res://assets/dialogue/DialogueSequence.gd" id="1_sequence"]
+
+[resource]
+script = ExtResource("1_sequence")
+pages = Array[String](["Hello there traveller, what brings you by", "Hm? Oh those figures yes, you see them too? I believe those shapes are banshees.", "They seem to cause the villagers lots of problems", "Would you be willing to help us? Not many are able to see the banshees", "Hold them in your sight. If you can see them clearly, you may be able to fight them.", "I'll make sure the reward is worth your time "])

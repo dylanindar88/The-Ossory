@@ -9,11 +9,14 @@ const DEFAULT_TUNING: BansheeTuning = preload("res://assets/characters/HostileNP
 
 var max_health: int = 50
 var invulnerability_time: float = 0.1
+var regeneration_rate: float = 2.0
 
 var health: int = max_health
 var invulnerable: bool = false
 var i_frame_timer: float = 0.0
 var dead: bool = false
+var regenerating: bool = false
+var regeneration_progress: float = 0.0
 
 
 func _ready():
@@ -40,12 +43,13 @@ func apply_tuning():
 
 
 func _process(delta):
-	if not invulnerable:
-		return
+	if regenerating:
+		regenerate(delta)
 
-	i_frame_timer -= delta
-	if i_frame_timer <= 0:
-		end_invulnerability()
+	if invulnerable:
+		i_frame_timer -= delta
+		if i_frame_timer <= 0:
+			end_invulnerability()
 
 
 func take_damage(amount: int, ignore_invulnerability: bool = false) -> bool:
@@ -53,6 +57,8 @@ func take_damage(amount: int, ignore_invulnerability: bool = false) -> bool:
 		return false
 
 	health = clamp(health - amount, 0, max_health)
+	stop_regeneration()
+	regeneration_progress = float(health)
 	health_changed.emit(health, max_health)
 
 	if health <= 0:
@@ -77,10 +83,42 @@ func is_invulnerable() -> bool:
 	return invulnerable
 
 
+func start_regeneration():
+	if dead or health >= max_health:
+		regenerating = false
+		return
+
+	regeneration_progress = float(health)
+	regenerating = true
+
+
+func stop_regeneration():
+	regenerating = false
+	regeneration_progress = float(health)
+
+
+func regenerate(delta: float):
+	if dead or health >= max_health:
+		stop_regeneration()
+		return
+
+	regeneration_progress = min(float(max_health), regeneration_progress + regeneration_rate * delta)
+	var next_health: int = mini(max_health, int(floor(regeneration_progress)))
+	if next_health == health:
+		return
+
+	health = next_health
+	health_changed.emit(health, max_health)
+
+	if health >= max_health:
+		stop_regeneration()
+
+
 func die():
 	if dead:
 		return
 
 	dead = true
 	invulnerable = true
+	stop_regeneration()
 	died.emit()

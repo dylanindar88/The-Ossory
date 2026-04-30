@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://crd6y5s5bmp4v"
-path="res://.godot/imported/effects.png-252f8835d9a8e980ffd35b5034b3bf2b.ctex"
+uid="uid://b6djcduvrrdkl"
+path="res://.godot/imported/SkillAndEquipmentBackground.aseprite-3bbb7f5e6a262cd0669c8ecaaad729c5.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/effect_icons/effects.png"
-dest_files=["res://.godot/imported/effects.png-252f8835d9a8e980ffd35b5034b3bf2b.ctex"]
+source_file="res://assets/UI/SkillAndEquipmentBackground.aseprite"
+dest_files=["res://.godot/imported/SkillAndEquipmentBackground.aseprite-3bbb7f5e6a262cd0669c8ecaaad729c5.ctex"]
 
 [params]
 

@@ -217,8 +217,11 @@ func apply_save_to_current_level(data: Dictionary) -> bool:
 		return false
 
 	apply_player_state(level, data.get("player", {}))
-	apply_defeated_banshees(level, data.get("defeated_banshees", []))
-	apply_villager_states(level, data.get("villagers", []))
+	if not uses_level_owned_hostile_state(level):
+		apply_defeated_banshees(level, data.get("defeated_banshees", []))
+	if not uses_level_owned_villager_state(level):
+		apply_villager_states(level, data.get("villagers", []))
+	apply_level_state(level, data.get("level_state", {}))
 	last_error = ""
 	return true
 
@@ -239,6 +242,14 @@ func get_current_level() -> Node:
 
 
 func build_save_data(reason: String, level: Node) -> Dictionary:
+	var defeated_banshee_state: Array = []
+	if not uses_level_owned_hostile_state(level):
+		defeated_banshee_state = collect_defeated_banshees(level)
+
+	var villager_state: Array = []
+	if not uses_level_owned_villager_state(level):
+		villager_state = collect_villager_states(level)
+
 	return {
 		"version": SAVE_VERSION,
 		"slot": active_slot,
@@ -247,8 +258,9 @@ func build_save_data(reason: String, level: Node) -> Dictionary:
 		"saved_at_datetime": Time.get_datetime_string_from_system(),
 		"level_path": get_level_path(level),
 		"player": collect_player_state(level),
-		"defeated_banshees": collect_defeated_banshees(level),
-		"villagers": collect_villager_states(level),
+		"defeated_banshees": defeated_banshee_state,
+		"villagers": villager_state,
+		"level_state": collect_level_state(level),
 	}
 
 
@@ -326,6 +338,150 @@ func collect_villager_states(level: Node) -> Array:
 		})
 
 	return villagers
+
+
+func collect_story_actor_states(level: Node, root: Node, required_group: String = "") -> Array:
+	var states: Array = []
+	if root == null:
+		return states
+
+	collect_story_actor_states_from(level, root, required_group, states)
+	return states
+
+
+func collect_story_actor_states_from(level: Node, root: Node, required_group: String, states: Array):
+	for child in root.get_children():
+		var should_collect: bool = required_group == "" or child.is_in_group(required_group)
+		if should_collect:
+			collect_one_story_actor_state(level, child, states)
+
+		collect_story_actor_states_from(level, child, required_group, states)
+
+
+func collect_one_story_actor_state(level: Node, actor: Node, states: Array):
+	var actor_path: String = get_relative_node_path(level, actor)
+	if actor_path == "":
+		return
+
+	var state: Dictionary = {}
+	if actor.has_method("collect_story_save_state"):
+		var raw_state: Variant = actor.call("collect_story_save_state")
+		if raw_state is Dictionary:
+			state = raw_state
+	elif actor is Node2D:
+		var actor_node: Node2D = actor as Node2D
+		state = {
+			"position": vector_to_data(actor_node.global_position),
+		}
+
+	state["node_path"] = actor_path
+	states.append(state)
+
+
+func parse_actor_snapshot_lookup(raw_states: Variant) -> Dictionary:
+	var parsed_states: Dictionary = {}
+	if not (raw_states is Array):
+		return parsed_states
+
+	for raw_state in raw_states:
+		if not (raw_state is Dictionary):
+			continue
+
+		var state: Dictionary = raw_state
+		var actor_path: String = str(state.get("node_path", ""))
+		if actor_path == "":
+			continue
+
+		parsed_states[actor_path] = state
+
+	return parsed_states
+
+
+func apply_story_actor_states(level: Node, actor_states: Dictionary):
+	if level == null:
+		return
+
+	for actor_path in actor_states.keys():
+		var actor: Node = level.get_node_or_null(NodePath(str(actor_path)))
+		if actor == null:
+			continue
+
+		var raw_state: Variant = actor_states[actor_path]
+		if not (raw_state is Dictionary):
+			continue
+
+		if actor.has_method("apply_story_save_state"):
+			actor.call("apply_story_save_state", raw_state)
+
+
+func collect_level_state(level: Node) -> Dictionary:
+	var provider: Node = get_level_state_provider(level)
+	if provider == null:
+		return {}
+
+	var raw_state: Variant = provider.call("collect_level_state")
+	if raw_state is Dictionary:
+		return raw_state
+
+	return {}
+
+
+func uses_level_owned_hostile_state(level: Node) -> bool:
+	var provider: Node = get_level_state_provider(level)
+	if provider == null or not provider.has_method("uses_level_owned_hostile_state"):
+		return false
+
+	return bool(provider.call("uses_level_owned_hostile_state"))
+
+
+func uses_level_owned_villager_state(level: Node) -> bool:
+	var provider: Node = get_level_state_provider(level)
+	if provider == null or not provider.has_method("uses_level_owned_villager_state"):
+		return false
+
+	return bool(provider.call("uses_level_owned_villager_state"))
+
+
+func apply_level_state(level: Node, state_data: Variant):
+	var provider: Node = get_level_state_provider(level)
+	if provider == null:
+		return
+
+	var state: Dictionary = {}
+	if state_data is Dictionary:
+		state = state_data
+
+	validate_level_state_if_debug(provider, state)
+	provider.call("apply_level_state", state)
+
+
+func validate_level_state_if_debug(provider: Node, state: Dictionary):
+	if not OS.is_debug_build() and not Engine.is_editor_hint():
+		return
+
+	if provider == null or not provider.has_method("validate_level_state"):
+		return
+
+	var raw_messages: Variant = provider.call("validate_level_state", state)
+	if not (raw_messages is Array):
+		return
+
+	for message in raw_messages:
+		push_warning(str(message))
+
+
+func get_level_state_provider(level: Node) -> Node:
+	if level == null:
+		return null
+
+	if level.has_method("collect_level_state") and level.has_method("apply_level_state"):
+		return level
+
+	for child in level.get_children():
+		if child.has_method("collect_level_state") and child.has_method("apply_level_state"):
+			return child
+
+	return null
 
 
 func apply_player_state(level: Node, player_data: Variant):
@@ -418,8 +574,13 @@ func apply_villager_states(level: Node, villager_states: Variant):
 		if villager == null:
 			continue
 
-		villager.set("paused_by_external_actor", bool(state.get("paused_by_external_actor", false)))
-		villager.set("external_pause_completed", bool(state.get("external_pause_completed", false)))
+		var paused_by_external_actor: bool = bool(state.get("paused_by_external_actor", false))
+		var external_pause_completed: bool = bool(state.get("external_pause_completed", false))
+		if villager.has_method("apply_saved_story_pause_state"):
+			villager.apply_saved_story_pause_state(paused_by_external_actor, external_pause_completed)
+		else:
+			villager.set("paused_by_external_actor", paused_by_external_actor)
+			villager.set("external_pause_completed", external_pause_completed)
 		if villager.has_method("play_idle_animation") and bool(state.get("external_pause_completed", false)):
 			villager.play_idle_animation()
 
