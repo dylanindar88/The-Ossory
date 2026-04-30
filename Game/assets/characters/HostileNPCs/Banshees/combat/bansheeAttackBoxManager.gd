@@ -3,8 +3,6 @@ extends RefCounted
 
 var attack_box: Area2D
 var collision_shape: CollisionShape2D
-var attack_damage: int
-var combo_2_damage_bonus: int
 var current_combo_part: int = 0
 var banshee: Node
 var active_attack_targets: Array[Node2D] = []
@@ -84,7 +82,7 @@ func _on_attack_hit(area: Area2D):
 	active_attack_targets.append(target)
 
 	if target.has_method("take_damage"):
-		var hit_result = target.take_damage(get_current_attack_damage(), should_ignore_invulnerability())
+		var hit_result = target.take_damage(0, current_combo_part > 1, banshee)
 		if hit_result == "blocked" and banshee != null and banshee.has_method("on_attack_blocked"):
 			banshee.on_attack_blocked()
 
@@ -95,14 +93,3 @@ func _hit_current_overlaps():
 
 	for area in attack_box.get_overlapping_areas():
 		_on_attack_hit(area)
-
-
-func get_current_attack_damage() -> int:
-	if current_combo_part == 2:
-		return attack_damage + combo_2_damage_bonus
-
-	return attack_damage
-
-
-func should_ignore_invulnerability() -> bool:
-	return current_combo_part > 1

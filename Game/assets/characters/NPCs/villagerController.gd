@@ -8,17 +8,9 @@ extends CharacterBody2D
 @onready var sprite: AnimatedSprite2D = $Body
 @onready var player_proximity_area: Area2D = get_node_or_null("PlayerProximityArea") as Area2D
 
-var patrol_path_node: Path2D
-var patrol_curve: Curve2D
-var patrol_route_loaded: bool = false
-var patrol_path_offset: float = 0.0
-var patrol_path_length: float = 0.0
-var patrol_ping_pong_direction: float = 1.0
-var patrol_points: Array[Vector2] = []
-var patrol_point_index: int = 0
-var patrol_point_direction: int = 1
-var paused_for_banshee: bool = false
-var assigned_banshee_defeated: bool = false
+var patrol_route := PatrolRoute.new()
+var paused_by_external_actor: bool = false
+var external_pause_completed: bool = false
 var player_in_proximity: bool = false
 var player_proximity_needs_resync: bool = false
 var last_facing: String = "down"
@@ -41,24 +33,36 @@ func _physics_process(delta):
 	move_along_patrol_route(delta)
 
 
-func pause_for_banshee():
-	paused_for_banshee = true
+func pause_for_external_actor():
+	paused_by_external_actor = true
 	velocity = Vector2.ZERO
 	play_idle_animation()
+
+
+func resume_from_external_actor():
+	if external_pause_completed:
+		return
+
+	paused_by_external_actor = false
+
+
+func complete_external_pause():
+	external_pause_completed = true
+	paused_by_external_actor = false
+	velocity = Vector2.ZERO
+	play_idle_animation()
+
+
+func pause_for_banshee():
+	pause_for_external_actor()
 
 
 func resume_from_banshee():
-	if assigned_banshee_defeated:
-		return
-
-	paused_for_banshee = false
+	resume_from_external_actor()
 
 
 func on_assigned_banshee_defeated():
-	assigned_banshee_defeated = true
-	paused_for_banshee = false
-	velocity = Vector2.ZERO
-	play_idle_animation()
+	complete_external_pause()
 
 
 func connect_player_proximity_area():
@@ -77,7 +81,7 @@ func connect_player_proximity_area():
 
 
 func should_idle() -> bool:
-	return assigned_banshee_defeated or paused_for_banshee or player_in_proximity
+	return external_pause_completed or paused_by_external_actor or player_in_proximity
 
 
 func is_player_nearby() -> bool:
@@ -85,87 +89,15 @@ func is_player_nearby() -> bool:
 
 
 func refresh_patrol_points():
-	patrol_points.clear()
-	patrol_path_node = null
-	patrol_curve = null
-	patrol_route_loaded = false
-	patrol_path_offset = 0.0
-	patrol_path_length = 0.0
-
-	if str(patrol_path) == "":
-		patrol_point_index = 0
-		return
-
-	var path_node: Node = get_node_or_null(patrol_path)
-	if path_node == null:
-		patrol_point_index = 0
-		return
-
-	var route_path: Path2D = get_route_path(path_node)
-	if route_path != null and route_path.curve != null:
-		set_patrol_curve(route_path)
-
-	if patrol_curve == null:
-		add_marker_patrol_points(path_node)
-
-	if patrol_point_index >= patrol_points.size():
-		patrol_point_index = 0
-
-	patrol_route_loaded = has_patrol_route()
-
-
-func get_route_path(path_node: Node) -> Path2D:
-	if path_node is Path2D:
-		return path_node as Path2D
-
-	return path_node.get_node_or_null("Path") as Path2D
-
-
-func set_patrol_curve(path: Path2D):
-	patrol_path_node = path
-	patrol_curve = path.curve
-	patrol_path_length = patrol_curve.get_baked_length()
-
-	if patrol_path_length <= 0.0:
-		patrol_path_node = null
-		patrol_curve = null
-		patrol_path_length = 0.0
-		return
-
-	patrol_path_offset = get_nearest_patrol_path_offset(global_position)
-
-
-func add_marker_patrol_points(path_node: Node):
-	var stops_node := path_node.get_node_or_null("Stops")
-	if stops_node != null:
-		add_marker_patrol_points_from(stops_node)
-		if not patrol_points.is_empty():
-			return
-
-	add_marker_patrol_points_from(path_node)
-
-
-func add_marker_patrol_points_from(marker_parent: Node):
-	var marker_points: Array[Marker2D] = []
-	for child in marker_parent.get_children():
-		if child is Marker2D:
-			marker_points.append(child as Marker2D)
-
-	marker_points.sort_custom(
-		func(a: Marker2D, b: Marker2D):
-			return String(a.name).naturalnocasecmp_to(String(b.name)) < 0
-	)
-
-	for marker in marker_points:
-		patrol_points.append(marker.global_position)
+	patrol_route.refresh(self, patrol_path)
 
 
 func has_patrol_route() -> bool:
-	return patrol_curve != null or patrol_points.size() > 0
+	return patrol_route.has_route()
 
 
 func has_smooth_patrol_route() -> bool:
-	return patrol_path_node != null and patrol_curve != null and patrol_path_length > 0.0
+	return patrol_route.has_smooth_route()
 
 
 func move_along_patrol_route(delta: float):
@@ -173,8 +105,8 @@ func move_along_patrol_route(delta: float):
 		move_along_marker_patrol_route(delta)
 		return
 
-	advance_patrol_path_offset(delta)
-	var target_position := get_patrol_position_at_offset(patrol_path_offset)
+	patrol_route.advance_path_offset(walk_speed, delta, patrol_ping_pong)
+	var target_position := get_patrol_position_at_offset(patrol_route.path_offset)
 	var to_target := target_position - global_position
 
 	if delta > 0.0:
@@ -191,29 +123,13 @@ func move_along_patrol_route(delta: float):
 		resync_patrol_route_to_current_position()
 
 
-func advance_patrol_path_offset(delta: float):
-	if patrol_ping_pong:
-		patrol_path_offset += walk_speed * delta * patrol_ping_pong_direction
-
-		if patrol_path_offset >= patrol_path_length:
-			patrol_path_offset = patrol_path_length
-			patrol_ping_pong_direction = -1.0
-		elif patrol_path_offset <= 0.0:
-			patrol_path_offset = 0.0
-			patrol_ping_pong_direction = 1.0
-
-		return
-
-	patrol_path_offset = wrapf(patrol_path_offset + walk_speed * delta, 0.0, patrol_path_length)
-
-
 func move_along_marker_patrol_route(delta: float):
-	var target_position: Vector2 = patrol_points[patrol_point_index]
+	var target_position: Vector2 = patrol_route.get_current_point(global_position)
 	var to_target: Vector2 = target_position - global_position
 
 	if to_target.length() <= arrival_distance:
-		advance_patrol_point()
-		target_position = patrol_points[patrol_point_index]
+		patrol_route.advance_point(patrol_ping_pong)
+		target_position = patrol_route.get_current_point(global_position)
 		to_target = target_position - global_position
 
 	var direction := to_target.normalized()
@@ -224,44 +140,8 @@ func move_along_marker_patrol_route(delta: float):
 		resync_patrol_route_to_current_position()
 
 
-func advance_patrol_point():
-	if patrol_ping_pong and patrol_points.size() > 1:
-		patrol_point_index += patrol_point_direction
-
-		if patrol_point_index >= patrol_points.size():
-			patrol_point_direction = -1
-			patrol_point_index = patrol_points.size() - 2
-		elif patrol_point_index < 0:
-			patrol_point_direction = 1
-			patrol_point_index = 1
-
-		return
-
-	patrol_point_index = (patrol_point_index + 1) % patrol_points.size()
-
-
-func select_nearest_patrol_point():
-	if patrol_points.is_empty():
-		return
-
-	var nearest_index: int = 0
-	var nearest_distance: float = global_position.distance_squared_to(patrol_points[0])
-
-	for index in range(1, patrol_points.size()):
-		var distance: float = global_position.distance_squared_to(patrol_points[index])
-		if distance < nearest_distance:
-			nearest_distance = distance
-			nearest_index = index
-
-	patrol_point_index = nearest_index
-
-
 func resync_patrol_route_to_current_position():
-	if has_smooth_patrol_route():
-		patrol_path_offset = get_nearest_patrol_path_offset(global_position)
-		return
-
-	select_nearest_patrol_point()
+	patrol_route.select_nearest(global_position)
 
 
 func move_with_player_blocking(delta: float) -> bool:
@@ -299,17 +179,11 @@ func is_motion_toward_node(node: Node2D, motion: Vector2) -> bool:
 
 
 func get_patrol_position_at_offset(offset: float) -> Vector2:
-	if not has_smooth_patrol_route():
-		return global_position
-
-	return patrol_path_node.to_global(patrol_curve.sample_baked(offset, true))
+	return patrol_route.get_position_at_offset(offset, global_position)
 
 
 func get_nearest_patrol_path_offset(world_position: Vector2) -> float:
-	if patrol_path_node == null or patrol_curve == null:
-		return 0.0
-
-	return patrol_curve.get_closest_offset(patrol_path_node.to_local(world_position))
+	return patrol_route.get_nearest_path_offset(world_position)
 
 
 func get_stalk_direction() -> Vector2:
@@ -317,30 +191,7 @@ func get_stalk_direction() -> Vector2:
 
 
 func get_stalk_anchor_position(distance: float) -> Vector2:
-	if has_smooth_patrol_route():
-		return get_patrol_position_at_offset(get_stalk_anchor_path_offset(distance))
-
-	if last_move_direction == Vector2.ZERO:
-		return global_position
-
-	return global_position - last_move_direction * distance
-
-
-func get_stalk_anchor_path_offset(distance: float) -> float:
-	var safe_distance: float = distance
-	if safe_distance < 0.0:
-		safe_distance = 0.0
-
-	if patrol_ping_pong:
-		var anchor_offset: float = patrol_path_offset - patrol_ping_pong_direction * safe_distance
-		if anchor_offset < 0.0:
-			return 0.0
-		if anchor_offset > patrol_path_length:
-			return patrol_path_length
-
-		return anchor_offset
-
-	return wrapf(patrol_path_offset - safe_distance, 0.0, patrol_path_length)
+	return patrol_route.get_anchor_position(global_position, distance, patrol_ping_pong, last_move_direction)
 
 
 func update_animation(direction: Vector2):

@@ -1,5 +1,7 @@
 extends CharacterBody2D
 
+signal interaction_requested(interactable: Node2D)
+
 const DEFAULT_TUNING: PlayerTuning = preload("res://assets/characters/Saorise/player_tuning.tres")
 
 @export var tuning: PlayerTuning = DEFAULT_TUNING
@@ -29,11 +31,14 @@ var dash_duration: float
 var dash_cooldown: float
 var attack_speed_modifier: float
 var attack_damage: int
-var combo_2_damage_bonus: int
+var combo_2_damage_multiplier: float
 var attack_combo_restart_delay: float
 var attack_cooldown_timer := 0.0
 var can_attack_from_hold := false
 var block_speed_modifier: float
+var nearby_interactables: Array[Node2D] = []
+var current_interactable: Node2D
+var pending_interaction_target: Node2D
 
 
 func _ready():
@@ -56,7 +61,7 @@ func _ready():
 	hitbox_manager = preload("res://assets/characters/Saorise/combat/attackBoxManager.gd").new()
 	hitbox_manager.attack_box = attack_box
 	hitbox_manager.attack_damage = attack_damage
-	hitbox_manager.combo_2_damage_bonus = combo_2_damage_bonus
+	hitbox_manager.combo_2_damage_multiplier = combo_2_damage_multiplier
 	hitbox_manager.player_health = health
 	hitbox_manager.setup()
 
@@ -82,7 +87,7 @@ func apply_tuning():
 	dash_cooldown = tuning.dash_cooldown
 	attack_speed_modifier = tuning.attack_speed_modifier
 	attack_damage = tuning.attack_damage
-	combo_2_damage_bonus = tuning.combo_2_damage_bonus
+	combo_2_damage_multiplier = tuning.combo_2_damage_multiplier
 	attack_combo_restart_delay = tuning.attack_combo_restart_delay
 	block_speed_modifier = tuning.block_speed_modifier
 
@@ -107,6 +112,25 @@ func _physics_process(delta):
 	update_effects()
 
 
+func _unhandled_input(event: InputEvent):
+	if dead:
+		return
+
+	if event.is_action_pressed("interact"):
+		current_interactable = get_current_interactable()
+		pending_interaction_target = current_interactable
+		get_viewport().set_input_as_handled()
+	elif event.is_action_released("interact"):
+		var released_target: Node2D = pending_interaction_target
+		pending_interaction_target = null
+		current_interactable = get_current_interactable()
+
+		if released_target != null and released_target == current_interactable and has_interactable(released_target):
+			try_interact_with(released_target)
+
+		get_viewport().set_input_as_handled()
+
+
 func change_state(state_name):
 	if current_state:
 		current_state.exit(self)
@@ -115,14 +139,14 @@ func change_state(state_name):
 	current_state.enter(self)
 
 
-func take_damage(amount: int, ignore_invulnerability: bool = false):
+func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null):
 	if dead:
 		return "ignored"
 
 	if current_state and current_state.has_method("prepare_for_incoming_damage"):
 		current_state.prepare_for_incoming_damage(self)
 
-	return health.take_damage(amount, ignore_invulnerability)
+	return health.take_damage(amount, ignore_invulnerability, damage_source)
 
 
 func get_move_input_vector() -> Vector2:
@@ -204,7 +228,68 @@ func update_effects():
 	if effects == null:
 		return
 
-	effects.set_effects(health.get_active_effects())
+	var active_effects: Array[String] = health.get_active_effects()
+	var controlled_frames: Dictionary = {}
+	current_interactable = get_current_interactable()
+
+	if current_interactable != null:
+		active_effects.append("interactable")
+		controlled_frames["interactable"] = 1 if Input.is_action_pressed("interact") else 0
+
+	effects.set_effects(active_effects, controlled_frames)
+
+
+func register_interactable(interactable: Node2D):
+	if interactable == null or nearby_interactables.has(interactable):
+		return
+
+	nearby_interactables.append(interactable)
+	current_interactable = get_current_interactable()
+	update_effects()
+
+
+func unregister_interactable(interactable: Node2D):
+	if interactable == null:
+		return
+
+	nearby_interactables.erase(interactable)
+	if pending_interaction_target == interactable:
+		pending_interaction_target = null
+
+	current_interactable = get_current_interactable()
+	update_effects()
+
+
+func get_current_interactable() -> Node2D:
+	prune_invalid_interactables()
+
+	var nearest_interactable: Node2D = null
+	var nearest_distance: float = INF
+	for interactable in nearby_interactables:
+		var distance: float = global_position.distance_squared_to(interactable.global_position)
+		if distance < nearest_distance:
+			nearest_interactable = interactable
+			nearest_distance = distance
+
+	return nearest_interactable
+
+
+func prune_invalid_interactables():
+	for index in range(nearby_interactables.size() - 1, -1, -1):
+		var interactable: Node2D = nearby_interactables[index]
+		if interactable == null or not is_instance_valid(interactable) or not interactable.is_inside_tree() or not interactable.visible:
+			if pending_interaction_target == interactable:
+				pending_interaction_target = null
+			nearby_interactables.remove_at(index)
+
+
+func has_interactable(interactable: Node2D) -> bool:
+	prune_invalid_interactables()
+	return nearby_interactables.has(interactable)
+
+
+func try_interact_with(interactable: Node2D):
+	interaction_requested.emit(interactable)
 
 
 func _on_died():
@@ -230,3 +315,30 @@ func _on_died():
 			child.set_deferred("disabled", true)
 
 	visible = false
+
+
+func restore_after_load():
+	dead = false
+	visible = true
+	velocity = Vector2.ZERO
+	nearby_interactables.clear()
+	current_interactable = null
+	pending_interaction_target = null
+	set_physics_process(true)
+
+	if sprite != null:
+		sprite.speed_scale = 1.0
+
+	for area in [hurt_box, attack_box]:
+		area.set_deferred("monitoring", true)
+		area.set_deferred("monitorable", true)
+		for child in area.get_children():
+			if child is CollisionShape2D:
+				child.set_deferred("disabled", false)
+
+	for child in get_children():
+		if child is CollisionShape2D:
+			child.set_deferred("disabled", false)
+
+	if states.has("move"):
+		change_state("move")

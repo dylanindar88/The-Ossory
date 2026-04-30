@@ -10,6 +10,7 @@ var hitbox_started: bool = false
 
 
 func enter(banshee):
+	banshee.keep_assigned_villager_waiting()
 	combo_part = 1
 	start_attack_part(banshee)
 
@@ -21,6 +22,7 @@ func exit(banshee):
 
 
 func physics_update(banshee, delta):
+	banshee.keep_assigned_villager_waiting()
 	banshee.face_target()
 	banshee.move_toward_player(banshee.attack_move_speed_modifier)
 

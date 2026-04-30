@@ -23,36 +23,23 @@ var current_state
 var states: Dictionary = {}
 var hitbox_manager: BansheeAttackBoxManager
 var player: Node2D
-var assigned_villager: Node2D
+var patrol_route := PatrolRoute.new()
+var villager_stalk_behavior := BansheeVillagerStalkBehavior.new()
 
 var player_in_detection: bool = false
 var player_in_attack_range: bool = false
 var player_in_tracking: bool = false
-var assigned_villager_paused: bool = false
-var last_villager_stalk_direction: Vector2 = Vector2.ZERO
-var holding_for_villager_reversal: bool = false
 var facing_left: bool = false
 var attack_cooldown_timer: float = 0.0
 var dead: bool = false
 var hurt_duration_override: float = -1.0
 var hurt_speed_modifier_override: float = -1.0
-var patrol_path_node: Path2D
-var patrol_curve: Curve2D
-var patrol_route_loaded: bool = false
-var patrol_path_offset: float = 0.0
-var patrol_path_length: float = 0.0
-var patrol_ping_pong_direction: float = 1.0
-var patrol_points: Array[Vector2] = []
-var patrol_point_index: int = 0
-var patrol_point_direction: int = 1
 var return_patrol_target: Vector2
 var return_patrol_path_offset: float = 0.0
 var return_patrol_point_index: int = 0
 var patrol_speed: float
 var patrol_arrival_distance: float
 var run_speed: float
-var attack_damage: int
-var combo_2_damage_bonus: int
 var attack_cooldown: float
 var attack_damage_start_frame: int
 var attack_move_speed_modifier: float
@@ -69,12 +56,11 @@ func _ready():
 	add_to_group("hostile_npcs")
 	configure_collision()
 	connect_ranges()
+	setup_villager_stalk_behavior()
 
 	hitbox_manager = preload("res://assets/characters/HostileNPCs/Banshees/combat/bansheeAttackBoxManager.gd").new()
 	hitbox_manager.banshee = self
 	hitbox_manager.attack_box = attack_box
-	hitbox_manager.attack_damage = attack_damage
-	hitbox_manager.combo_2_damage_bonus = combo_2_damage_bonus
 	hitbox_manager.setup()
 
 	states["idle"] = preload("res://assets/characters/HostileNPCs/Banshees/state_machine/idleState.gd").new()
@@ -93,7 +79,6 @@ func _ready():
 		health.died.connect(_on_died)
 
 	player = get_tree().get_first_node_in_group("player")
-	resolve_assigned_villager()
 	refresh_patrol_points()
 	change_state(get_default_state())
 
@@ -105,8 +90,6 @@ func apply_tuning():
 	patrol_speed = tuning.patrol_speed
 	patrol_arrival_distance = tuning.patrol_arrival_distance
 	run_speed = tuning.run_speed
-	attack_damage = tuning.attack_damage
-	combo_2_damage_bonus = tuning.combo_2_damage_bonus
 	attack_cooldown = tuning.attack_cooldown
 	attack_damage_start_frame = tuning.attack_damage_start_frame
 	attack_move_speed_modifier = tuning.attack_move_speed_modifier
@@ -123,6 +106,17 @@ func _physics_process(delta):
 
 	if current_state:
 		current_state.physics_update(self, delta)
+
+
+func setup_villager_stalk_behavior():
+	villager_stalk_behavior.setup(
+		self,
+		assigned_villager_path,
+		villager_follow_target_distance,
+		villager_follow_distance_tolerance,
+		villager_follow_speed_modifier,
+		villager_reversal_front_buffer
+	)
 
 
 func configure_collision():
@@ -226,133 +220,27 @@ func clear_hurt_state_overrides():
 
 
 func refresh_patrol_points():
-	patrol_points.clear()
-	patrol_path_node = null
-	patrol_curve = null
-	patrol_route_loaded = false
-	patrol_path_offset = 0.0
-	patrol_path_length = 0.0
-
-	if str(patrol_path) == "":
-		patrol_point_index = 0
-		return
-
-	var path_node: Node = get_node_or_null(patrol_path)
-	if path_node == null:
-		patrol_point_index = 0
-		return
-
-	var route_path: Path2D = get_route_path(path_node)
-	if route_path != null and route_path.curve != null:
-		set_patrol_curve(route_path)
-
-	if patrol_curve == null:
-		add_marker_patrol_points(path_node)
-
-	if patrol_point_index >= patrol_points.size():
-		patrol_point_index = 0
-
-	patrol_route_loaded = has_patrol_route()
-
-
-func get_route_path(path_node: Node) -> Path2D:
-	if path_node is Path2D:
-		return path_node as Path2D
-
-	return path_node.get_node_or_null("Path") as Path2D
-
-
-func set_patrol_curve(path: Path2D):
-	patrol_path_node = path
-	patrol_curve = path.curve
-	patrol_path_length = patrol_curve.get_baked_length()
-
-	if patrol_path_length <= 0.0:
-		patrol_path_node = null
-		patrol_curve = null
-		patrol_path_length = 0.0
-		return
-
-	patrol_path_offset = get_nearest_patrol_path_offset(global_position)
-
-
-func add_marker_patrol_points(path_node: Node):
-	var stops_node := path_node.get_node_or_null("Stops")
-	if stops_node != null:
-		add_marker_patrol_points_from(stops_node)
-		if not patrol_points.is_empty():
-			return
-
-	add_marker_patrol_points_from(path_node)
-
-
-func add_marker_patrol_points_from(marker_parent: Node):
-	var marker_points: Array[Marker2D] = []
-	for child in marker_parent.get_children():
-		if child is Marker2D:
-			marker_points.append(child as Marker2D)
-
-	marker_points.sort_custom(
-		func(a: Marker2D, b: Marker2D):
-			return String(a.name).naturalnocasecmp_to(String(b.name)) < 0
-	)
-
-	for marker in marker_points:
-		patrol_points.append(marker.global_position)
+	patrol_route.refresh(self, patrol_path)
 
 
 func has_patrol_route() -> bool:
-	return patrol_curve != null or patrol_points.size() > 0
+	return patrol_route.has_route()
 
 
 func has_smooth_patrol_route() -> bool:
-	return patrol_path_node != null and patrol_curve != null and patrol_path_length > 0.0
+	return patrol_route.has_smooth_route()
 
 
 func get_current_patrol_point() -> Vector2:
-	if not has_patrol_route():
-		return global_position
-
-	return patrol_points[patrol_point_index]
+	return patrol_route.get_current_point(global_position)
 
 
 func advance_patrol_point():
-	if not has_patrol_route():
-		return
-
-	if patrol_ping_pong and patrol_points.size() > 1:
-		patrol_point_index += patrol_point_direction
-
-		if patrol_point_index >= patrol_points.size():
-			patrol_point_direction = -1
-			patrol_point_index = patrol_points.size() - 2
-		elif patrol_point_index < 0:
-			patrol_point_direction = 1
-			patrol_point_index = 1
-
-		return
-
-	patrol_point_index = (patrol_point_index + 1) % patrol_points.size()
+	patrol_route.advance_point(patrol_ping_pong)
 
 
 func select_nearest_patrol_point():
-	if not has_patrol_route():
-		return
-
-	if has_smooth_patrol_route():
-		patrol_path_offset = get_nearest_patrol_path_offset(global_position)
-		return
-
-	var nearest_index := 0
-	var nearest_distance := global_position.distance_squared_to(patrol_points[0])
-
-	for index in range(1, patrol_points.size()):
-		var distance := global_position.distance_squared_to(patrol_points[index])
-		if distance < nearest_distance:
-			nearest_distance = distance
-			nearest_index = index
-
-	patrol_point_index = nearest_index
+	patrol_route.select_nearest(global_position)
 
 
 func return_to_default_state():
@@ -368,8 +256,9 @@ func begin_return_to_patrol():
 		change_state("idle")
 		return
 
-	return_patrol_path_offset = patrol_path_offset
-	return_patrol_point_index = patrol_point_index
+	keep_assigned_villager_waiting()
+	return_patrol_path_offset = patrol_route.path_offset
+	return_patrol_point_index = patrol_route.point_index
 	return_patrol_target = get_return_patrol_target()
 	change_state("return_to_patrol")
 
@@ -382,10 +271,12 @@ func get_return_patrol_target() -> Vector2:
 
 
 func complete_return_to_patrol():
-	if has_smooth_patrol_route():
-		patrol_path_offset = return_patrol_path_offset
-	elif patrol_points.size() > 0:
-		patrol_point_index = clamp(return_patrol_point_index, 0, patrol_points.size() - 1)
+	if has_assigned_villager():
+		select_nearest_patrol_point()
+	elif has_smooth_patrol_route():
+		patrol_route.path_offset = return_patrol_path_offset
+	elif patrol_route.points.size() > 0:
+		patrol_route.point_index = clamp(return_patrol_point_index, 0, patrol_route.points.size() - 1)
 
 	velocity = Vector2.ZERO
 	resume_assigned_villager()
@@ -393,15 +284,18 @@ func complete_return_to_patrol():
 
 
 func move_toward_return_patrol_target(delta: float) -> bool:
-	var to_target := return_patrol_target - global_position
-	var return_arrival_distance := 1.0
+	if has_assigned_villager():
+		return villager_stalk_behavior.move_toward_return_target(delta)
+
+	var to_target: Vector2 = return_patrol_target - global_position
+	var return_arrival_distance: float = 1.0
 	if to_target.length() <= return_arrival_distance:
 		velocity = Vector2.ZERO
 		move_and_slide()
 		return true
 
-	var direction := to_target.normalized()
-	var return_speed := run_speed
+	var direction: Vector2 = to_target.normalized()
+	var return_speed: float = run_speed
 	if delta > 0.0:
 		return_speed = min(run_speed, to_target.length() / delta)
 
@@ -417,8 +311,8 @@ func move_along_patrol_route(delta: float):
 		move_along_marker_patrol_route()
 		return
 
-	advance_patrol_path_offset(delta)
-	var target_position := get_patrol_position_at_offset(patrol_path_offset)
+	patrol_route.advance_path_offset(patrol_speed, delta, patrol_ping_pong)
+	var target_position := get_patrol_position_at_offset(patrol_route.path_offset)
 	var to_target := target_position - global_position
 
 	if delta > 0.0:
@@ -431,22 +325,6 @@ func move_along_patrol_route(delta: float):
 
 	sprite.play("walk")
 	move_and_slide()
-
-
-func advance_patrol_path_offset(delta: float):
-	if patrol_ping_pong:
-		patrol_path_offset += patrol_speed * delta * patrol_ping_pong_direction
-
-		if patrol_path_offset >= patrol_path_length:
-			patrol_path_offset = patrol_path_length
-			patrol_ping_pong_direction = -1.0
-		elif patrol_path_offset <= 0.0:
-			patrol_path_offset = 0.0
-			patrol_ping_pong_direction = 1.0
-
-		return
-
-	patrol_path_offset = wrapf(patrol_path_offset + patrol_speed * delta, 0.0, patrol_path_length)
 
 
 func move_along_marker_patrol_route():
@@ -466,156 +344,39 @@ func move_along_marker_patrol_route():
 
 
 func get_patrol_position_at_offset(offset: float) -> Vector2:
-	if not has_smooth_patrol_route():
-		return global_position
-
-	return patrol_path_node.to_global(patrol_curve.sample_baked(offset, true))
+	return patrol_route.get_position_at_offset(offset, global_position)
 
 
 func get_nearest_patrol_path_offset(world_position: Vector2) -> float:
-	if patrol_path_node == null or patrol_curve == null:
-		return 0.0
-
-	return patrol_curve.get_closest_offset(patrol_path_node.to_local(world_position))
+	return patrol_route.get_nearest_path_offset(world_position)
 
 
 func can_attack() -> bool:
 	return attack_cooldown_timer <= 0
 
 
-func resolve_assigned_villager():
-	assigned_villager = null
-	assigned_villager_paused = false
-	last_villager_stalk_direction = Vector2.ZERO
-	holding_for_villager_reversal = false
-
-	if str(assigned_villager_path) == "":
-		return
-
-	assigned_villager = get_node_or_null(assigned_villager_path) as Node2D
-	if assigned_villager == null:
-		push_warning("%s could not find assigned villager at %s" % [name, assigned_villager_path])
-
-
 func has_assigned_villager() -> bool:
-	return (
-		assigned_villager != null
-		and is_instance_valid(assigned_villager)
-		and assigned_villager.is_inside_tree()
-		and assigned_villager.visible
-	)
+	return villager_stalk_behavior != null and villager_stalk_behavior.is_active()
 
 
-func pause_assigned_villager():
-	if not has_assigned_villager() or assigned_villager_paused:
-		return
-
-	assigned_villager_paused = true
-	if assigned_villager.has_method("pause_for_banshee"):
-		assigned_villager.pause_for_banshee()
+func keep_assigned_villager_waiting():
+	if villager_stalk_behavior != null:
+		villager_stalk_behavior.keep_villager_waiting()
 
 
 func resume_assigned_villager():
-	if not assigned_villager_paused:
-		return
-
-	assigned_villager_paused = false
-	if has_assigned_villager() and assigned_villager.has_method("resume_from_banshee"):
-		assigned_villager.resume_from_banshee()
+	if villager_stalk_behavior != null:
+		villager_stalk_behavior.resume_villager()
 
 
 func notify_assigned_villager_banshee_defeated():
-	assigned_villager_paused = false
-	if has_assigned_villager() and assigned_villager.has_method("on_assigned_banshee_defeated"):
-		assigned_villager.on_assigned_banshee_defeated()
+	if villager_stalk_behavior != null:
+		villager_stalk_behavior.notify_villager_banshee_defeated()
 
 
 func move_toward_assigned_villager():
-	if not has_assigned_villager():
-		velocity = Vector2.ZERO
-		sprite.play("walk")
-		move_and_slide()
-		return
-
-	var stalk_direction: Vector2 = get_assigned_villager_stalk_direction()
-	if should_hold_for_villager_reversal(stalk_direction):
-		hold_assigned_villager_stalk()
-		last_villager_stalk_direction = stalk_direction
-		return
-
-	holding_for_villager_reversal = false
-	last_villager_stalk_direction = stalk_direction
-
-	var villager_distance: float = global_position.distance_to(assigned_villager.global_position)
-	if villager_distance <= villager_follow_distance_tolerance:
-		hold_assigned_villager_stalk()
-		return
-
-	var target_position: Vector2 = get_assigned_villager_stalk_anchor_position()
-	var offset: Vector2 = target_position - global_position
-	var distance: float = offset.length()
-	if distance <= villager_follow_distance_tolerance:
-		hold_assigned_villager_stalk()
-		return
-
-	var direction: Vector2 = offset.normalized()
-	velocity = direction * run_speed * villager_follow_speed_modifier
-	update_facing(direction)
-	sprite.play("walk")
-	move_and_slide()
-
-
-func get_assigned_villager_stalk_direction() -> Vector2:
-	if has_assigned_villager() and assigned_villager.has_method("get_stalk_direction"):
-		var raw_stalk_direction: Variant = assigned_villager.call("get_stalk_direction")
-		if not (raw_stalk_direction is Vector2):
-			return last_villager_stalk_direction
-
-		var stalk_direction: Vector2 = raw_stalk_direction
-		if stalk_direction != Vector2.ZERO:
-			return stalk_direction
-
-	return last_villager_stalk_direction
-
-
-func get_assigned_villager_stalk_anchor_position() -> Vector2:
-	if has_assigned_villager() and assigned_villager.has_method("get_stalk_anchor_position"):
-		var raw_anchor_position: Variant = assigned_villager.call("get_stalk_anchor_position", villager_follow_target_distance)
-		if raw_anchor_position is Vector2:
-			var anchor_position: Vector2 = raw_anchor_position
-			return anchor_position
-
-	if has_assigned_villager():
-		return assigned_villager.global_position
-
-	return global_position
-
-
-func should_hold_for_villager_reversal(stalk_direction: Vector2) -> bool:
-	if stalk_direction == Vector2.ZERO or last_villager_stalk_direction == Vector2.ZERO:
-		return false
-
-	if holding_for_villager_reversal:
-		return get_banshee_position_along_villager_direction(stalk_direction) >= -villager_reversal_front_buffer
-
-	if last_villager_stalk_direction.dot(stalk_direction) < -0.6:
-		holding_for_villager_reversal = get_banshee_position_along_villager_direction(stalk_direction) >= -villager_reversal_front_buffer
-		return holding_for_villager_reversal
-
-	return false
-
-
-func get_banshee_position_along_villager_direction(stalk_direction: Vector2) -> float:
-	if not has_assigned_villager():
-		return 0.0
-
-	return (global_position - assigned_villager.global_position).dot(stalk_direction)
-
-
-func hold_assigned_villager_stalk():
-	velocity = Vector2.ZERO
-	sprite.play("walk")
-	move_and_slide()
+	if villager_stalk_behavior != null:
+		villager_stalk_behavior.move_toward_assigned_villager()
 
 
 func has_player_target() -> bool:
@@ -704,6 +465,47 @@ func disable_combat_areas():
 		for child in area.get_children():
 			if child is CollisionShape2D:
 				child.set_deferred("disabled", true)
+
+
+func enable_combat_areas():
+	configure_collision()
+	for area in [hurt_box, attack_box, player_detection_area, attack_range, tracking_range]:
+		area.set_deferred("monitoring", true)
+		area.set_deferred("monitorable", true)
+		for child in area.get_children():
+			if child is CollisionShape2D:
+				child.set_deferred("disabled", false)
+
+
+func restore_after_load():
+	dead = false
+	visible = true
+	velocity = Vector2.ZERO
+	attack_cooldown_timer = 0.0
+	player_in_detection = false
+	player_in_attack_range = false
+	player_in_tracking = false
+	clear_hurt_state_overrides()
+	set_physics_process(true)
+
+	if sprite != null:
+		sprite.speed_scale = 1.0
+
+	var health_node: Node = health
+	if health_node != null:
+		health_node.set("dead", false)
+		health_node.set("invulnerable", false)
+		health_node.set("i_frame_timer", 0.0)
+		health_node.set("health", int(health_node.get("max_health")))
+		if health_node.has_signal("health_changed"):
+			health_node.emit_signal("health_changed", health_node.get("health"), health_node.get("max_health"))
+
+	player = get_tree().get_first_node_in_group("player")
+	enable_combat_areas()
+	setup_villager_stalk_behavior()
+	refresh_patrol_points()
+
+	change_state(get_default_state())
 
 
 func _on_died():

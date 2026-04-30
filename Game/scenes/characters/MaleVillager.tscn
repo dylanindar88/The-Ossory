@@ -1,7 +1,8 @@
-[gd_scene load_steps=5 format=3 uid="uid://dyvbu4ijn2dlw"]
+[gd_scene load_steps=6 format=3 uid="uid://dyvbu4ijn2dlw"]
 
 [ext_resource type="SpriteFrames" uid="uid://dfblj0cvbk4bs" path="res://assets/characters/NPCs/male_villager.tres" id="1_5c7ri"]
 [ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_os5rw"]
+[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_r8bi5"]
 radius = 5.0
@@ -21,12 +22,11 @@ script = ExtResource("2_os5rw")
 y_sort_enabled = true
 scale = Vector2(0.2, 0.2)
 sprite_frames = ExtResource("1_5c7ri")
-animation = &"walk"
-frame_progress = 0.569112
+animation = &"walk_up"
+frame_progress = 0.102721
 offset = Vector2(0, -156)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]
-top_level = true
 position = Vector2(0, -5.285)
 rotation = 1.5708
 shape = SubResource("CapsuleShape2D_r8bi5")
@@ -34,6 +34,7 @@ shape = SubResource("CapsuleShape2D_r8bi5")
 [node name="PlayerProximityArea" type="Area2D" parent="."]
 collision_layer = 0
 collision_mask = 2
+script = ExtResource("3_interact")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
 shape = SubResource("CircleShape2D_1l80d")

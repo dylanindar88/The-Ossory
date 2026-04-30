@@ -14,7 +14,7 @@ extends Resource
 @export_group("Attack")
 @export var attack_speed_modifier: float = 0.75
 @export var attack_damage: int = 10
-@export var combo_2_damage_bonus: int = 5
+@export var combo_2_damage_multiplier: float = 1.5
 @export var attack_combo_restart_delay: float = 0.25
 
 @export_group("Block")
@@ -28,6 +28,7 @@ extends Resource
 
 @export_group("Health")
 @export var max_health: int = 100
+@export_range(1, 20, 1) var hits_to_die: int = 8
 @export var invulnerability_time: float = 0.75
 
 @export_group("Stamina")
@@ -36,6 +37,5 @@ extends Resource
 @export_range(0.0, 1.0, 0.05) var stamina_exhaustion_recovery_ratio: float = 0.75
 
 @export_group("Parry")
-@export var parry_bonus_time: float = 2.5
+@export var parry_bonus_time: float = 2.25
 @export var parry_damage_multiplier: float = 1.5
-@export_range(0.0, 1.0, 0.05) var parry_incoming_damage_multiplier: float = 0.5

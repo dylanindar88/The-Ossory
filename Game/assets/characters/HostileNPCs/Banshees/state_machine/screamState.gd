@@ -4,7 +4,7 @@ var scream_timer: float = 0.0
 
 
 func enter(banshee):
-	banshee.pause_assigned_villager()
+	banshee.keep_assigned_villager_waiting()
 	banshee.velocity = Vector2.ZERO
 	banshee.move_and_slide()
 	banshee.face_target()
@@ -18,6 +18,7 @@ func exit(_banshee):
 
 
 func physics_update(banshee, delta):
+	banshee.keep_assigned_villager_waiting()
 	banshee.velocity = Vector2.ZERO
 	banshee.face_target()
 	banshee.move_and_slide()

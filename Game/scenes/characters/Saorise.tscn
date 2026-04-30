@@ -1,7 +1,7 @@
 [gd_scene load_steps=15 format=3 uid="uid://u16duk15fe7q"]
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/stateMachine.gd" id="1_e5y1c"]
-[ext_resource type="PackedScene" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
 [ext_resource type="SpriteFrames" uid="uid://bq7x1kr2nahdp" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
@@ -52,6 +52,8 @@ animation = &"dash_up"
 offset = Vector2(0, -88)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]
+z_index = 100
+y_sort_enabled = false
 position = Vector2(0, -57.75)
 
 [node name="Stamina" type="Node2D" parent="."]

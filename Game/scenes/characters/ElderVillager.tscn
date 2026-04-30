@@ -1,0 +1,72 @@
+[gd_scene load_steps=11 format=3 uid="uid://b8egi4524xjg"]
+
+[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://assets/characters/NPCs/celtic_villagers.png" id="1_pgo3k"]
+[ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_nltpa"]
+[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r5oaa"]
+atlas = ExtResource("1_pgo3k")
+region = Rect2(0, 3040, 272, 304)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pav7c"]
+atlas = ExtResource("1_pgo3k")
+region = Rect2(272, 3040, 272, 304)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mcr7u"]
+atlas = ExtResource("1_pgo3k")
+region = Rect2(544, 3040, 272, 304)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_eamlg"]
+atlas = ExtResource("1_pgo3k")
+region = Rect2(816, 3040, 272, 304)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_vy51q"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_r5oaa")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pav7c")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mcr7u")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_eamlg")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_7ldok"]
+radius = 3.0
+height = 18.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_yssrr"]
+radius = 33.0
+
+[node name="ElderVillager" type="CharacterBody2D"]
+y_sort_enabled = true
+script = ExtResource("2_nltpa")
+
+[node name="Body" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.3, 0.3)
+sprite_frames = SubResource("SpriteFrames_vy51q")
+animation = &"idle"
+frame_progress = 0.890568
+offset = Vector2(0, -153)
+
+[node name="MovementBox" type="CollisionShape2D" parent="."]
+position = Vector2(0, -3)
+rotation = 1.5708
+shape = SubResource("CapsuleShape2D_7ldok")
+
+[node name="PlayerProximityArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("3_interact")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
+shape = SubResource("CircleShape2D_yssrr")

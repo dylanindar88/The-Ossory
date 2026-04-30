@@ -2,6 +2,7 @@ extends RefCounted
 
 
 func enter(banshee):
+	banshee.keep_assigned_villager_waiting()
 	banshee.sprite.play("run")
 
 
@@ -10,6 +11,8 @@ func exit(_banshee):
 
 
 func physics_update(banshee, _delta):
+	banshee.keep_assigned_villager_waiting()
+
 	if not banshee.has_player_target() or not banshee.player_in_tracking:
 		banshee.return_to_default_state()
 		return

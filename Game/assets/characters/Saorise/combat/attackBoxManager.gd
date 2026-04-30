@@ -4,7 +4,7 @@ extends RefCounted
 var attack_box: Area2D
 var collision_shape: CollisionShape2D
 var attack_damage: int
-var combo_2_damage_bonus: int
+var combo_2_damage_multiplier: float = 1.5
 var player_health: Node
 
 var active_attack_targets: Array[Node2D] = []
@@ -164,15 +164,15 @@ func _hit_current_overlaps():
 
 
 func get_current_attack_damage() -> int:
-	var damage := attack_damage
+	var damage := float(attack_damage)
 
 	if current_combo_part == 2:
-		damage += combo_2_damage_bonus
+		damage *= combo_2_damage_multiplier
 
 	if player_health != null and player_health.has_method("get_attack_damage_multiplier"):
-		damage = int(round(float(damage) * player_health.get_attack_damage_multiplier()))
+		damage *= player_health.get_attack_damage_multiplier()
 
-	return damage
+	return int(round(damage))
 
 
 func should_ignore_invulnerability() -> bool:

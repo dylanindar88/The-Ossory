@@ -1,15 +1,17 @@
-[gd_scene load_steps=28 format=3 uid="uid://tm3ttab50kd3"]
+[gd_scene load_steps=31 format=3 uid="uid://tm3ttab50kd3"]
 
 [ext_resource type="Texture2D" uid="uid://brkmctvq1u5iw" path="res://assets/terrain/Graves/grave1.aseprite" id="2_v2wya"]
 [ext_resource type="Texture2D" uid="uid://cbuinl7rlsyqa" path="res://assets/terrain/Graves/grave2.aseprite" id="3_l450g"]
 [ext_resource type="Texture2D" uid="uid://bye2nx2ukilka" path="res://assets/terrain/Graves/grave3.aseprite" id="4_68uc3"]
 [ext_resource type="Texture2D" uid="uid://b20wce5fxa165" path="res://assets/terrain/Graves/unmarked.aseprite" id="5_oysyv"]
 [ext_resource type="PackedScene" path="res://scenes/environment/buildings/MainHouseRoof.tscn" id="10_bxd40"]
+[ext_resource type="PackedScene" uid="uid://b8egi4524xjg" path="res://scenes/characters/ElderVillager.tscn" id="16_2ep4g"]
 [ext_resource type="PackedScene" path="res://scenes/environment/buildings/HouseRoof.tscn" id="16_uad8s"]
 [ext_resource type="PackedScene" path="res://scenes/environment/buildings/SmallHouseRoof.tscn" id="19_4d4oc"]
 [ext_resource type="PackedScene" uid="uid://dfjpsxet38xfl" path="res://scenes/characters/Banshee.tscn" id="22_t6xdm"]
 [ext_resource type="PackedScene" uid="uid://u16duk15fe7q" path="res://scenes/characters/Saorise.tscn" id="23_yc8ub"]
 [ext_resource type="PackedScene" uid="uid://cd8kyptum0qfo" path="res://scenes/ui/HUD.tscn" id="24_jku5t"]
+[ext_resource type="PackedScene" uid="uid://bc1lkm8egp0u3" path="res://scenes/ui/PauseMenu.tscn" id="25_2fapq"]
 [ext_resource type="TileSet" uid="uid://c7owttvmnh0h2" path="res://assets/terrain/WaterTileSet.tres" id="25_vfn6k"]
 [ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://assets/terrain/GroundTileSet.tres" id="26_nqd4b"]
 [ext_resource type="TileSet" uid="uid://bm2nceghxgf55" path="res://assets/terrain/LogsTileSet.tres" id="27_uivry"]
@@ -20,6 +22,7 @@
 [ext_resource type="PackedScene" uid="uid://g14myfiixmlt" path="res://scenes/environment/buildings/MainHouse.tscn" id="32_main"]
 [ext_resource type="PackedScene" uid="uid://dyvbu4ijn2dlw" path="res://scenes/characters/MaleVillager.tscn" id="33_male"]
 [ext_resource type="PackedScene" uid="uid://c0y1cuxwefgpj" path="res://scenes/characters/FemaleVillager.tscn" id="34_female"]
+[ext_resource type="Script" path="res://assets/global/LevelSaveController.gd" id="35_lsc"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jdcol"]
 size = Vector2(21.9688, 3.03253)
@@ -64,6 +67,7 @@ point_count = 6
 
 [node name="Background" type="Node2D" parent="."]
 texture_filter = 1
+position = Vector2(-1984, -1376)
 
 [node name="Water" type="TileMap" parent="Background"]
 texture_filter = 1
@@ -90,6 +94,7 @@ layer_3/tile_data = PackedInt32Array(-131074, 65536, 2, -131073, 196608, 2, -196
 z_as_relative = false
 y_sort_enabled = true
 texture_filter = 1
+position = Vector2(-1984, -1376)
 
 [node name="Environment" type="Node2D" parent="PlayableWorld"]
 z_as_relative = false
@@ -379,6 +384,9 @@ position = Vector2(496, 423)
 patrol_path = NodePath("../../../../PatrolPaths/BottomRightLoop")
 patrol_ping_pong = true
 
+[node name="ElderVillager" parent="PlayableWorld/Environment/Characters/NPCs" instance=ExtResource("16_2ep4g")]
+position = Vector2(79, 10)
+
 [node name="PatrolPaths" type="Node2D" parent="PlayableWorld"]
 
 [node name="BottomLeftLoop" type="Node2D" parent="PlayableWorld/PatrolPaths"]
@@ -546,6 +554,7 @@ curve = SubResource("Curve2D_iaeyl")
 
 [node name="Foreground" type="Node2D" parent="."]
 texture_filter = 1
+position = Vector2(-1984, -1376)
 
 [node name="Leaves" type="TileMap" parent="Foreground"]
 z_index = 2
@@ -603,3 +612,8 @@ position = Vector2(448.457, 1339.8)
 scale = Vector2(0.9, 0.9)
 
 [node name="HUD" parent="." instance=ExtResource("24_jku5t")]
+
+[node name="PauseMenu" parent="." instance=ExtResource("25_2fapq")]
+
+[node name="LevelSaveController" type="Node" parent="."]
+script = ExtResource("35_lsc")

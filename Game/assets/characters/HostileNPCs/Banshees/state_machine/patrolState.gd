@@ -3,7 +3,7 @@ extends RefCounted
 
 func enter(banshee):
 	banshee.sprite.play("walk")
-	if not banshee.patrol_route_loaded:
+	if not banshee.patrol_route.route_loaded:
 		banshee.refresh_patrol_points()
 
 
@@ -17,7 +17,7 @@ func physics_update(banshee, _delta):
 		return
 
 	if not banshee.has_patrol_route():
-		banshee.patrol_route_loaded = false
+		banshee.patrol_route.route_loaded = false
 		banshee.change_state("idle")
 		return
 

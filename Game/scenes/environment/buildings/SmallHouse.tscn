@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://b1yijop0xfpma"]
+[gd_scene load_steps=5 format=3 uid="uid://b1yijop0xfpma"]
 
 [ext_resource type="Texture2D" uid="uid://cxkofdr733oqh" path="res://assets/buildings/banshee_village/small_house/wall.aseprite" id="1_wall"]
 [ext_resource type="Texture2D" uid="uid://cej7mn3sjki40" path="res://assets/buildings/banshee_village/small_house/shadow.aseprite" id="2_shadow"]
+[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_2qg2f"]
 size = Vector2(124, 44.25)
@@ -32,11 +33,12 @@ collision_mask = 14
 position = Vector2(0.0548638, -49.3245)
 polygon = PackedVector2Array(-0.120003, -25.2016, 46.6951, -22.1591, 88.5884, -11.5369, 104.441, 2.68933, 104.271, 10.7717, 104.006, 132.513, 103.887, 148.492, 98.1622, 150.733, 93.836, 150.733, 87.6849, 148.412, 87.6864, 136.85, 45.9503, 145.531, -46.272, 145.531, -87.7468, 137.039, -87.7467, 147.703, -93.9376, 150.721, -98.4637, 150.721, -104.395, 147.547, -104.395, 132.356, -104.091, 10.1831, -104.145, 1.92462, -86.5747, -13.1711, -47.7216, -21.3377)
 
-[node name="Area2D" type="Area2D" parent="."]
+[node name="PlayerProximityArea" type="Area2D" parent="."]
 position = Vector2(1.81749, -48.2912)
 collision_layer = 0
-collision_mask = 0
+collision_mask = 2
+script = ExtResource("3_interact")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
 position = Vector2(-0.555556, 164.389)
 shape = SubResource("RectangleShape2D_2qg2f")

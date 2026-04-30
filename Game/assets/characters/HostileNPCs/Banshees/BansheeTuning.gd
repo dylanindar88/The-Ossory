@@ -11,8 +11,6 @@ extends Resource
 @export var facing_deadzone: float = 0.1
 
 @export_group("Attack")
-@export var attack_damage: int = 5
-@export var combo_2_damage_bonus: int = 2
 @export var attack_cooldown: float = 0.5
 @export var attack_damage_start_frame: int = 3
 @export var attack_move_speed_modifier: float = 0.95

@@ -1,0 +1,494 @@
+[gd_scene load_steps=4 format=3 uid="uid://bc1lkm8egp0u3"]
+
+[ext_resource type="Script" path="res://assets/UI/PauseMenu.gd" id="1_jymgs"]
+[ext_resource type="Texture2D" uid="uid://bpifburakfvc8" path="res://assets/UI/PauseMenu.aseprite" id="2_mur0b"]
+[ext_resource type="Texture2D" uid="uid://4cflmlbk2g2t" path="res://assets/UI/MenuOptionBackground.aseprite" id="3_r8i7u"]
+
+[node name="PauseMenu" type="CanvasLayer"]
+process_mode = 3
+layer = 20
+script = ExtResource("1_jymgs")
+
+[node name="Overlay" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Dim" type="ColorRect" parent="Overlay"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 0.45)
+
+[node name="Panel" type="TextureRect" parent="Overlay"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -440.0
+offset_top = 67.0
+offset_bottom = 407.0
+grow_horizontal = 2
+scale = Vector2(2, 2)
+mouse_filter = 2
+texture = ExtResource("2_mur0b")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="MenuView" type="VBoxContainer" parent="Overlay/Panel"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -91.0
+offset_top = -132.0
+offset_right = 189.0
+offset_bottom = 160.0
+grow_horizontal = 2
+grow_vertical = 2
+scale = Vector2(0.65, 0.65)
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="ResumeOption" type="Control" parent="Overlay/Panel/MenuView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/MenuView/ResumeOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Overlay/Panel/MenuView/ResumeOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Resume Game"
+flat = true
+
+[node name="SaveOption" type="Control" parent="Overlay/Panel/MenuView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/MenuView/SaveOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Overlay/Panel/MenuView/SaveOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Saves"
+flat = true
+
+[node name="OptionsOption" type="Control" parent="Overlay/Panel/MenuView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/MenuView/OptionsOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Overlay/Panel/MenuView/OptionsOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Options"
+flat = true
+
+[node name="ExitOption" type="Control" parent="Overlay/Panel/MenuView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/MenuView/ExitOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Overlay/Panel/MenuView/ExitOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Exit"
+flat = true
+
+[node name="SaveStatusLabel" type="Label" parent="Overlay/Panel/MenuView"]
+custom_minimum_size = Vector2(280, 24)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="SaveSlotsView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -89.0
+offset_top = -23.0
+offset_right = 271.0
+offset_bottom = 710.0
+grow_horizontal = 2
+scale = Vector2(0.5, 0.5)
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Overlay/Panel/SaveSlotsView"]
+layout_mode = 2
+text = "Save Slots"
+horizontal_alignment = 1
+
+[node name="SlotList" type="VBoxContainer" parent="Overlay/Panel/SaveSlotsView"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Slot1" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
+custom_minimum_size = Vector2(360, 112)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="SlotLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = 31.0
+grow_horizontal = 2
+text = "Slot 1"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 32.0
+offset_right = -12.0
+offset_bottom = 56.0
+grow_horizontal = 2
+text = "Empty"
+horizontal_alignment = 1
+
+[node name="ButtonRow" type="HBoxContainer" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -46.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1/ButtonRow"]
+custom_minimum_size = Vector2(108, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Overwrite"
+
+[node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1/ButtonRow"]
+custom_minimum_size = Vector2(78, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1/ButtonRow"]
+custom_minimum_size = Vector2(78, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Delete"
+
+[node name="Slot2" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
+custom_minimum_size = Vector2(360, 112)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="SlotLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = 31.0
+grow_horizontal = 2
+text = "Slot 2"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 32.0
+offset_right = -12.0
+offset_bottom = 56.0
+grow_horizontal = 2
+text = "Empty"
+horizontal_alignment = 1
+
+[node name="ButtonRow" type="HBoxContainer" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -46.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2/ButtonRow"]
+custom_minimum_size = Vector2(108, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Overwrite"
+
+[node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2/ButtonRow"]
+custom_minimum_size = Vector2(78, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2/ButtonRow"]
+custom_minimum_size = Vector2(78, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Delete"
+
+[node name="Slot3" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
+custom_minimum_size = Vector2(360, 112)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="SlotLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 8.0
+offset_right = -12.0
+offset_bottom = 31.0
+grow_horizontal = 2
+text = "Slot 3"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 32.0
+offset_right = -12.0
+offset_bottom = 56.0
+grow_horizontal = 2
+text = "Empty"
+horizontal_alignment = 1
+
+[node name="ButtonRow" type="HBoxContainer" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -46.0
+offset_right = -10.0
+offset_bottom = -10.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3/ButtonRow"]
+custom_minimum_size = Vector2(108, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Overwrite"
+
+[node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3/ButtonRow"]
+custom_minimum_size = Vector2(78, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3/ButtonRow"]
+custom_minimum_size = Vector2(78, 36)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Delete"
+
+[node name="SaveSlotsStatusLabel" type="Label" parent="Overlay/Panel/SaveSlotsView"]
+custom_minimum_size = Vector2(360, 24)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="BackOption" type="Control" parent="Overlay/Panel/SaveSlotsView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Button" type="Button" parent="Overlay/Panel/SaveSlotsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Back"
+flat = true
+
+[node name="OptionsView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -75.5
+offset_top = 41.5
+offset_right = 224.5
+offset_bottom = 538.5
+grow_horizontal = 2
+scale = Vector2(0.5, 0.5)
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="ZoomLabel" type="Label" parent="Overlay/Panel/OptionsView"]
+layout_mode = 2
+text = "Zoom"
+horizontal_alignment = 1
+
+[node name="ZoomSlider" type="HSlider" parent="Overlay/Panel/OptionsView"]
+custom_minimum_size = Vector2(300, 36)
+layout_mode = 2
+min_value = 1.75
+max_value = 3.0
+step = 0.05
+value = 2.25
+
+[node name="BackOption" type="Control" parent="Overlay/Panel/OptionsView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/OptionsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Button" type="Button" parent="Overlay/Panel/OptionsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Back"
+flat = true

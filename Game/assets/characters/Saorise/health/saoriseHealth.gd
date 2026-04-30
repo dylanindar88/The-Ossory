@@ -21,7 +21,7 @@ var stamina_regen_rate := 25.0
 var stamina_exhaustion_recovery_ratio := 0.8
 var parry_bonus_time := 2.0
 var parry_damage_multiplier := 1.5
-var parry_incoming_damage_multiplier := 0.5
+var hits_to_die := 4
 var health := max_health
 var stamina := max_stamina
 
@@ -36,6 +36,7 @@ var block_invulnerability_timer := 0.0
 var parry_bonus_timer := 0.0
 var stamina_exhausted := false
 var dead := false
+var invulnerability_source: Node = null
 
 func _ready():
 	apply_tuning()
@@ -60,6 +61,7 @@ func apply_tuning():
 		tuning = DEFAULT_TUNING
 
 	max_health = tuning.max_health
+	hits_to_die = tuning.hits_to_die
 	max_stamina = tuning.max_stamina
 	invulnerability_time = tuning.invulnerability_time
 	dash_stamina_cost = tuning.dash_stamina_cost
@@ -71,7 +73,6 @@ func apply_tuning():
 	stamina_exhaustion_recovery_ratio = tuning.stamina_exhaustion_recovery_ratio
 	parry_bonus_time = tuning.parry_bonus_time
 	parry_damage_multiplier = tuning.parry_damage_multiplier
-	parry_incoming_damage_multiplier = tuning.parry_incoming_damage_multiplier
 
 func _process(delta):
 	if invulnerable:
@@ -96,7 +97,7 @@ func _process(delta):
 	elif not dashing:
 		regenerate_stamina(delta)
 
-func take_damage(amount: int, ignore_invulnerability: bool = false):
+func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null):
 	if dead:
 		return "ignored"
 
@@ -108,7 +109,10 @@ func take_damage(amount: int, ignore_invulnerability: bool = false):
 	if block_invulnerable:
 		return "ignored"
 
-	if invulnerable and not ignore_invulnerability:
+	if has_parry_bonus():
+		return "ignored"
+
+	if should_ignore_for_invulnerability(ignore_invulnerability, damage_source):
 		return "ignored"
 
 	if can_block_damage():
@@ -119,20 +123,19 @@ func take_damage(amount: int, ignore_invulnerability: bool = false):
 	var damage_amount := get_incoming_damage_amount(amount)
 	health -= damage_amount
 	health = clamp(health, 0, max_health)
+
+	if health > 0:
+		start_invulnerability(invulnerability_time, damage_source)
+
 	health_changed.emit(health, max_health)
 
 	if health <= 0:
 		die()
-	else:
-		start_invulnerability(invulnerability_time)
 
 	return "damaged"
 
-func get_incoming_damage_amount(amount: int) -> int:
-	if has_parry_bonus():
-		return max(1, int(round(float(amount) * parry_incoming_damage_multiplier)))
-
-	return amount
+func get_incoming_damage_amount(_amount: int) -> int:
+	return max(1, int(ceil(float(max_health) / float(max(hits_to_die, 1)))))
 
 func heal(amount: int):
 	if dead:
@@ -142,13 +145,28 @@ func heal(amount: int):
 	health = clamp(health, 0, max_health)
 	health_changed.emit(health, max_health)
 
-func start_invulnerability(time: float):
+func should_ignore_for_invulnerability(ignore_invulnerability: bool, damage_source: Node = null) -> bool:
+	if not invulnerable:
+		return false
+
+	if not ignore_invulnerability:
+		return true
+
+	if damage_source == null or invulnerability_source == null:
+		return true
+
+	return damage_source != invulnerability_source
+
+
+func start_invulnerability(time: float, damage_source: Node = null):
 	invulnerable = true
 	i_frame_timer = time
+	invulnerability_source = damage_source
 
 func end_invulnerability():
 	invulnerable = false
 	i_frame_timer = 0.0
+	invulnerability_source = null
 
 func is_invulnerable() -> bool:
 	return invulnerable
@@ -308,9 +326,9 @@ func die():
 	died.emit()
 
 # Temporary test:
-# Press Enter to lose 10 HP
+# Press Enter to take one standard hit.
 func _input(event):
 	if event.is_action_pressed("test_damage"):
-		take_damage(10)
+		take_damage(0)
 	if event.is_action_pressed("test_healing"):
 		heal(10)

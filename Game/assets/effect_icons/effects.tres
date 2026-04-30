@@ -1,4 +1,4 @@
-[gd_resource type="SpriteFrames" load_steps=18 format=3 uid="uid://ci70t58v86wc6"]
+[gd_resource type="SpriteFrames" load_steps=20 format=3 uid="uid://ci70t58v86wc6"]
 
 [ext_resource type="Texture2D" uid="uid://crd6y5s5bmp4v" path="res://assets/effect_icons/effects.png" id="1_tvf8e"]
 
@@ -49,6 +49,14 @@ region = Rect2(96, 96, 48, 48)
 [sub_resource type="AtlasTexture" id="AtlasTexture_bxcom"]
 atlas = ExtResource("1_tvf8e")
 region = Rect2(144, 96, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_556sh"]
+atlas = ExtResource("1_tvf8e")
+region = Rect2(0, 192, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_e3ghm"]
+atlas = ExtResource("1_tvf8e")
+region = Rect2(48, 192, 48, 48)
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_k5d5v"]
 atlas = ExtResource("1_tvf8e")
@@ -117,6 +125,17 @@ animations = [{
 }],
 "loop": true,
 "name": &"exhausted",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_556sh")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_e3ghm")
+}],
+"loop": true,
+"name": &"interactable",
 "speed": 5.0
 }, {
 "frames": [{

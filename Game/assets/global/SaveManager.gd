@@ -1,0 +1,465 @@
+extends Node
+
+const SAVE_VERSION := 1
+const SAVE_SLOT_COUNT := 3
+const SAVE_PATH_FORMAT := "user://save_slot_%d.json"
+
+var active_slot: int = 1
+var autosave_slot: int = 1
+var save_allowed: bool = true
+var autosave_suppressed: bool = false
+var current_level: Node
+var last_error: String = ""
+
+
+func set_active_slot(slot: int) -> bool:
+	if not is_valid_slot(slot):
+		last_error = "Save slot %d is outside the supported range." % slot
+		return false
+
+	active_slot = slot
+	autosave_slot = slot
+	last_error = ""
+	return true
+
+
+func is_valid_slot(slot: int) -> bool:
+	return slot >= 1 and slot <= SAVE_SLOT_COUNT
+
+
+func set_save_allowed(allowed: bool):
+	save_allowed = allowed
+
+
+func is_save_allowed() -> bool:
+	return save_allowed
+
+
+func autosave_level_entered(level: Node) -> bool:
+	current_level = level
+	if should_skip_autosave("level_enter"):
+		last_error = ""
+		return false
+
+	return save_game("level_enter", level)
+
+
+func autosave_level_exiting(level: Node) -> bool:
+	if should_skip_autosave("level_exit"):
+		last_error = ""
+		return false
+
+	return save_game("level_exit", level)
+
+
+func save_game(reason: String = "manual", level: Node = null) -> bool:
+	if not is_valid_slot(autosave_slot):
+		autosave_slot = active_slot
+
+	return write_save_to_slot(autosave_slot, reason, level)
+
+
+func save_game_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
+	if not set_active_slot(slot):
+		return false
+
+	return write_save_to_slot(slot, reason, level)
+
+
+func write_save_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
+	if not save_allowed:
+		last_error = "Saving is currently disabled."
+		return false
+
+	if not is_valid_slot(slot):
+		last_error = "Save slot %d is outside the supported range." % slot
+		return false
+
+	var save_level := level if level != null else get_current_level()
+	var save_path := get_save_path(slot)
+	var save_data := build_save_data(reason, save_level)
+	var file := FileAccess.open(save_path, FileAccess.WRITE)
+	if file == null:
+		last_error = "Could not open %s for writing. Error: %s" % [save_path, error_string(FileAccess.get_open_error())]
+		return false
+
+	file.store_string(JSON.stringify(save_data, "\t"))
+	last_error = ""
+	return true
+
+
+func load_slot_into_current_level(slot: int) -> bool:
+	var data := load_game(slot)
+	if data.is_empty():
+		return false
+
+	if not set_active_slot(slot):
+		return false
+
+	return apply_save_to_current_level(data)
+
+
+func delete_save(slot: int) -> bool:
+	if not is_valid_slot(slot):
+		last_error = "Save slot %d is outside the supported range." % slot
+		return false
+
+	if not save_exists(slot):
+		last_error = ""
+		return true
+
+	var dir := DirAccess.open("user://")
+	if dir == null:
+		last_error = "Could not open the user save directory."
+		return false
+
+	var error := dir.remove(get_save_file_name(slot))
+	if error != OK:
+		last_error = "Could not delete save slot %d. Error: %s" % [slot, error_string(error)]
+		return false
+
+	last_error = ""
+	return true
+
+
+func save_exists(slot: int) -> bool:
+	return is_valid_slot(slot) and FileAccess.file_exists(get_save_path(slot))
+
+
+func get_slot_summary(slot: int) -> Dictionary:
+	var summary := {
+		"slot": slot,
+		"exists": false,
+		"saved_at_datetime": "",
+		"level_path": "",
+		"reason": "",
+	}
+
+	if not save_exists(slot):
+		return summary
+
+	var data := load_game(slot)
+	if data.is_empty():
+		return summary
+
+	summary["exists"] = true
+	summary["saved_at_datetime"] = str(data.get("saved_at_datetime", ""))
+	summary["level_path"] = str(data.get("level_path", ""))
+	summary["reason"] = str(data.get("reason", ""))
+	return summary
+
+
+func reset_current_level_for_dev() -> bool:
+	var scene_path := get_level_path(get_current_level())
+	if scene_path == "":
+		last_error = "Could not reset the current level because it has no scene path."
+		return false
+
+	autosave_suppressed = true
+	get_tree().paused = false
+	var error := get_tree().reload_current_scene()
+	if error != OK:
+		autosave_suppressed = false
+		last_error = "Could not reload current level. Error: %s" % error_string(error)
+		return false
+
+	last_error = ""
+	return true
+
+
+func should_skip_autosave(reason: String) -> bool:
+	if not autosave_suppressed:
+		return false
+
+	if reason == "level_enter":
+		autosave_suppressed = false
+
+	return true
+
+
+func load_game(slot: int = active_slot) -> Dictionary:
+	if not is_valid_slot(slot):
+		last_error = "Save slot %d is outside the supported range." % slot
+		return {}
+
+	var save_path := get_save_path(slot)
+	if not FileAccess.file_exists(save_path):
+		last_error = "No save file exists for slot %d." % slot
+		return {}
+
+	var file := FileAccess.open(save_path, FileAccess.READ)
+	if file == null:
+		last_error = "Could not open %s for reading. Error: %s" % [save_path, error_string(FileAccess.get_open_error())]
+		return {}
+
+	var parsed: Variant = JSON.parse_string(file.get_as_text())
+	if not (parsed is Dictionary):
+		last_error = "Save file %s is not valid JSON save data." % save_path
+		return {}
+
+	var data: Dictionary = parsed
+	if int(data.get("version", 0)) != SAVE_VERSION:
+		last_error = "Save file %s uses an unsupported version." % save_path
+		return {}
+
+	last_error = ""
+	return data
+
+
+func apply_save_to_current_level(data: Dictionary) -> bool:
+	var level := get_current_level()
+	if level == null or data.is_empty():
+		return false
+
+	var saved_level_path: String = str(data.get("level_path", ""))
+	if saved_level_path != "" and saved_level_path != get_level_path(level):
+		last_error = "Save data belongs to a different level."
+		return false
+
+	apply_player_state(level, data.get("player", {}))
+	apply_defeated_banshees(level, data.get("defeated_banshees", []))
+	apply_villager_states(level, data.get("villagers", []))
+	last_error = ""
+	return true
+
+
+func get_save_path(slot: int = active_slot) -> String:
+	return SAVE_PATH_FORMAT % clamp(slot, 1, SAVE_SLOT_COUNT)
+
+
+func get_save_file_name(slot: int) -> String:
+	return "save_slot_%d.json" % clamp(slot, 1, SAVE_SLOT_COUNT)
+
+
+func get_current_level() -> Node:
+	if current_level != null and is_instance_valid(current_level) and current_level.is_inside_tree():
+		return current_level
+
+	return get_tree().current_scene
+
+
+func build_save_data(reason: String, level: Node) -> Dictionary:
+	return {
+		"version": SAVE_VERSION,
+		"slot": active_slot,
+		"reason": reason,
+		"saved_at_unix": Time.get_unix_time_from_system(),
+		"saved_at_datetime": Time.get_datetime_string_from_system(),
+		"level_path": get_level_path(level),
+		"player": collect_player_state(level),
+		"defeated_banshees": collect_defeated_banshees(level),
+		"villagers": collect_villager_states(level),
+	}
+
+
+func get_level_path(level: Node) -> String:
+	if level != null and level.scene_file_path != "":
+		return level.scene_file_path
+
+	var current_scene := get_tree().current_scene
+	if current_scene != null:
+		return current_scene.scene_file_path
+
+	return ""
+
+
+func collect_player_state(level: Node) -> Dictionary:
+	var player := get_tree().get_first_node_in_group("player") as Node2D
+	if player == null:
+		return {}
+
+	var health_node := player.get_node_or_null("Health")
+	var camera := player.get_node_or_null("Camera2D") as Camera2D
+
+	var data := {
+		"node_path": get_relative_node_path(level, player),
+		"position": vector_to_data(player.global_position),
+		"health": {},
+		"stamina": {},
+		"camera_zoom": 2.25,
+	}
+
+	if health_node != null:
+		data["health"] = {
+			"current": int(health_node.get("health")),
+			"max": int(health_node.get("max_health")),
+			"dead": bool(health_node.get("dead")),
+		}
+		data["stamina"] = {
+			"current": float(health_node.get("stamina")),
+			"max": float(health_node.get("max_stamina")),
+		}
+
+	if camera != null:
+		data["camera_zoom"] = camera.zoom.x
+
+	return data
+
+
+func collect_defeated_banshees(level: Node) -> Array:
+	var defeated: Array = []
+	for hostile in get_tree().get_nodes_in_group("hostile_npcs"):
+		if not is_node_in_level(level, hostile):
+			continue
+
+		var is_defeated: bool = bool(hostile.get("dead"))
+		var health_node := hostile.get_node_or_null("Health")
+		if health_node != null:
+			is_defeated = is_defeated or bool(health_node.get("dead"))
+
+		if is_defeated:
+			defeated.append(get_relative_node_path(level, hostile))
+
+	return defeated
+
+
+func collect_villager_states(level: Node) -> Array:
+	var villagers: Array = []
+	for villager in get_tree().get_nodes_in_group("villagers"):
+		if not is_node_in_level(level, villager):
+			continue
+
+		villagers.append({
+			"node_path": get_relative_node_path(level, villager),
+			"paused_by_external_actor": bool(villager.get("paused_by_external_actor")),
+			"external_pause_completed": bool(villager.get("external_pause_completed")),
+		})
+
+	return villagers
+
+
+func apply_player_state(level: Node, player_data: Variant):
+	if not (player_data is Dictionary):
+		return
+
+	var data: Dictionary = player_data
+	var player := get_node_from_saved_path(level, str(data.get("node_path", ""))) as Node2D
+	if player == null:
+		return
+
+	player.global_position = data_to_vector(data.get("position", {}), player.global_position)
+
+	var health_node := player.get_node_or_null("Health")
+	var player_is_dead := false
+	if health_node != null:
+		var health_data: Dictionary = data.get("health", {})
+		var stamina_data: Dictionary = data.get("stamina", {})
+		health_node.set("health", clamp(int(health_data.get("current", health_node.get("health"))), 0, int(health_node.get("max_health"))))
+		player_is_dead = bool(health_data.get("dead", false)) or int(health_node.get("health")) <= 0
+		health_node.set("dead", player_is_dead)
+		health_node.set("stamina", clamp(float(stamina_data.get("current", health_node.get("stamina"))), 0.0, float(health_node.get("max_stamina"))))
+		if health_node.has_signal("health_changed"):
+			health_node.emit_signal("health_changed", health_node.get("health"), health_node.get("max_health"))
+		if health_node.has_signal("stamina_changed"):
+			health_node.emit_signal("stamina_changed", health_node.get("stamina"), health_node.get("max_stamina"))
+
+	if not player_is_dead and player.has_method("restore_after_load"):
+		player.restore_after_load()
+
+	var camera := player.get_node_or_null("Camera2D") as Camera2D
+	if camera != null:
+		var zoom_value := float(data.get("camera_zoom", camera.zoom.x))
+		if camera.has_method("change_zoom"):
+			camera.change_zoom(zoom_value)
+		else:
+			camera.zoom = Vector2(zoom_value, zoom_value)
+
+
+func apply_defeated_banshees(level: Node, defeated_paths: Variant):
+	if not (defeated_paths is Array):
+		return
+
+	var defeated_lookup := {}
+	for saved_path in defeated_paths:
+		defeated_lookup[str(saved_path)] = true
+
+	for hostile in get_tree().get_nodes_in_group("hostile_npcs"):
+		if not is_node_in_level(level, hostile):
+			continue
+
+		var hostile_path := get_relative_node_path(level, hostile)
+		if defeated_lookup.has(hostile_path):
+			apply_defeated_hostile_state(hostile)
+		else:
+			apply_active_hostile_state(hostile)
+
+
+func apply_defeated_hostile_state(hostile: Node):
+	hostile.set("dead", true)
+	var health_node := hostile.get_node_or_null("Health")
+	if health_node != null:
+		health_node.set("dead", true)
+		health_node.set("health", 0)
+	if hostile.has_method("disable_combat_areas"):
+		hostile.disable_combat_areas()
+	hostile.visible = false
+
+
+func apply_active_hostile_state(hostile: Node):
+	if hostile.has_method("restore_after_load"):
+		hostile.restore_after_load()
+		return
+
+	hostile.visible = true
+	hostile.set("dead", false)
+	hostile.set_physics_process(true)
+
+
+func apply_villager_states(level: Node, villager_states: Variant):
+	if not (villager_states is Array):
+		return
+
+	for raw_state in villager_states:
+		if not (raw_state is Dictionary):
+			continue
+
+		var state: Dictionary = raw_state
+		var villager := get_node_from_saved_path(level, str(state.get("node_path", "")))
+		if villager == null:
+			continue
+
+		villager.set("paused_by_external_actor", bool(state.get("paused_by_external_actor", false)))
+		villager.set("external_pause_completed", bool(state.get("external_pause_completed", false)))
+		if villager.has_method("play_idle_animation") and bool(state.get("external_pause_completed", false)):
+			villager.play_idle_animation()
+
+
+func get_relative_node_path(level: Node, node: Node) -> String:
+	if level != null and is_instance_valid(level) and level != node and level.is_ancestor_of(node):
+		return str(level.get_path_to(node))
+
+	return str(node.get_path())
+
+
+func get_node_from_saved_path(level: Node, saved_path: String) -> Node:
+	if saved_path == "":
+		return null
+
+	if level != null:
+		var relative_node := level.get_node_or_null(NodePath(saved_path))
+		if relative_node != null:
+			return relative_node
+
+	return get_node_or_null(NodePath(saved_path))
+
+
+func is_node_in_level(level: Node, node: Node) -> bool:
+	if level == null:
+		return true
+
+	return level == node or level.is_ancestor_of(node)
+
+
+func vector_to_data(value: Vector2) -> Dictionary:
+	return {
+		"x": value.x,
+		"y": value.y,
+	}
+
+
+func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
+	if not (value is Dictionary):
+		return fallback
+
+	var data: Dictionary = value
+	return Vector2(float(data.get("x", fallback.x)), float(data.get("y", fallback.y)))

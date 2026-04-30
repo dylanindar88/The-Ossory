@@ -1,7 +1,8 @@
-[gd_scene load_steps=4 format=3 uid="uid://g14myfiixmlt"]
+[gd_scene load_steps=5 format=3 uid="uid://g14myfiixmlt"]
 
 [ext_resource type="Texture2D" uid="uid://kt72q73n5whk" path="res://assets/buildings/banshee_village/main_house/wall.aseprite" id="1_wall"]
 [ext_resource type="Texture2D" uid="uid://1t6y6b1k0at3" path="res://assets/buildings/banshee_village/main_house/shadow.aseprite" id="2_shadow"]
+[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_2qg2f"]
 size = Vector2(124, 44.25)
@@ -33,11 +34,12 @@ position = Vector2(0.452751, 3.18871)
 scale = Vector2(3.35, 3.35)
 polygon = PackedVector2Array(0, -35, 32.8403, -32.7497, 63.6812, -27.2385, 80.4058, -19.1504, 92.4753, -10.4532, 93.1343, -4.1791, 93.1221, 37.9441, 91.7729, 38.8541, 89.5452, 38.8854, 87.9844, 37.7871, 87.9304, 37.0793, 85.8472, 39.8673, 82.0388, 42.5021, 69.2179, 46.9821, 69.1944, 52.0594, 68.852, 52.5883, 67.8658, 53.0461, 66.51, 53.18, 65.242, 52.8348, 64.2382, 52.1833, 64.2305, 48.1041, 54, 50, 39.2073, 51.8224, 31.048, 52.3585, 31.0216, 57.0154, 30.1905, 57.6486, 29.51, 58, 28, 58, 26.8132, 57.6222, 26.0331, 56.9078, 25.9868, 52.6366, 10.7793, 53.2315, -10.9218, 53.1948, -26.35, 52.595, -26.38, 57, -27.145, 57.687, -28.21, 58, -29.39, 58, -30.636, 57.627, -31.241, 56.992, -31.2835, 52.3799, -46, 51, -57.473, 49.268, -64.5017, 47.9465, -64.5017, 52.205, -65.36, 52.8, -66.579, 53.112, -67.87, 53.115, -68.93, 52.79, -69.607, 52.0556, -69.7109, 46.8183, -81.16, 43.19, -85.119, 40.817, -87.413, 38.582, -88.22, 37.779, -88.567, 38.395, -89.9881, 39.0931, -92.0408, 39.0848, -93.1462, 38.5031, -93.3207, 38.1125, -93.4118, -3.51773, -93, -10, -81, -18, -68, -25, -33, -33)
 
-[node name="Area2D" type="Area2D" parent="."]
+[node name="PlayerProximityArea" type="Area2D" parent="."]
 position = Vector2(0, -116.525)
 collision_layer = 0
-collision_mask = 0
+collision_mask = 2
+script = ExtResource("3_interact")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D"]
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
 position = Vector2(0, 198)
 shape = SubResource("RectangleShape2D_2qg2f")
