@@ -1,5 +1,7 @@
 extends Node
 
+signal upgrade_state_changed
+
 const SAVE_VERSION := 1
 const SAVE_SLOT_COUNT := 3
 const SAVE_PATH_FORMAT := "user://save_slot_%d.json"
@@ -15,6 +17,15 @@ var save_blockers: Dictionary = {}
 var autosave_suppressed: bool = false
 var current_level: Node
 var last_error: String = ""
+var upgrade_state: Dictionary = {
+	"unlocked": {
+		"health": true,
+		"stamina": true,
+		"dash_count": true,
+	},
+	"stat_levels": {},
+	"equipped_weapon_id": "unarmed",
+}
 
 
 func set_active_slot(slot: int) -> bool:
@@ -39,6 +50,91 @@ func get_player_lives() -> int:
 
 func reset_player_lives():
 	player_lives = MAX_PLAYER_LIVES
+
+
+func reset_upgrade_state():
+	upgrade_state = get_default_upgrade_state()
+	upgrade_state_changed.emit()
+
+
+func get_default_upgrade_state() -> Dictionary:
+	return {
+		"unlocked": {
+			"health": true,
+			"stamina": true,
+			"dash_count": true,
+		},
+		"stat_levels": {},
+		"equipped_weapon_id": "unarmed",
+	}
+
+
+func unlock_upgrade(upgrade_id: StringName) -> bool:
+	var id := str(upgrade_id)
+	if id == "":
+		return false
+
+	var unlocked: Dictionary = get_upgrade_unlocked()
+	if bool(unlocked.get(id, false)):
+		return false
+
+	unlocked[id] = true
+	upgrade_state["unlocked"] = unlocked
+	upgrade_state_changed.emit()
+	return true
+
+
+func set_stat_level(stat_id: StringName, level: int) -> bool:
+	var id := str(stat_id)
+	if id == "":
+		return false
+
+	var stat_levels: Dictionary = get_upgrade_stat_levels()
+	var clean_level: int = maxi(level, 0)
+	if int(stat_levels.get(id, 0)) == clean_level:
+		return false
+
+	stat_levels[id] = clean_level
+	upgrade_state["stat_levels"] = stat_levels
+	upgrade_state_changed.emit()
+	return true
+
+
+func get_upgrade_state() -> Dictionary:
+	return upgrade_state.duplicate(true)
+
+
+func apply_upgrade_state(data: Variant):
+	var default_state := get_default_upgrade_state()
+	if data is Dictionary:
+		var source: Dictionary = data
+		var saved_unlocked: Variant = source.get("unlocked", {})
+		if saved_unlocked is Dictionary:
+			var merged_unlocked: Dictionary = default_state["unlocked"]
+			for upgrade_id in saved_unlocked.keys():
+				merged_unlocked[str(upgrade_id)] = bool(saved_unlocked[upgrade_id])
+			default_state["unlocked"] = merged_unlocked
+		default_state["stat_levels"] = source.get("stat_levels", {})
+		default_state["equipped_weapon_id"] = str(source.get("equipped_weapon_id", "unarmed"))
+
+	upgrade_state = default_state
+	upgrade_state_changed.emit()
+
+
+func get_upgrade_unlocked() -> Dictionary:
+	var unlocked: Variant = upgrade_state.get("unlocked", {})
+	if unlocked is Dictionary:
+		return unlocked
+
+	return {}
+
+
+func get_upgrade_stat_levels() -> Dictionary:
+	var stat_levels: Variant = upgrade_state.get("stat_levels", {})
+	if stat_levels is Dictionary:
+		return stat_levels
+
+	return {}
 
 
 func set_save_allowed(allowed: bool):
@@ -316,6 +412,7 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 	if not preserve_current_lives:
 		player_lives = clamp(int(data.get("player_lives", MAX_PLAYER_LIVES)), 0, MAX_PLAYER_LIVES)
 
+	apply_upgrade_state(data.get("upgrade_state", {}))
 	apply_player_state(level, data.get("player", {}))
 	if not uses_level_owned_hostile_state(level):
 		apply_defeated_banshees(level, data.get("defeated_banshees", []))
@@ -355,6 +452,7 @@ func build_save_data(reason: String, level: Node, slot: int) -> Dictionary:
 		"slot": slot,
 		"reason": reason,
 		"player_lives": player_lives,
+		"upgrade_state": get_upgrade_state(),
 		"saved_at_unix": Time.get_unix_time_from_system(),
 		"saved_at_datetime": Time.get_datetime_string_from_system(),
 		"level_path": get_level_path(level),

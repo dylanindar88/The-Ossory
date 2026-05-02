@@ -56,6 +56,7 @@ var combat_enabled: bool = true
 var story_revealed: bool = false
 var story_spawn_position: Vector2
 var story_spawn_facing_left: bool = false
+var suppress_story_detection: bool = false
 
 
 func _ready():
@@ -595,12 +596,24 @@ func collect_story_save_state() -> Dictionary:
 
 
 func reveal_for_story_detection():
-	if dead or not combat_enabled or story_revealed:
+	if dead or not combat_enabled or story_revealed or suppress_story_detection:
 		return
 
 	story_revealed = true
 	modulate.a = 1.0
 	player_detected_for_reveal.emit(self)
+
+
+func begin_story_detection_suppression():
+	# Area monitoring is restored with deferred calls, so ignore one restore-frame
+	# detection pass before allowing story reveal logic to run again.
+	suppress_story_detection = true
+	call_deferred("end_story_detection_suppression_after_physics")
+
+
+func end_story_detection_suppression_after_physics():
+	await get_tree().physics_frame
+	suppress_story_detection = false
 
 
 func restore_after_load():
@@ -652,6 +665,7 @@ func respawn_for_story(hidden_alpha: float):
 
 
 func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
+	begin_story_detection_suppression()
 	var restore_position: Vector2 = get_story_respawn_position()
 	global_position = restore_position
 	restore_after_load()
@@ -670,6 +684,7 @@ func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool,
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
+	begin_story_detection_suppression()
 	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
 	var saved_health: int = int(state.get("health", health.get("max_health")))
 	var saved_facing_left: bool = bool(state.get("facing_left", facing_left))
@@ -816,11 +831,11 @@ func _on_tracking_range_body_exited(body: Node2D):
 
 
 func should_ignore_player_aggro() -> bool:
-	return dead or not combat_enabled or (CombatStateManager != null and CombatStateManager.is_dialogue_active())
+	return dead or not combat_enabled or suppress_story_detection or (CombatStateManager != null and CombatStateManager.is_dialogue_active())
 
 
 func refresh_player_detection_after_dialogue():
-	if dead or not combat_enabled or CombatStateManager.is_dialogue_active():
+	if dead or not combat_enabled or suppress_story_detection or CombatStateManager.is_dialogue_active():
 		return
 
 	var overlapping_player: Node2D = get_overlapping_player(player_detection_area)

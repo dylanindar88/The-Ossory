@@ -1,4 +1,4 @@
-[gd_scene load_steps=40 format=3 uid="uid://tm3ttab50kd3"]
+[gd_scene load_steps=41 format=3 uid="uid://tm3ttab50kd3"]
 
 [ext_resource type="Texture2D" uid="uid://brkmctvq1u5iw" path="res://art/terrain/graves/grave1.aseprite" id="2_v2wya"]
 [ext_resource type="Texture2D" uid="uid://cbuinl7rlsyqa" path="res://art/terrain/graves/grave2.aseprite" id="3_l450g"]
@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://u16duk15fe7q" path="res://scenes/characters/Saorise.tscn" id="23_yc8ub"]
 [ext_resource type="PackedScene" uid="uid://cd8kyptum0qfo" path="res://scenes/ui/HUD.tscn" id="24_jku5t"]
 [ext_resource type="PackedScene" uid="uid://bc1lkm8egp0u3" path="res://scenes/ui/PauseMenu.tscn" id="25_2fapq"]
+[ext_resource type="PackedScene" uid="uid://c2qsd6w62r8xh" path="res://scenes/ui/SkillEquipmentMenu.tscn" id="25_skill_menu"]
 [ext_resource type="TileSet" uid="uid://c7owttvmnh0h2" path="res://resources/terrain/WaterTileSet.tres" id="25_vfn6k"]
 [ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://resources/terrain/GroundTileSet.tres" id="26_nqd4b"]
 [ext_resource type="TileSet" uid="uid://bm2nceghxgf55" path="res://resources/terrain/LogsTileSet.tres" id="27_uivry"]
@@ -675,6 +676,8 @@ scale = Vector2(0.9, 0.9)
 [node name="HUD" parent="." instance=ExtResource("24_jku5t")]
 
 [node name="PauseMenu" parent="." instance=ExtResource("25_2fapq")]
+
+[node name="SkillEquipmentMenu" parent="." instance=ExtResource("25_skill_menu")]
 
 [node name="LevelSaveController" type="Node" parent="."]
 script = ExtResource("35_lsc")

@@ -1,0 +1,14 @@
+[gd_scene load_steps=2 format=3 uid="uid://coygaiygb4nr8"]
+
+[ext_resource type="Script" path="res://scripts/ui/SkillEquipmentSlot.gd" id="1_slot"]
+
+[node name="SkillEquipmentSlot" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 96.0
+offset_bottom = 96.0
+mouse_filter = 2
+script = ExtResource("1_slot")
+
+[node name="Icon" type="AnimatedSprite2D" parent="."]
+position = Vector2(48, 48)
