@@ -334,12 +334,26 @@ func is_dialogue_input_locked() -> bool:
 func hold_dialogue_idle():
 	velocity = Vector2.ZERO
 	health.set_running(false)
+	play_directional_idle()
+
+
+func play_directional_idle():
+	var idle_animation := get_directional_idle_animation()
+	if sprite.sprite_frames != null and not sprite.sprite_frames.has_animation(idle_animation):
+		idle_animation = &"idle"
+
+	sprite.play(idle_animation)
+	sprite.flip_h = idle_animation == &"idle" and last_horizontal_facing == "left"
+
+
+func get_directional_idle_animation() -> StringName:
 	if last_facing == "up":
-		sprite.play("idle_up")
-		sprite.flip_h = false
-	else:
-		sprite.play("idle")
-		sprite.flip_h = last_horizontal_facing == "left"
+		return &"idle_up"
+
+	if last_facing == "down":
+		return &"idle_down"
+
+	return &"idle"
 
 
 func get_move_input_vector() -> Vector2:

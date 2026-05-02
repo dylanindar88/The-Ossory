@@ -125,24 +125,28 @@ func refresh_save_slots():
 	for slot in range(1, SaveManager.SAVE_SLOT_COUNT + 1):
 		var summary := SaveManager.get_slot_summary(slot)
 		var exists: bool = bool(summary.get("exists", false))
+		var is_autosave_slot: bool = SaveManager.has_method("is_autosave_slot") and SaveManager.is_autosave_slot(slot)
+		var slot_label := get_slot_label(slot)
 		var status_label := get_slot_status_label(slot)
 		var overwrite_button := get_slot_button(slot, "OverwriteButton")
 		var load_button := get_slot_button(slot, "LoadButton")
 		var delete_button := get_slot_button(slot, "DeleteButton")
 
+		slot_label.text = "Autosave" if is_autosave_slot else "Slot %d" % slot
 		if exists:
 			status_label.text = get_occupied_slot_text(summary)
 		else:
 			status_label.text = "Empty"
 
-		overwrite_button.disabled = not can_write_saves()
+		overwrite_button.visible = not is_autosave_slot
+		overwrite_button.disabled = is_autosave_slot or not can_write_saves()
 		load_button.disabled = not exists
 		delete_button.disabled = not exists
 
 		overwrite_button.text = "Overwrite" if exists else "Save"
 		delete_button.text = "Delete"
 
-		if pending_confirmation_slot == slot and pending_confirmation_action == "overwrite":
+		if not is_autosave_slot and pending_confirmation_slot == slot and pending_confirmation_action == "overwrite":
 			overwrite_button.text = "Confirm"
 		elif pending_confirmation_slot == slot and pending_confirmation_action == "delete":
 			delete_button.text = "Confirm"
@@ -161,6 +165,12 @@ func get_occupied_slot_text(summary: Dictionary) -> String:
 
 
 func _on_overwrite_slot_pressed(slot: int):
+	if SaveManager.has_method("is_autosave_slot") and SaveManager.is_autosave_slot(slot):
+		save_slots_status_label.text = "Autosave cannot be overwritten manually."
+		clear_pending_confirmation()
+		refresh_save_slots()
+		return
+
 	if SaveManager.save_exists(slot):
 		if not confirm_slot_action(slot, "overwrite", "Press Confirm to overwrite Slot %d" % slot):
 			return
@@ -202,6 +212,10 @@ func confirm_slot_action(slot: int, action: String, message: String) -> bool:
 func clear_pending_confirmation():
 	pending_confirmation_slot = 0
 	pending_confirmation_action = ""
+
+
+func get_slot_label(slot: int) -> Label:
+	return save_slots_view.get_node("SlotList/Slot%d/SlotLabel" % slot) as Label
 
 
 func get_slot_status_label(slot: int) -> Label:

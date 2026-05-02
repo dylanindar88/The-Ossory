@@ -3,14 +3,15 @@ extends Node
 signal upgrade_state_changed
 
 const SAVE_VERSION := 1
-const SAVE_SLOT_COUNT := 3
+const MANUAL_SAVE_SLOT_COUNT := 3
+const AUTOSAVE_SLOT := 4
+const SAVE_SLOT_COUNT := 4
 const SAVE_PATH_FORMAT := "user://save_slot_%d.json"
 const MAX_PLAYER_LIVES := 5
 const LIFE_LOSS_EXTRA_INVULNERABILITY_TIME := 0.5
 
 var active_slot: int = 1
-var autosave_slot: int = 1
-var has_autosave_target: bool = false
+var autosave_slot: int = AUTOSAVE_SLOT
 var player_lives: int = MAX_PLAYER_LIVES
 var save_allowed: bool = true
 var save_blockers: Dictionary = {}
@@ -31,19 +32,25 @@ var upgrade_state: Dictionary = {
 
 
 func set_active_slot(slot: int) -> bool:
-	if not is_valid_slot(slot):
-		last_error = "Save slot %d is outside the supported range." % slot
+	if not is_manual_save_slot(slot):
+		last_error = "Save slot %d is not a manual save slot." % slot
 		return false
 
 	active_slot = slot
-	autosave_slot = slot
-	has_autosave_target = true
 	last_error = ""
 	return true
 
 
 func is_valid_slot(slot: int) -> bool:
 	return slot >= 1 and slot <= SAVE_SLOT_COUNT
+
+
+func is_manual_save_slot(slot: int) -> bool:
+	return slot >= 1 and slot <= MANUAL_SAVE_SLOT_COUNT
+
+
+func is_autosave_slot(slot: int) -> bool:
+	return slot == AUTOSAVE_SLOT
 
 
 func get_player_lives() -> int:
@@ -215,37 +222,17 @@ func autosave_level_exiting(level: Node) -> bool:
 
 
 func save_game(reason: String = "manual", level: Node = null) -> bool:
-	if not ensure_autosave_target():
-		return false
-
-	return write_save_to_slot(autosave_slot, reason, level)
-
-
-func ensure_autosave_target() -> bool:
-	if has_autosave_target and is_valid_slot(autosave_slot):
-		return true
-
-	for slot in range(1, SAVE_SLOT_COUNT + 1):
-		if not save_exists(slot):
-			active_slot = slot
-			autosave_slot = slot
-			has_autosave_target = true
-			return true
-
-	last_error = "Autosave skipped because no save slot has been loaded or overwritten."
-	return false
+	return write_save_to_slot(AUTOSAVE_SLOT, reason, level)
 
 
 func save_game_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
-	if not is_valid_slot(slot):
-		last_error = "Save slot %d is outside the supported range." % slot
+	if not is_manual_save_slot(slot):
+		last_error = "Save slot %d is not a manual save slot." % slot
 		return false
 
 	var save_succeeded: bool = write_save_to_slot(slot, reason, level)
 	if save_succeeded:
 		active_slot = slot
-		autosave_slot = slot
-		has_autosave_target = true
 
 	return save_succeeded
 
@@ -282,7 +269,7 @@ func load_slot_into_current_level(slot: int) -> bool:
 		return false
 
 	var load_succeeded: bool = apply_save_to_current_level(data)
-	if load_succeeded:
+	if load_succeeded and is_manual_save_slot(slot):
 		set_active_slot(slot)
 
 	return load_succeeded

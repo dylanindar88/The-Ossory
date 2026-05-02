@@ -170,15 +170,14 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="SaveSlotsView" type="VBoxContainer" parent="Overlay/Panel"]
-visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
 anchor_right = 0.5
 offset_left = -89.0
-offset_top = -23.0
+offset_top = 37.0
 offset_right = 271.0
-offset_bottom = 710.0
+offset_bottom = 566.0
 grow_horizontal = 2
 scale = Vector2(0.5, 0.5)
 theme_override_constants/separation = 10
@@ -191,10 +190,10 @@ horizontal_alignment = 1
 
 [node name="SlotList" type="VBoxContainer" parent="Overlay/Panel/SaveSlotsView"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 6
 
 [node name="Slot1" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
-custom_minimum_size = Vector2(360, 112)
+custom_minimum_size = Vector2(360, 84)
 layout_mode = 2
 
 [node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1"]
@@ -214,9 +213,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 12.0
-offset_top = 8.0
+offset_top = 5.0
 offset_right = -12.0
-offset_bottom = 31.0
+offset_bottom = 25.0
 grow_horizontal = 2
 text = "Slot 1"
 horizontal_alignment = 1
@@ -226,9 +225,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 12.0
-offset_top = 32.0
+offset_top = 25.0
 offset_right = -12.0
-offset_bottom = 56.0
+offset_bottom = 45.0
 grow_horizontal = 2
 text = "Empty"
 horizontal_alignment = 1
@@ -240,33 +239,33 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 10.0
-offset_top = -46.0
+offset_top = -38.0
 offset_right = -10.0
-offset_bottom = -10.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_constants/separation = 8
 
 [node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1/ButtonRow"]
-custom_minimum_size = Vector2(108, 36)
+custom_minimum_size = Vector2(108, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Overwrite"
 
 [node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1/ButtonRow"]
-custom_minimum_size = Vector2(78, 36)
+custom_minimum_size = Vector2(78, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Load"
 
 [node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot1/ButtonRow"]
-custom_minimum_size = Vector2(78, 36)
+custom_minimum_size = Vector2(78, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Delete"
 
 [node name="Slot2" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
-custom_minimum_size = Vector2(360, 112)
+custom_minimum_size = Vector2(360, 84)
 layout_mode = 2
 
 [node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2"]
@@ -286,9 +285,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 12.0
-offset_top = 8.0
+offset_top = 5.0
 offset_right = -12.0
-offset_bottom = 31.0
+offset_bottom = 25.0
 grow_horizontal = 2
 text = "Slot 2"
 horizontal_alignment = 1
@@ -298,9 +297,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 12.0
-offset_top = 32.0
+offset_top = 25.0
 offset_right = -12.0
-offset_bottom = 56.0
+offset_bottom = 45.0
 grow_horizontal = 2
 text = "Empty"
 horizontal_alignment = 1
@@ -312,33 +311,33 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 10.0
-offset_top = -46.0
+offset_top = -38.0
 offset_right = -10.0
-offset_bottom = -10.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_constants/separation = 8
 
 [node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2/ButtonRow"]
-custom_minimum_size = Vector2(108, 36)
+custom_minimum_size = Vector2(108, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Overwrite"
 
 [node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2/ButtonRow"]
-custom_minimum_size = Vector2(78, 36)
+custom_minimum_size = Vector2(78, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Load"
 
 [node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot2/ButtonRow"]
-custom_minimum_size = Vector2(78, 36)
+custom_minimum_size = Vector2(78, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Delete"
 
 [node name="Slot3" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
-custom_minimum_size = Vector2(360, 112)
+custom_minimum_size = Vector2(360, 84)
 layout_mode = 2
 
 [node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3"]
@@ -358,9 +357,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 12.0
-offset_top = 8.0
+offset_top = 5.0
 offset_right = -12.0
-offset_bottom = 31.0
+offset_bottom = 25.0
 grow_horizontal = 2
 text = "Slot 3"
 horizontal_alignment = 1
@@ -370,9 +369,9 @@ layout_mode = 1
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 12.0
-offset_top = 32.0
+offset_top = 25.0
 offset_right = -12.0
-offset_bottom = 56.0
+offset_bottom = 45.0
 grow_horizontal = 2
 text = "Empty"
 horizontal_alignment = 1
@@ -384,38 +383,111 @@ anchor_top = 1.0
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_left = 10.0
-offset_top = -46.0
+offset_top = -38.0
 offset_right = -10.0
-offset_bottom = -10.0
+offset_bottom = -8.0
 grow_horizontal = 2
 grow_vertical = 0
 theme_override_constants/separation = 8
 
 [node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3/ButtonRow"]
-custom_minimum_size = Vector2(108, 36)
+custom_minimum_size = Vector2(108, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Overwrite"
 
 [node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3/ButtonRow"]
-custom_minimum_size = Vector2(78, 36)
+custom_minimum_size = Vector2(78, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Load"
 
 [node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot3/ButtonRow"]
-custom_minimum_size = Vector2(78, 36)
+custom_minimum_size = Vector2(78, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Delete"
+
+[node name="Slot4" type="Control" parent="Overlay/Panel/SaveSlotsView/SlotList"]
+custom_minimum_size = Vector2(360, 84)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="SlotLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 5.0
+offset_right = -12.0
+offset_bottom = 25.0
+grow_horizontal = 2
+text = "Autosave"
+horizontal_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 12.0
+offset_top = 25.0
+offset_right = -12.0
+offset_bottom = 45.0
+grow_horizontal = 2
+text = "Empty"
+horizontal_alignment = 1
+
+[node name="ButtonRow" type="HBoxContainer" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4"]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = -38.0
+offset_right = -10.0
+offset_bottom = -8.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_constants/separation = 8
+
+[node name="OverwriteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4/ButtonRow"]
+visible = false
+custom_minimum_size = Vector2(108, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Overwrite"
+
+[node name="LoadButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4/ButtonRow"]
+custom_minimum_size = Vector2(78, 30)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Overlay/Panel/SaveSlotsView/SlotList/Slot4/ButtonRow"]
+custom_minimum_size = Vector2(78, 30)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Delete"
 
 [node name="SaveSlotsStatusLabel" type="Label" parent="Overlay/Panel/SaveSlotsView"]
-custom_minimum_size = Vector2(360, 24)
+custom_minimum_size = Vector2(360, 22)
 layout_mode = 2
 horizontal_alignment = 1
 
 [node name="BackOption" type="Control" parent="Overlay/Panel/SaveSlotsView"]
-custom_minimum_size = Vector2(280, 52)
+custom_minimum_size = Vector2(280, 48)
 layout_mode = 2
 
 [node name="Background" type="TextureRect" parent="Overlay/Panel/SaveSlotsView/BackOption"]

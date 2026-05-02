@@ -62,13 +62,7 @@ func update_last_move_axis(player):
 func update_animation(player, dir, is_running):
 	# Idle
 	if dir == Vector2.ZERO:
-		if player.last_facing == "up":
-			player.sprite.play("idle_up")
-			player.sprite.flip_h = false
-		else:
-			player.sprite.play("idle")
-			player.sprite.flip_h = player.last_horizontal_facing == "left"
-
+		player.play_directional_idle()
 		return
 
 	var use_horizontal = false
