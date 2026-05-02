@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://assets/dialogue/DialogueChoiceBubble.gd" id="1_choice"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueChoiceBubble.gd" id="1_choice"]
 
 [node name="DialogueChoiceBubble" type="Node2D"]
 z_as_relative = false

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="PlayerTuning" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/characters/saorise/PlayerTuning.gd" id="1_tuning"]
+
+[resource]
+script = ExtResource("1_tuning")
+walk_speed = 125.0
+run_speed = 250.0
+dash_speed = 470.0
+dash_duration = 0.16
+dash_cooldown = 0.65
+dash_stamina_cost = 8.0
+attack_speed_modifier = 0.9
+attack_damage = 14
+combo_2_damage_multiplier = 1.35
+attack_combo_restart_delay = 0.2
+block_speed_modifier = 0.5
+block_invulnerability_time = 0.25
+block_stamina_cost = 25.0
+block_stamina_drain_rate = 10.0
+run_stamina_drain_rate = 10.0
+max_health = 120
+hits_to_die = 6
+invulnerability_time = 0.65
+max_stamina = 120.0
+stamina_regen_rate = 18.0
+stamina_exhaustion_recovery_ratio = 0.7
+parry_bonus_time = 1.75
+parry_damage_multiplier = 1.35

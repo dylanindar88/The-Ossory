@@ -1,12 +1,15 @@
-[gd_scene load_steps=15 format=3 uid="uid://u16duk15fe7q"]
+[gd_scene load_steps=18 format=3 uid="uid://u16duk15fe7q"]
 
-[ext_resource type="Script" path="res://assets/characters/Saorise/stateMachine.gd" id="1_e5y1c"]
+[ext_resource type="Script" path="res://scripts/characters/saorise/stateMachine.gd" id="1_e5y1c"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
-[ext_resource type="SpriteFrames" uid="uid://y18dodspwu2h" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
-[ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
-[ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
-[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StatBarBorder.aseprite" id="5_61k8r"]
-[ext_resource type="Script" path="res://assets/UI/PlayerStaminaBar.gd" id="5_2813q"]
+[ext_resource type="SpriteFrames" uid="uid://y18dodspwu2h" path="res://resources/characters/saorise/sprites/saoriseMovement.tres" id="2_injfk"]
+[ext_resource type="Script" path="res://scripts/characters/saorise/Camera2D.gd" id="3_2wmxe"]
+[ext_resource type="Script" path="res://scripts/characters/saorise/health/saoriseHealth.gd" id="4_q0m2k"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="5_61k8r"]
+[ext_resource type="Script" path="res://scripts/ui/PlayerStaminaBar.gd" id="5_2813q"]
+[ext_resource type="SpriteFrames" uid="uid://cvmwrihq7kyud" path="res://resources/characters/saorise/sprites/wolfMovement.tres" id="5_db6kb"]
+[ext_resource type="Resource" uid="uid://bnorp2nbf1cjh" path="res://resources/characters/saorise/forms/human_form.tres" id="8_human_form"]
+[ext_resource type="Resource" uid="uid://bjt3jxdpfurt" path="res://resources/characters/saorise/forms/wolf_form.tres" id="9_wolf_form"]
 
 [sub_resource type="Gradient" id="Gradient_stamina_under"]
 offsets = PackedFloat32Array(0.609195)
@@ -41,15 +44,34 @@ texture_filter = 1
 collision_layer = 2
 collision_mask = 13
 script = ExtResource("1_e5y1c")
+form_definitions = Array[Resource("res://scripts/characters/saorise/PlayerFormDefinition.gd")]([ExtResource("8_human_form"), ExtResource("9_wolf_form")])
 
-[node name="Body" type="AnimatedSprite2D" parent="."]
+[node name="Forms" type="Node2D" parent="."]
+
+[node name="HumanForm" type="Node2D" parent="Forms"]
+
+[node name="Body" type="AnimatedSprite2D" parent="Forms/HumanForm"]
 y_sort_enabled = true
 texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"walking"
+animation = &"idle"
+frame_progress = 0.45474
 offset = Vector2(0, -88)
+
+[node name="WolfForm" type="Node2D" parent="Forms"]
+visible = false
+
+[node name="Body" type="AnimatedSprite2D" parent="Forms/WolfForm"]
+y_sort_enabled = true
+texture_filter = 1
+position = Vector2(0, -1)
+scale = Vector2(0.4, 0.4)
+sprite_frames = ExtResource("5_db6kb")
+animation = &"idle"
+frame_progress = 0.107439
+offset = Vector2(0, -61.545)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]
 z_index = 100

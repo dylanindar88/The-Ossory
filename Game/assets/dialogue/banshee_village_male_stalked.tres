@@ -1,7 +1,0 @@
-[gd_resource type="Resource" script_class="DialogueSequence" load_steps=2 format=3 uid="uid://dft3n3nmfkfnl"]
-
-[ext_resource type="Script" path="res://assets/dialogue/DialogueSequence.gd" id="1_sequence"]
-
-[resource]
-script = ExtResource("1_sequence")
-pages = Array[String](["I cannot shake the feeling that something is walking just behind me."])

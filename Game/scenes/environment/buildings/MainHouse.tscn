@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3 uid="uid://g14myfiixmlt"]
 
-[ext_resource type="Texture2D" uid="uid://kt72q73n5whk" path="res://assets/buildings/banshee_village/main_house/wall.aseprite" id="1_wall"]
-[ext_resource type="Texture2D" uid="uid://1t6y6b1k0at3" path="res://assets/buildings/banshee_village/main_house/shadow.aseprite" id="2_shadow"]
-[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
+[ext_resource type="Texture2D" uid="uid://kt72q73n5whk" path="res://art/buildings/banshee_village/main_house/wall.aseprite" id="1_wall"]
+[ext_resource type="Texture2D" uid="uid://1t6y6b1k0at3" path="res://art/buildings/banshee_village/main_house/shadow.aseprite" id="2_shadow"]
+[ext_resource type="Script" path="res://scripts/interactions/InteractableProximityArea.gd" id="3_interact"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_2qg2f"]
 size = Vector2(124, 44.25)

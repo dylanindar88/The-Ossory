@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=2 format=3 uid="uid://cohrnq8brx3gk"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="1_sequence"]
+
+[resource]
+script = ExtResource("1_sequence")
+pages = Array[String](["So they keep coming back? Perhaps we cannot drive them away by ordinary means.", "I think I spotted another unique looking traveller near the cemetary.", "Find them. Maybe they can help."])

@@ -21,8 +21,8 @@ aseprite_executable_path="C:/Program Files (x86)/Steam/steamapps/common/Aseprite
 
 [autoload]
 
-SaveManager="*res://assets/global/SaveManager.gd"
-CombatStateManager="*res://assets/global/CombatStateManager.gd"
+SaveManager="*res://scripts/global/SaveManager.gd"
+CombatStateManager="*res://scripts/global/CombatStateManager.gd"
 
 [display]
 

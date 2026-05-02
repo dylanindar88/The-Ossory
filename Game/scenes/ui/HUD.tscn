@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://cd8kyptum0qfo"]
 
-[ext_resource type="Script" path="res://assets/characters/Saorise/health/healthUI.gd" id="1_ue8h7"]
-[ext_resource type="Texture2D" uid="uid://uq1qdekd7ra3" path="res://assets/UI/HealthBarBorder.aseprite" id="2_bi2l4"]
+[ext_resource type="Script" path="res://scripts/characters/saorise/health/healthUI.gd" id="1_ue8h7"]
+[ext_resource type="Texture2D" uid="uid://uq1qdekd7ra3" path="res://art/ui/HealthBarBorder.aseprite" id="2_bi2l4"]
 
 [sub_resource type="Gradient" id="Gradient_gsh0t"]
 offsets = PackedFloat32Array(0.609195)

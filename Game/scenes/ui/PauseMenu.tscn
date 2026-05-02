@@ -1,8 +1,8 @@
 [gd_scene load_steps=4 format=3 uid="uid://bc1lkm8egp0u3"]
 
-[ext_resource type="Script" path="res://assets/UI/PauseMenu.gd" id="1_jymgs"]
-[ext_resource type="Texture2D" uid="uid://bpifburakfvc8" path="res://assets/UI/PauseMenu.aseprite" id="2_mur0b"]
-[ext_resource type="Texture2D" uid="uid://4cflmlbk2g2t" path="res://assets/UI/MenuOptionBackground.aseprite" id="3_r8i7u"]
+[ext_resource type="Script" path="res://scripts/ui/PauseMenu.gd" id="1_jymgs"]
+[ext_resource type="Texture2D" uid="uid://bpifburakfvc8" path="res://art/ui/PauseMenu.aseprite" id="2_mur0b"]
+[ext_resource type="Texture2D" uid="uid://4cflmlbk2g2t" path="res://art/ui/MenuOptionBackground.aseprite" id="3_r8i7u"]
 
 [node name="PauseMenu" type="CanvasLayer"]
 process_mode = 3

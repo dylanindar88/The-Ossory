@@ -1,0 +1,25 @@
+[remap]
+
+importer="Aseprite AnimatedSprite2D Import"
+type="PackedScene"
+uid="uid://b704s0ojckob6"
+path="res://.godot/imported/celtic_villagers.aseprite-e8612f462783aff81496aa78fc880cd5.scn"
+
+[deps]
+
+source_file="res://art/characters/npcs/celtic_villagers/celtic_villagers.aseprite"
+dest_files=["res://.godot/imported/celtic_villagers.aseprite-e8612f462783aff81496aa78fc880cd5.scn"]
+
+[params]
+
+spritesheet/layout=2
+spritesheet/fixed_rows_count=1
+spritesheet/fixed_columns_count=1
+spritesheet/border_type=0
+spritesheet/trim=false
+spritesheet/ignore_empty=false
+spritesheet/merge_duplicates=false
+animation/default/name="default"
+animation/default/direction=0
+animation/default/repeat_count=0
+animation/autoplay=""

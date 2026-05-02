@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3 uid="uid://cn4omnbpnf7vq"]
 
-[ext_resource type="Script" path="res://assets/UI/EffectList.gd" id="1_hjly0"]
+[ext_resource type="Script" path="res://scripts/ui/EffectList.gd" id="1_hjly0"]
 
 [node name="EffectList" type="Node2D"]
 z_as_relative = false

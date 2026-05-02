@@ -1,0 +1,37 @@
+[gd_resource type="Resource" script_class="PlayerFormDefinition" load_steps=6 format=3 uid="uid://bnorp2nbf1cjh"]
+
+[ext_resource type="Script" path="res://scripts/characters/saorise/PlayerFormDefinition.gd" id="1_form"]
+[ext_resource type="Resource" uid="uid://bqkit6t08gojq" path="res://resources/characters/saorise/player_tuning.tres" id="2_tuning"]
+[ext_resource type="SpriteFrames" uid="uid://y18dodspwu2h" path="res://resources/characters/saorise/sprites/saoriseMovement.tres" id="3_frames"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hurt"]
+radius = 10.3697
+height = 36.0944
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_movement"]
+radius = 3.79308
+height = 22.1699
+
+[resource]
+script = ExtResource("1_form")
+form_id = &"human"
+tuning = ExtResource("2_tuning")
+form_node_path = NodePath("Forms/HumanForm")
+body_node_path = NodePath("Body")
+sprite_frames = ExtResource("3_frames")
+default_animation = &"walking"
+body_position = Vector2(0, -1)
+body_scale = Vector2(0.28, 0.28)
+body_offset = Vector2(0, -88)
+can_attack = true
+can_block = true
+can_dash = true
+can_interact = true
+can_talk = true
+movement_shape = SubResource("CapsuleShape2D_movement")
+movement_shape_position = Vector2(0.0420001, -4.332)
+movement_shape_rotation = 1.5708
+hurt_shape = SubResource("CapsuleShape2D_hurt")
+hurt_shape_position = Vector2(0, -20)
+hurt_shape_rotation = 0.0
+attack_profiles = {}

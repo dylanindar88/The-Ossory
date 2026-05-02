@@ -1,10 +1,10 @@
 [gd_scene load_steps=14 format=3 uid="uid://dfjpsxet38xfl"]
 
-[ext_resource type="Script" path="res://assets/characters/HostileNPCs/Banshees/stateMachine.gd" id="1_q8xm5"]
-[ext_resource type="SpriteFrames" uid="uid://db1m0u34k1o83" path="res://assets/characters/HostileNPCs/Banshees/banshee_animations.tres" id="2_wpb6y"]
-[ext_resource type="Script" path="res://assets/characters/HostileNPCs/Banshees/health/bansheeHealth.gd" id="3_7g3hi"]
-[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StatBarBorder.aseprite" id="4_border"]
-[ext_resource type="Script" path="res://assets/characters/HostileNPCs/Banshees/health/bansheeHealthBar.gd" id="5_health_bar"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/stateMachine.gd" id="1_q8xm5"]
+[ext_resource type="SpriteFrames" uid="uid://db1m0u34k1o83" path="res://resources/characters/hostile_npcs/banshees/banshee_animations.tres" id="2_wpb6y"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/health/bansheeHealth.gd" id="3_7g3hi"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="4_border"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/health/bansheeHealthBar.gd" id="5_health_bar"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_k78ad"]
 radius = 3.82135

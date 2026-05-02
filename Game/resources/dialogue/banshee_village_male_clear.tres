@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="DialogueSequence" load_steps=2 format=3 uid="uid://fj04w5q81kpp"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="1_sequence"]
+
+[resource]
+script = ExtResource("1_sequence")
+pages = Array[String](["The weight on my shoulders is gone somehow."])

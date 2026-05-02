@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="PlayerTuning" load_steps=2 format=3 uid="uid://bqkit6t08gojq"]
+
+[ext_resource type="Script" path="res://scripts/characters/saorise/PlayerTuning.gd" id="1_xl6wd"]
+
+[resource]
+script = ExtResource("1_xl6wd")
+walk_speed = 100.0
+run_speed = null
+dash_speed = null
+dash_duration = null
+dash_cooldown = null
+dash_stamina_cost = null
+attack_speed_modifier = null
+attack_damage = null
+combo_2_damage_multiplier = null
+attack_combo_restart_delay = null
+block_speed_modifier = null
+block_invulnerability_time = null
+block_stamina_cost = null
+block_stamina_drain_rate = null
+run_stamina_drain_rate = null
+max_health = null
+hits_to_die = null
+invulnerability_time = null
+max_stamina = null
+stamina_regen_rate = 25.0
+stamina_exhaustion_recovery_ratio = 0.8
+parry_bonus_time = 2.0
+parry_damage_multiplier = null

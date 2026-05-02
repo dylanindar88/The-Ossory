@@ -1,9 +1,9 @@
 [gd_scene load_steps=8 format=3 uid="uid://dovdo6swg4dc1"]
 
-[ext_resource type="SpriteFrames" uid="uid://lx4mjf6atm64" path="res://assets/characters/NPCs/Dulluhan/dulluhan.tres" id="1_xgdy5"]
+[ext_resource type="SpriteFrames" uid="uid://lx4mjf6atm64" path="res://resources/characters/npcs/dulluhan/dulluhan.tres" id="1_xgdy5"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="2_yk1fj"]
-[ext_resource type="Script" path="res://assets/characters/NPCs/Dulluhan/DulluhanController.gd" id="3_3jwwv"]
-[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="4_gcrss"]
+[ext_resource type="Script" path="res://scripts/characters/npcs/dulluhan/DulluhanController.gd" id="3_3jwwv"]
+[ext_resource type="Script" path="res://scripts/interactions/InteractableProximityArea.gd" id="4_gcrss"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_estjx"]
 radius = 6.0
