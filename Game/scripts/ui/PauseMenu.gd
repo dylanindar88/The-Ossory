@@ -135,7 +135,7 @@ func refresh_save_slots():
 		else:
 			status_label.text = "Empty"
 
-		overwrite_button.disabled = not SaveManager.is_save_allowed()
+		overwrite_button.disabled = not can_write_saves()
 		load_button.disabled = not exists
 		delete_button.disabled = not exists
 
@@ -278,3 +278,10 @@ func update_save_button_state():
 		return
 
 	save_button.disabled = not SaveManager.is_save_allowed()
+
+
+func can_write_saves() -> bool:
+	if SaveManager.has_method("is_save_write_allowed"):
+		return SaveManager.is_save_write_allowed()
+
+	return SaveManager.is_save_allowed()

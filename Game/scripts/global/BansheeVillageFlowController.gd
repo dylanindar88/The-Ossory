@@ -4,9 +4,25 @@ const STAGE_INTRO = "intro"
 const STAGE_COMBAT_ACTIVE = "combat_active"
 const STAGE_READY_TO_REPORT = "ready_to_report"
 const STAGE_REPORT_COMPLETE = "report_complete"
+const DEV_PRESET_NONE = "none"
+const DEV_PRESET_START = "start"
+const DEV_PRESET_ELDER_QUEST_ACCEPTED = "elder_quest_accepted"
+const DEV_PRESET_FIRST_BANSHEE_REPORT_READY = "first_banshee_report_ready"
+const DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE = "elder_report_complete_dulluhan_visible"
+const DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED = "dulluhan_transformation_unlocked"
+const DEV_PRESET_AUTOSAVE_BLOCKER = "banshee_village_dev_preset"
+const DEV_PRESET_SAVE_WRITE_BLOCKER = "banshee_village_dev_preset"
 const LEVEL_STATE_VERSION = 1
 const DIALOGUE_CHOICE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueChoiceBubble.tscn")
 
+@export_enum(
+	"none",
+	"start",
+	"elder_quest_accepted",
+	"first_banshee_report_ready",
+	"elder_report_complete_dulluhan_visible",
+	"dulluhan_transformation_unlocked"
+) var dev_start_preset: String = DEV_PRESET_NONE
 @export var player_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/Saorise")
 @export var npc_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs")
 @export var hostile_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/HostileNPCs")
@@ -55,7 +71,8 @@ func _ready():
 	connect_player_interactions()
 	connect_elder_dialogue()
 	connect_banshees()
-	apply_intro_defaults()
+	if not apply_dev_start_preset():
+		apply_intro_defaults()
 
 
 func collect_level_state() -> Dictionary:
@@ -165,6 +182,87 @@ func normalize_level_state(state: Dictionary) -> Dictionary:
 	var state_version: int = int(normalized_state.get("state_version", 0))
 	normalized_state["state_version"] = clamp(state_version, 0, LEVEL_STATE_VERSION)
 	return normalized_state
+
+
+func apply_dev_start_preset() -> bool:
+	var preset: String = get_valid_dev_start_preset(dev_start_preset)
+	if preset == DEV_PRESET_NONE:
+		if SaveManager != null and SaveManager.has_method("set_autosave_blocked"):
+			SaveManager.set_autosave_blocked(DEV_PRESET_AUTOSAVE_BLOCKER, false)
+		if SaveManager != null and SaveManager.has_method("set_save_write_blocked"):
+			SaveManager.set_save_write_blocked(DEV_PRESET_SAVE_WRITE_BLOCKER, false)
+		return false
+
+	# Dev presets are temporary boot states for testing; skip the level-enter autosave
+	# without using the normal save blocker that also gates menus and interactions.
+	if SaveManager != null:
+		if SaveManager.has_method("set_autosave_blocked"):
+			SaveManager.set_autosave_blocked(DEV_PRESET_AUTOSAVE_BLOCKER, true)
+		else:
+			SaveManager.autosave_suppressed = true
+		if SaveManager.has_method("set_save_write_blocked"):
+			SaveManager.set_save_write_blocked(DEV_PRESET_SAVE_WRITE_BLOCKER, true)
+
+	apply_level_state(build_dev_level_state(preset))
+	if preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED:
+		apply_dev_transformation_unlock()
+	call_deferred("clear_dev_preset_combat_state")
+
+	return true
+
+
+func get_valid_dev_start_preset(preset: String) -> String:
+	if preset == DEV_PRESET_START:
+		return preset
+	if preset == DEV_PRESET_ELDER_QUEST_ACCEPTED:
+		return preset
+	if preset == DEV_PRESET_FIRST_BANSHEE_REPORT_READY:
+		return preset
+	if preset == DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE:
+		return preset
+	if preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED:
+		return preset
+
+	return DEV_PRESET_NONE
+
+
+func build_dev_level_state(preset: String) -> Dictionary:
+	var stage: String = STAGE_INTRO
+	var kill_count: int = 0
+	if preset == DEV_PRESET_ELDER_QUEST_ACCEPTED:
+		stage = STAGE_COMBAT_ACTIVE
+	elif preset == DEV_PRESET_FIRST_BANSHEE_REPORT_READY:
+		stage = STAGE_READY_TO_REPORT
+		kill_count = report_kill_threshold
+	elif preset == DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE or preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED:
+		stage = STAGE_REPORT_COMPLETE
+		kill_count = report_kill_threshold
+
+	return {
+		"state_version": LEVEL_STATE_VERSION,
+		"quest_stage": stage,
+		"banshee_kill_count": kill_count,
+		"revealed_banshee_paths": [],
+		"banshees": [],
+		"villagers": [],
+	}
+
+
+func apply_dev_transformation_unlock():
+	if SaveManager == null:
+		return
+
+	SaveManager.unlock_upgrade(&"wolf_transformation")
+	SaveManager.set_stat_level(&"wolf_transformation", 0)
+	if dulluhan != null:
+		dulluhan.set("transformation_granted", true)
+
+
+func clear_dev_preset_combat_state():
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):
+		CombatStateManager.clear_all()
 
 
 func connect_player_interactions():

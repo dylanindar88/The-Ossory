@@ -684,6 +684,7 @@ script = ExtResource("35_lsc")
 
 [node name="BansheeVillageFlowController" type="Node" parent="."]
 script = ExtResource("36_flow")
+dev_start_preset = "dulluhan_transformation_unlocked"
 elder_reveal_sequence = ExtResource("37_elder_reveal")
 elder_waiting_sequence = ExtResource("38_elder_waiting")
 elder_respawning_sequence = ExtResource("39_elder_respawning")

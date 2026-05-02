@@ -14,7 +14,9 @@ var has_autosave_target: bool = false
 var player_lives: int = MAX_PLAYER_LIVES
 var save_allowed: bool = true
 var save_blockers: Dictionary = {}
+var save_write_blockers: Dictionary = {}
 var autosave_suppressed: bool = false
+var autosave_blockers: Dictionary = {}
 var current_level: Node
 var last_error: String = ""
 var upgrade_state: Dictionary = {
@@ -151,8 +153,32 @@ func set_save_blocked(blocker: String, blocked: bool):
 		save_blockers.erase(blocker)
 
 
+func set_save_write_blocked(blocker: String, blocked: bool):
+	if blocker == "":
+		return
+
+	if blocked:
+		save_write_blockers[blocker] = true
+	else:
+		save_write_blockers.erase(blocker)
+
+
+func set_autosave_blocked(blocker: String, blocked: bool):
+	if blocker == "":
+		return
+
+	if blocked:
+		autosave_blockers[blocker] = true
+	else:
+		autosave_blockers.erase(blocker)
+
+
 func is_save_allowed() -> bool:
 	return save_allowed and save_blockers.is_empty()
+
+
+func is_save_write_allowed() -> bool:
+	return is_save_allowed() and save_write_blockers.is_empty()
 
 
 func get_save_disabled_message() -> String:
@@ -164,6 +190,9 @@ func get_save_disabled_message() -> String:
 
 	if not save_blockers.is_empty():
 		return "Saving is currently disabled."
+
+	if not save_write_blockers.is_empty():
+		return "Saving is disabled for this dev preset."
 
 	return ""
 
@@ -222,7 +251,7 @@ func save_game_to_slot(slot: int, reason: String = "manual", level: Node = null)
 
 
 func write_save_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
-	if not is_save_allowed():
+	if not is_save_write_allowed():
 		last_error = get_save_disabled_message()
 		return false
 
@@ -358,6 +387,9 @@ func reset_current_level_for_dev() -> bool:
 
 
 func should_skip_autosave(reason: String) -> bool:
+	if not autosave_blockers.is_empty():
+		return true
+
 	if not autosave_suppressed:
 		return false
 
