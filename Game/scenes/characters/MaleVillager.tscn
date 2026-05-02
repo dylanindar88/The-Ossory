@@ -1,7 +1,7 @@
 [gd_scene load_steps=7 format=3 uid="uid://dyvbu4ijn2dlw"]
 
-[ext_resource type="SpriteFrames" uid="uid://dfblj0cvbk4bs" path="res://assets/characters/NPCs/male_villager.tres" id="1_5c7ri"]
-[ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_os5rw"]
+[ext_resource type="SpriteFrames" uid="uid://dfblj0cvbk4bs" path="res://assets/characters/NPCs/Celtic Villagers/male_villager.tres" id="1_5c7ri"]
+[ext_resource type="Script" path="res://assets/characters/NPCs/Celtic Villagers/villagerController.gd" id="2_os5rw"]
 [ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
 [ext_resource type="Resource" uid="uid://d1u5ev81tare8" path="res://assets/dialogue/villager_male_default.tres" id="4_dialogue"]
 
@@ -18,6 +18,7 @@ texture_filter = 1
 collision_layer = 8
 collision_mask = 15
 script = ExtResource("2_os5rw")
+ambient_enabled = true
 dialogue_bank = ExtResource("4_dialogue")
 
 [node name="Body" type="AnimatedSprite2D" parent="."]

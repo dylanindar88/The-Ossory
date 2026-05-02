@@ -1,0 +1,55 @@
+[gd_scene load_steps=8 format=3 uid="uid://dovdo6swg4dc1"]
+
+[ext_resource type="SpriteFrames" uid="uid://lx4mjf6atm64" path="res://assets/characters/NPCs/Dulluhan/dulluhan.tres" id="1_xgdy5"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="2_yk1fj"]
+[ext_resource type="Script" path="res://assets/characters/NPCs/Dulluhan/DulluhanController.gd" id="3_3jwwv"]
+[ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="4_gcrss"]
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_estjx"]
+radius = 6.0
+height = 40.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_uofg7"]
+radius = 49.366
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_i6yc5"]
+radius = 120.0
+
+[node name="Dulluhan" type="CharacterBody2D"]
+y_sort_enabled = true
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("3_3jwwv")
+
+[node name="Body" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.6, 0.6)
+sprite_frames = ExtResource("1_xgdy5")
+animation = &"idle"
+frame_progress = 0.662954
+offset = Vector2(0, -53)
+
+[node name="Effects" parent="." instance=ExtResource("2_yk1fj")]
+position = Vector2(0, -60)
+scale = Vector2(1.5, 1.5)
+
+[node name="MovementBox" type="CollisionShape2D" parent="."]
+position = Vector2(0, -5)
+rotation = 1.5708
+shape = SubResource("CapsuleShape2D_estjx")
+
+[node name="PlayerProximityArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("4_gcrss")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerProximityArea"]
+shape = SubResource("CircleShape2D_uofg7")
+
+[node name="PlayerDetectionArea" type="Area2D" parent="."]
+collision_layer = 0
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="PlayerDetectionArea"]
+position = Vector2(0, -20)
+shape = SubResource("CircleShape2D_i6yc5")
+debug_color = Color(0.631373, 0.529412, 0, 0.419608)

@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 signal dialogue_finished(villager: Node)
+signal player_left_proximity(villager: Node)
 
 const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
 
@@ -8,6 +9,26 @@ const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubb
 @export var patrol_ping_pong: bool = false
 @export var walk_speed: float = 45.0
 @export var arrival_distance: float = 6.0
+@export_group("Ambient Patrol")
+@export var ambient_enabled: bool = false
+@export_range(0.1, 10.0, 0.1) var ambient_check_interval_seconds: float = 1.25
+@export_range(0.0, 1.0, 0.01) var ambient_stop_chance: float = 0.05
+@export var ambient_stop_cooldown_seconds: float = 7.0
+@export var ambient_idle_min_seconds: float = 1.0
+@export var ambient_idle_max_seconds: float = 2.25
+@export var ambient_marker_stop_radius: float = 32.0
+@export var ambient_marker_stop_multiplier: float = 2.0
+@export var ambient_house_stop_radius: float = 38.0
+@export var ambient_house_stop_multiplier: float = 4.0
+@export var ambient_house_idle_min_seconds: float = 1.5
+@export var ambient_house_idle_max_seconds: float = 3.5
+@export_range(0.0, 1.0, 0.01) var ambient_reverse_chance: float = 0.18
+@export_range(0.0, 1.0, 0.01) var ambient_social_chance: float = 0.14
+@export var ambient_social_radius: float = 54.0
+@export var ambient_social_cooldown_seconds: float = 12.0
+@export var ambient_social_min_seconds: float = 1.5
+@export var ambient_social_max_seconds: float = 3.25
+@export_group("")
 @export var dialogue_bank: DialogueBank
 @export var dialogue_override_sequence: DialogueSequence
 
@@ -25,16 +46,28 @@ var last_move_direction: Vector2 = Vector2.ZERO
 var dialogue_active: bool = false
 var active_dialogue_bubble: DialogueBubble
 var current_dialogue_player: Node2D
+var ambient_behavior: VillagerAmbientPatrolBehavior = VillagerAmbientPatrolBehavior.new()
 
 
 func _ready():
 	add_to_group("villagers")
 	connect_player_proximity_area()
 	refresh_patrol_points()
+	ambient_behavior.setup(self, patrol_path)
 
 
 func _physics_process(delta):
 	if should_idle() or not has_patrol_route():
+		clear_ambient_behavior()
+		velocity = Vector2.ZERO
+		play_idle_animation()
+		return
+
+	ambient_behavior.update(delta, can_start_ambient_behavior())
+	if ambient_behavior.consume_reverse_after_idle():
+		patrol_route.reverse_direction()
+
+	if ambient_behavior.is_busy():
 		velocity = Vector2.ZERO
 		play_idle_animation()
 		return
@@ -113,6 +146,7 @@ func apply_story_save_state(state: Dictionary):
 	if dialogue_active:
 		end_dialogue()
 
+	clear_ambient_behavior()
 	global_position = data_to_vector(state.get("position", {}), global_position)
 	velocity = Vector2.ZERO
 	last_facing = str(state.get("last_facing", last_facing))
@@ -178,12 +212,42 @@ func should_idle() -> bool:
 	return external_pause_completed or paused_by_external_actor or player_in_proximity or dialogue_active
 
 
+func can_start_ambient_behavior() -> bool:
+	return ambient_enabled and has_patrol_route() and not should_idle()
+
+
+func clear_ambient_behavior():
+	if ambient_behavior != null:
+		var partner: Node2D = ambient_behavior.get_social_partner()
+		ambient_behavior.reset()
+		if partner != null and partner.has_method("cancel_ambient_social_with"):
+			partner.cancel_ambient_social_with(self)
+
+
+func cancel_ambient_social_with(partner: Node2D):
+	if ambient_behavior != null:
+		ambient_behavior.cancel_social_with(partner)
+
+
+func is_available_for_ambient_social() -> bool:
+	return can_start_ambient_behavior() and ambient_behavior != null and not ambient_behavior.is_busy()
+
+
+func begin_ambient_social(partner: Node2D, duration: float):
+	if not is_available_for_ambient_social():
+		return
+
+	ambient_behavior.start_social_with(partner, duration)
+
+
 func is_player_nearby() -> bool:
 	return player_in_proximity
 
 
 func refresh_patrol_points():
 	patrol_route.refresh(self, patrol_path)
+	if ambient_behavior != null:
+		ambient_behavior.refresh_markers(patrol_path)
 
 
 func has_patrol_route() -> bool:
@@ -327,6 +391,9 @@ func interact(player: Node2D):
 			active_dialogue_bubble.advance()
 		return
 
+	if CombatStateManager != null and not CombatStateManager.can_start_dialogue():
+		return
+
 	var sequence: DialogueSequence = get_dialogue_sequence()
 	if sequence == null or sequence.is_empty():
 		return
@@ -345,11 +412,18 @@ func get_dialogue_sequence() -> DialogueSequence:
 
 
 func start_dialogue(player: Node2D, sequence: DialogueSequence):
+	if CombatStateManager != null and not CombatStateManager.can_start_dialogue():
+		return
+
 	current_dialogue_player = player
 	dialogue_active = true
 	velocity = Vector2.ZERO
 	face_node(player)
 	play_idle_animation()
+	if CombatStateManager != null:
+		CombatStateManager.set_dialogue_active(true)
+	if current_dialogue_player != null and current_dialogue_player.has_method("set_dialogue_input_locked"):
+		current_dialogue_player.set_dialogue_input_locked(true)
 
 	active_dialogue_bubble = DIALOGUE_BUBBLE_SCENE.instantiate() as DialogueBubble
 	add_child(active_dialogue_bubble)
@@ -385,8 +459,13 @@ func face_node(node: Node2D):
 func _on_dialogue_bubble_closed(completed: bool = false):
 	active_dialogue_bubble = null
 	var was_dialogue_active: bool = dialogue_active
+	var dialogue_player: Node2D = current_dialogue_player
 	dialogue_active = false
 	current_dialogue_player = null
+	if dialogue_player != null and is_instance_valid(dialogue_player) and dialogue_player.has_method("set_dialogue_input_locked"):
+		dialogue_player.set_dialogue_input_locked(false)
+	if CombatStateManager != null:
+		CombatStateManager.set_dialogue_active(false)
 	if was_dialogue_active and completed:
 		dialogue_finished.emit(self)
 
@@ -403,10 +482,8 @@ func _on_player_proximity_body_exited(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
-	if dialogue_active:
-		end_dialogue()
-
 	player_in_proximity = false
 	if player_proximity_needs_resync:
 		resync_patrol_route_to_current_position()
 		player_proximity_needs_resync = false
+	player_left_proximity.emit(self)

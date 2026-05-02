@@ -1,6 +1,6 @@
 [gd_resource type="SpriteFrames" load_steps=50 format=3 uid="uid://bu3fr7lt77n16"]
 
-[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://assets/characters/NPCs/celtic_villagers.png" id="1_o26b3"]
+[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://assets/characters/NPCs/Celtic Villagers/celtic_villagers.png" id="1_o26b3"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_arj3g"]
 atlas = ExtResource("1_o26b3")

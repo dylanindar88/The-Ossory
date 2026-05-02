@@ -23,6 +23,7 @@ const DEFAULT_TUNING: BansheeTuning = preload("res://assets/characters/HostileNP
 @onready var tracking_range: Area2D = $TrackingRange
 
 var current_state
+var current_state_name: String = ""
 var states: Dictionary = {}
 var hitbox_manager: BansheeAttackBoxManager
 var player: Node2D
@@ -172,8 +173,10 @@ func change_state(state_name: String):
 	if current_state:
 		current_state.exit(self)
 
+	current_state_name = state_name
 	current_state = states[state_name]
 	current_state.enter(self)
+	update_combat_engagement()
 
 
 func get_default_state() -> String:
@@ -520,6 +523,7 @@ func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
 	if not enabled:
 		story_revealed = false
 		stop_health_regeneration()
+		clear_combat_engagement()
 	player_in_detection = false
 	player_in_attack_range = false
 	player_in_tracking = false
@@ -555,6 +559,7 @@ func hide_as_story_defeated(hidden_alpha: float):
 	dead = true
 	visible = false
 	velocity = Vector2.ZERO
+	clear_combat_engagement()
 	stop_health_regeneration()
 	set_physics_process(false)
 	disable_combat_areas()
@@ -602,6 +607,7 @@ func restore_after_load():
 	dead = false
 	visible = true
 	velocity = Vector2.ZERO
+	clear_combat_engagement()
 	attack_cooldown_timer = 0.0
 	player_in_detection = false
 	player_in_attack_range = false
@@ -738,6 +744,7 @@ func get_story_respawn_position() -> Vector2:
 
 func _on_died():
 	dead = true
+	clear_combat_engagement()
 	stop_health_regeneration()
 	notify_assigned_villager_banshee_defeated()
 	change_state("death")
@@ -748,40 +755,54 @@ func _on_player_detection_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	if should_ignore_player_aggro():
+		return
+
 	player = body
 	player_in_detection = true
 	player_in_tracking = true
 	stop_health_regeneration()
 	reveal_for_story_detection()
+	update_combat_engagement()
 
 
 func _on_player_detection_body_exited(body: Node2D):
 	if body == player:
 		player_in_detection = false
+		update_combat_engagement()
 
 
 func _on_attack_range_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	if should_ignore_player_aggro():
+		return
+
 	player = body
 	player_in_attack_range = true
 	player_in_tracking = true
 	stop_health_regeneration()
+	update_combat_engagement()
 
 
 func _on_attack_range_body_exited(body: Node2D):
 	if body == player:
 		player_in_attack_range = false
+		update_combat_engagement()
 
 
 func _on_tracking_range_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	if should_ignore_player_aggro():
+		return
+
 	player = body
 	player_in_tracking = true
 	stop_health_regeneration()
+	update_combat_engagement()
 
 
 func _on_tracking_range_body_exited(body: Node2D):
@@ -791,6 +812,67 @@ func _on_tracking_range_body_exited(body: Node2D):
 	player_in_tracking = false
 	player_in_detection = false
 	player_in_attack_range = false
+	update_combat_engagement()
+
+
+func should_ignore_player_aggro() -> bool:
+	return dead or not combat_enabled or (CombatStateManager != null and CombatStateManager.is_dialogue_active())
+
+
+func refresh_player_detection_after_dialogue():
+	if dead or not combat_enabled or CombatStateManager.is_dialogue_active():
+		return
+
+	var overlapping_player: Node2D = get_overlapping_player(player_detection_area)
+	if overlapping_player == null:
+		return
+
+	player = overlapping_player
+	player_in_detection = true
+	player_in_tracking = true
+	player_in_attack_range = get_overlapping_player(attack_range) != null
+	stop_health_regeneration()
+	reveal_for_story_detection()
+	if current_state_name == "idle" or current_state_name == "patrol" or current_state_name == "return_to_patrol":
+		change_state("scream")
+	else:
+		update_combat_engagement()
+
+
+func get_overlapping_player(area: Area2D) -> Node2D:
+	if area == null:
+		return null
+
+	for body in area.get_overlapping_bodies():
+		if body is Node2D and body.is_in_group("player"):
+			return body as Node2D
+
+	return null
+
+
+func update_combat_engagement():
+	if CombatStateManager == null:
+		return
+
+	CombatStateManager.set_hostile_engaged(self, is_currently_engaging_player())
+
+
+func clear_combat_engagement():
+	if CombatStateManager != null:
+		CombatStateManager.clear_hostile(self)
+
+
+func is_currently_engaging_player() -> bool:
+	if dead or not combat_enabled or CombatStateManager.is_dialogue_active():
+		return false
+
+	if current_state_name == "scream" or current_state_name == "chase" or current_state_name == "attack":
+		return has_player_target() and player_in_tracking
+
+	if current_state_name == "hurt":
+		return has_player_target() and player_in_tracking
+
+	return false
 
 
 func start_health_regeneration():

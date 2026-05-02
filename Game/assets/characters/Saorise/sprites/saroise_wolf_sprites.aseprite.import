@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bb7r27d1vao4h"
-path="res://.godot/imported/celtic_villagers.png-f8db88145bcad7d59a4a7ba7d08ce4ee.ctex"
+uid="uid://cefehsbsuvc3m"
+path="res://.godot/imported/saroise_wolf_sprites.aseprite-c3a8a83e71c69adbc1de62f95f8dc916.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/NPCs/celtic_villagers.png"
-dest_files=["res://.godot/imported/celtic_villagers.png-f8db88145bcad7d59a4a7ba7d08ce4ee.ctex"]
+source_file="res://assets/characters/Saorise/sprites/saroise_wolf_sprites.aseprite"
+dest_files=["res://.godot/imported/saroise_wolf_sprites.aseprite-c3a8a83e71c69adbc1de62f95f8dc916.ctex"]
 
 [params]
 

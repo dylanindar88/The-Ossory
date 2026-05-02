@@ -2,13 +2,13 @@
 
 importer="Aseprite AnimatedSprite2D Import"
 type="PackedScene"
-uid="uid://b704s0ojckob6"
-path="res://.godot/imported/celtic_villagers.aseprite-0d69af811bd17ee706a6a4e7be8d3ca8.scn"
+uid="uid://c78oh5ruviav8"
+path="res://.godot/imported/dulluhan.aseprite-6824f02db7f9121b7d2d46695c5acdc6.scn"
 
 [deps]
 
-source_file="res://assets/characters/NPCs/celtic_villagers.aseprite"
-dest_files=["res://.godot/imported/celtic_villagers.aseprite-0d69af811bd17ee706a6a4e7be8d3ca8.scn"]
+source_file="res://assets/characters/NPCs/Dulluhan/dulluhan.aseprite"
+dest_files=["res://.godot/imported/dulluhan.aseprite-6824f02db7f9121b7d2d46695c5acdc6.scn"]
 
 [params]
 

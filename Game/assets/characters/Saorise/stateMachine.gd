@@ -39,6 +39,8 @@ var block_speed_modifier: float
 var nearby_interactables: Array[Node2D] = []
 var current_interactable: Node2D
 var pending_interaction_target: Node2D
+var dialogue_input_locked: bool = false
+var blink_generation: int = 0
 
 
 func _ready():
@@ -72,6 +74,8 @@ func _ready():
 
 	if not health.died.is_connected(_on_died):
 		health.died.connect(_on_died)
+	if health.has_signal("blink_requested") and not health.blink_requested.is_connected(_on_blink_requested):
+		health.blink_requested.connect(_on_blink_requested)
 
 	change_state("move")
 
@@ -106,6 +110,11 @@ func _physics_process(delta):
 	if attack_cooldown_timer > 0:
 		attack_cooldown_timer -= delta
 
+	if dialogue_input_locked:
+		hold_dialogue_idle()
+		update_effects()
+		return
+
 	if current_state:
 		current_state.physics_update(self, delta)
 
@@ -114,6 +123,9 @@ func _physics_process(delta):
 
 func _unhandled_input(event: InputEvent):
 	if dead:
+		return
+
+	if dialogue_input_locked:
 		return
 
 	if event.is_action_pressed("interact"):
@@ -147,6 +159,44 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, damage_sourc
 		current_state.prepare_for_incoming_damage(self)
 
 	return health.take_damage(amount, ignore_invulnerability, damage_source)
+
+
+func set_dialogue_input_locked(locked: bool):
+	if dialogue_input_locked == locked:
+		return
+
+	dialogue_input_locked = locked
+	velocity = Vector2.ZERO
+	pending_interaction_target = null
+	can_attack_from_hold = false
+
+	if hitbox_manager:
+		hitbox_manager.deactivate_attack_hitbox()
+
+	health.set_blocking(false)
+	health.set_parry_window(false)
+	health.end_parry_bonus()
+
+	if dialogue_input_locked and current_state != states.get("move"):
+		change_state("move")
+
+	hold_dialogue_idle()
+	update_effects()
+
+
+func is_dialogue_input_locked() -> bool:
+	return dialogue_input_locked
+
+
+func hold_dialogue_idle():
+	velocity = Vector2.ZERO
+	health.set_running(false)
+	if last_facing == "up":
+		sprite.play("idle_up")
+		sprite.flip_h = false
+	else:
+		sprite.play("idle")
+		sprite.flip_h = last_horizontal_facing == "left"
 
 
 func get_move_input_vector() -> Vector2:
@@ -259,6 +309,9 @@ func unregister_interactable(interactable: Node2D):
 
 
 func get_current_interactable() -> Node2D:
+	if CombatStateManager != null and CombatStateManager.is_in_combat():
+		return null
+
 	prune_invalid_interactables()
 
 	var nearest_interactable: Node2D = null
@@ -287,10 +340,14 @@ func has_interactable(interactable: Node2D) -> bool:
 
 
 func try_interact_with(interactable: Node2D):
+	if CombatStateManager != null and not CombatStateManager.can_start_dialogue():
+		return
+
 	interaction_requested.emit(interactable)
 
 
 func _on_died():
+	stop_sprite_blink()
 	dead = true
 	velocity = Vector2.ZERO
 	health.set_blocking(false)
@@ -313,19 +370,40 @@ func _on_died():
 			child.set_deferred("disabled", true)
 
 	visible = false
+	call_deferred("respawn_after_death")
 
 
-func restore_after_load():
+func respawn_after_death():
+	if SaveManager != null and SaveManager.has_method("spend_life_and_respawn_player_in_place"):
+		SaveManager.spend_life_and_respawn_player_in_place()
+
+
+func soft_respawn_in_place(extra_invulnerability_time: float = 0.0):
+	soft_respawn_at_position(global_position, extra_invulnerability_time)
+
+
+func soft_respawn_at_position(respawn_position: Vector2, extra_invulnerability_time: float = 0.0):
+	stop_sprite_blink()
+	global_position = respawn_position
 	dead = false
 	visible = true
 	velocity = Vector2.ZERO
 	nearby_interactables.clear()
 	current_interactable = null
 	pending_interaction_target = null
+	dialogue_input_locked = false
+	can_attack_from_hold = false
 	set_physics_process(true)
+
+	if hitbox_manager:
+		hitbox_manager.deactivate_attack_hitbox()
+
+	if health.has_method("restore_full_after_respawn"):
+		health.restore_full_after_respawn(extra_invulnerability_time)
 
 	if sprite != null:
 		sprite.speed_scale = 1.0
+		sprite.modulate.a = 1.0
 
 	for area in [hurt_box, attack_box]:
 		area.set_deferred("monitoring", true)
@@ -340,3 +418,63 @@ func restore_after_load():
 
 	if states.has("move"):
 		change_state("move")
+
+	hold_dialogue_idle()
+	update_effects()
+
+
+func restore_after_load():
+	stop_sprite_blink()
+	dead = false
+	visible = true
+	velocity = Vector2.ZERO
+	nearby_interactables.clear()
+	current_interactable = null
+	pending_interaction_target = null
+	dialogue_input_locked = false
+	set_physics_process(true)
+
+	if sprite != null:
+		sprite.speed_scale = 1.0
+		sprite.modulate.a = 1.0
+
+	for area in [hurt_box, attack_box]:
+		area.set_deferred("monitoring", true)
+		area.set_deferred("monitorable", true)
+		for child in area.get_children():
+			if child is CollisionShape2D:
+				child.set_deferred("disabled", false)
+
+	for child in get_children():
+		if child is CollisionShape2D:
+			child.set_deferred("disabled", false)
+
+	if states.has("move"):
+		change_state("move")
+
+
+func _on_blink_requested(duration: float):
+	blink_generation += 1
+	var current_blink_generation: int = blink_generation
+	blink_sprite_for_duration(duration, current_blink_generation)
+
+
+func blink_sprite_for_duration(duration: float, current_blink_generation: int):
+	if sprite == null:
+		return
+
+	var elapsed: float = 0.0
+	var blink_interval: float = 0.08
+	while elapsed < duration and current_blink_generation == blink_generation:
+		sprite.modulate.a = 0.35 if sprite.modulate.a >= 1.0 else 1.0
+		await get_tree().create_timer(blink_interval).timeout
+		elapsed += blink_interval
+
+	if current_blink_generation == blink_generation and sprite != null:
+		sprite.modulate.a = 1.0
+
+
+func stop_sprite_blink():
+	blink_generation += 1
+	if sprite != null:
+		sprite.modulate.a = 1.0

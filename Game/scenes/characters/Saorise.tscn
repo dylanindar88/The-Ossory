@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" path="res://assets/characters/Saorise/stateMachine.gd" id="1_e5y1c"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
-[ext_resource type="SpriteFrames" uid="uid://bq7x1kr2nahdp" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
+[ext_resource type="SpriteFrames" uid="uid://y18dodspwu2h" path="res://assets/characters/Saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://assets/characters/Saorise/health/saoriseHealth.gd" id="4_q0m2k"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://assets/UI/StatBarBorder.aseprite" id="5_61k8r"]
@@ -48,7 +48,7 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"unarmed_attack_1"
+animation = &"walking"
 offset = Vector2(0, -88)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]

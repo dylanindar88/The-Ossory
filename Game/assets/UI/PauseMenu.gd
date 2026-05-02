@@ -107,7 +107,7 @@ func open_options():
 
 func open_save_slots():
 	if not SaveManager.is_save_allowed():
-		save_status_label.text = "Saving Disabled"
+		save_status_label.text = SaveManager.get_save_disabled_message()
 		update_save_button_state()
 		return
 
@@ -166,7 +166,7 @@ func _on_overwrite_slot_pressed(slot: int):
 			return
 
 	var save_succeeded := SaveManager.save_game_to_slot(slot, "manual")
-	save_slots_status_label.text = ("Slot %d Saved" % slot) if save_succeeded else "Save Failed"
+	save_slots_status_label.text = ("Slot %d Saved" % slot) if save_succeeded else SaveManager.get_save_disabled_message()
 	clear_pending_confirmation()
 	refresh_save_slots()
 
@@ -270,7 +270,7 @@ func set_pause_allowed(allowed: bool):
 
 
 func can_pause() -> bool:
-	return pause_allowed and SaveManager.is_save_allowed()
+	return pause_allowed
 
 
 func update_save_button_state():

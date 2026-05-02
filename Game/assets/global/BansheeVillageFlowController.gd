@@ -5,13 +5,15 @@ const STAGE_COMBAT_ACTIVE = "combat_active"
 const STAGE_READY_TO_REPORT = "ready_to_report"
 const STAGE_REPORT_COMPLETE = "report_complete"
 const LEVEL_STATE_VERSION = 1
+const DIALOGUE_CHOICE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueChoiceBubble.tscn")
 
 @export var player_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/Saorise")
 @export var npc_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs")
 @export var hostile_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/HostileNPCs")
 @export var elder_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs/ElderVillager")
+@export var dulluhan_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs/Dulluhan")
 @export var kill_counter_path: NodePath = NodePath("../HUD/BansheeKillCounter")
-@export var hidden_banshee_alpha: float = 0.1
+@export var hidden_banshee_alpha: float = 0.2
 @export var respawn_delay_seconds: float = 10.0
 @export var report_kill_threshold: int = 10
 @export var elder_reveal_sequence: DialogueSequence
@@ -31,8 +33,10 @@ var saved_banshee_states: Dictionary = {}
 var saved_villager_states: Dictionary = {}
 var player: Node
 var elder: Node
+var dulluhan: Node
 var elder_flag: EffectList
 var kill_counter: Label
+var elder_choice_bubble: DialogueChoiceBubble
 var banshees: Array[Node] = []
 var state_generation: int = 0
 
@@ -40,8 +44,11 @@ var state_generation: int = 0
 func _ready():
 	player = get_node_or_null(player_path)
 	elder = get_node_or_null(elder_path)
+	dulluhan = get_node_or_null(dulluhan_path)
 	if elder != null:
-		elder_flag = elder.get_node_or_null("Flag") as EffectList
+		elder_flag = elder.get_node_or_null("Effects") as EffectList
+		if elder_flag == null:
+			elder_flag = elder.get_node_or_null("Flag") as EffectList
 	kill_counter = get_node_or_null(kill_counter_path) as Label
 	banshees = get_banshees()
 
@@ -89,6 +96,8 @@ func validate_level_state(state: Dictionary) -> Array:
 		messages.append("BansheeVillageFlowController could not find elder at %s." % elder_path)
 	if kill_counter == null:
 		messages.append("BansheeVillageFlowController could not find kill counter at %s." % kill_counter_path)
+	if dulluhan == null:
+		messages.append("BansheeVillageFlowController could not find Dulluhan at %s." % dulluhan_path)
 
 	append_missing_actor_path_warnings(messages, state.get("banshees", []), "banshee")
 	append_missing_actor_path_warnings(messages, state.get("villagers", []), "villager")
@@ -168,13 +177,13 @@ func connect_player_interactions():
 
 
 func connect_elder_dialogue():
-	if elder == null or not elder.has_signal("dialogue_finished"):
+	if elder == null:
 		return
 
-	var callback: Callable = Callable(self, "_on_elder_dialogue_finished")
-	if not elder.is_connected("dialogue_finished", callback):
-		elder.connect("dialogue_finished", callback)
-
+	if elder.has_signal("dialogue_finished"):
+		var callback: Callable = Callable(self, "_on_elder_dialogue_finished")
+		if not elder.is_connected("dialogue_finished", callback):
+			elder.connect("dialogue_finished", callback)
 
 func connect_banshees():
 	for banshee in banshees:
@@ -254,6 +263,7 @@ func refresh_quest_presentation():
 
 	update_elder_flag()
 	update_kill_counter()
+	update_dulluhan_visibility()
 
 
 func restore_saved_villager_states():
@@ -429,6 +439,7 @@ func get_valid_stage(stage: String) -> String:
 
 
 func begin_combat_stage():
+	close_elder_choice_prompt(false)
 	state_generation += 1
 	quest_stage = STAGE_COMBAT_ACTIVE
 	banshee_kill_count = 0
@@ -444,6 +455,7 @@ func begin_ready_to_report_stage():
 
 
 func complete_report_stage():
+	close_elder_choice_prompt(false)
 	quest_stage = STAGE_REPORT_COMPLETE
 	refresh_quest_presentation()
 
@@ -452,14 +464,72 @@ func _on_player_interaction_requested(interactable: Node2D):
 	if interactable == null or not interactable.has_method("interact"):
 		return
 
+	if interactable == elder and elder_choice_bubble != null and is_instance_valid(elder_choice_bubble):
+		elder_choice_bubble.confirm_selection()
+		return
+
 	interactable.interact(player)
 
 
 func _on_elder_dialogue_finished(_villager: Node):
 	if quest_stage == STAGE_INTRO:
-		begin_combat_stage()
+		open_elder_choice_prompt()
 	elif quest_stage == STAGE_READY_TO_REPORT:
 		complete_report_stage()
+
+
+func open_elder_choice_prompt():
+	if elder == null:
+		return
+
+	if elder_choice_bubble != null and is_instance_valid(elder_choice_bubble):
+		return
+
+	if CombatStateManager != null:
+		CombatStateManager.set_dialogue_active(true)
+	if player != null and player.has_method("set_dialogue_input_locked"):
+		player.set_dialogue_input_locked(true)
+
+	elder_choice_bubble = DIALOGUE_CHOICE_BUBBLE_SCENE.instantiate() as DialogueChoiceBubble
+	elder.add_child(elder_choice_bubble)
+
+	var selected_callback: Callable = Callable(self, "_on_elder_choice_selected")
+	if not elder_choice_bubble.choice_selected.is_connected(selected_callback):
+		elder_choice_bubble.choice_selected.connect(selected_callback)
+
+	var closed_callback: Callable = Callable(self, "_on_elder_choice_closed")
+	if not elder_choice_bubble.closed.is_connected(closed_callback):
+		elder_choice_bubble.closed.connect(closed_callback)
+
+	elder_choice_bubble.open()
+
+
+func close_elder_choice_prompt(accepted: bool):
+	if elder_choice_bubble == null or not is_instance_valid(elder_choice_bubble):
+		elder_choice_bubble = null
+		return
+
+	var bubble: DialogueChoiceBubble = elder_choice_bubble
+	elder_choice_bubble = null
+	bubble.close(accepted)
+	if player != null and player.has_method("set_dialogue_input_locked"):
+		player.set_dialogue_input_locked(false)
+	if CombatStateManager != null:
+		CombatStateManager.set_dialogue_active(false)
+
+
+func _on_elder_choice_selected(accepted: bool):
+	if accepted:
+		begin_combat_stage()
+		SaveManager.save_game("banshee_quest_accept", get_parent())
+
+
+func _on_elder_choice_closed(_accepted: bool):
+	elder_choice_bubble = null
+	if player != null and player.has_method("set_dialogue_input_locked"):
+		player.set_dialogue_input_locked(false)
+	if CombatStateManager != null:
+		CombatStateManager.set_dialogue_active(false)
 
 
 func _on_banshee_defeated(banshee: Node):
@@ -559,3 +629,14 @@ func update_elder_flag():
 		elder_flag.set_effects(["flag"])
 	else:
 		elder_flag.clear_effects()
+
+
+func update_dulluhan_visibility():
+	if dulluhan == null:
+		return
+
+	var should_show: bool = quest_stage == STAGE_REPORT_COMPLETE
+	if dulluhan.has_method("set_story_visible"):
+		dulluhan.set_story_visible(should_show)
+	else:
+		dulluhan.visible = should_show

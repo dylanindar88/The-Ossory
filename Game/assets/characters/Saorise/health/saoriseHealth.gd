@@ -4,6 +4,7 @@ signal health_changed(current_health: int, max_health: int)
 signal stamina_changed(current_stamina: float, max_stamina: float)
 signal died
 signal damage_blocked
+signal blink_requested(duration: float)
 
 const DEFAULT_TUNING: PlayerTuning = preload("res://assets/characters/Saorise/player_tuning.tres")
 
@@ -125,7 +126,7 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, damage_sourc
 	health = clamp(health, 0, max_health)
 
 	if health > 0:
-		start_invulnerability(invulnerability_time, damage_source)
+		start_invulnerability(invulnerability_time, damage_source, true)
 
 	health_changed.emit(health, max_health)
 
@@ -158,10 +159,12 @@ func should_ignore_for_invulnerability(ignore_invulnerability: bool, damage_sour
 	return damage_source != invulnerability_source
 
 
-func start_invulnerability(time: float, damage_source: Node = null):
+func start_invulnerability(time: float, damage_source: Node = null, should_blink: bool = false):
 	invulnerable = true
 	i_frame_timer = time
 	invulnerability_source = damage_source
+	if should_blink:
+		blink_requested.emit(time)
 
 func end_invulnerability():
 	invulnerable = false
@@ -324,6 +327,27 @@ func die():
 	end_block_invulnerability()
 	end_parry_bonus()
 	died.emit()
+
+
+func restore_full_after_respawn(extra_invulnerability_time: float = 0.0):
+	dead = false
+	health = max_health
+	stamina = max_stamina
+	invulnerable = false
+	i_frame_timer = 0.0
+	invulnerability_source = null
+	blocking = false
+	running = false
+	dashing = false
+	parry_window_active = false
+	block_invulnerable = false
+	block_invulnerability_timer = 0.0
+	parry_bonus_timer = 0.0
+	stamina_exhausted = false
+	if extra_invulnerability_time > 0.0:
+		start_invulnerability(invulnerability_time + extra_invulnerability_time, null, true)
+	health_changed.emit(health, max_health)
+	stamina_changed.emit(stamina, max_stamina)
 
 # Temporary test:
 # Press Enter to take one standard hit.

@@ -3,10 +3,15 @@ extends Node
 const SAVE_VERSION := 1
 const SAVE_SLOT_COUNT := 3
 const SAVE_PATH_FORMAT := "user://save_slot_%d.json"
+const MAX_PLAYER_LIVES := 5
+const LIFE_LOSS_EXTRA_INVULNERABILITY_TIME := 0.5
 
 var active_slot: int = 1
 var autosave_slot: int = 1
+var has_autosave_target: bool = false
+var player_lives: int = MAX_PLAYER_LIVES
 var save_allowed: bool = true
+var save_blockers: Dictionary = {}
 var autosave_suppressed: bool = false
 var current_level: Node
 var last_error: String = ""
@@ -19,6 +24,7 @@ func set_active_slot(slot: int) -> bool:
 
 	active_slot = slot
 	autosave_slot = slot
+	has_autosave_target = true
 	last_error = ""
 	return true
 
@@ -27,12 +33,43 @@ func is_valid_slot(slot: int) -> bool:
 	return slot >= 1 and slot <= SAVE_SLOT_COUNT
 
 
+func get_player_lives() -> int:
+	return player_lives
+
+
+func reset_player_lives():
+	player_lives = MAX_PLAYER_LIVES
+
+
 func set_save_allowed(allowed: bool):
 	save_allowed = allowed
 
 
+func set_save_blocked(blocker: String, blocked: bool):
+	if blocker == "":
+		return
+
+	if blocked:
+		save_blockers[blocker] = true
+	else:
+		save_blockers.erase(blocker)
+
+
 func is_save_allowed() -> bool:
-	return save_allowed
+	return save_allowed and save_blockers.is_empty()
+
+
+func get_save_disabled_message() -> String:
+	if save_blockers.has("combat"):
+		return "Cannot save during combat"
+
+	if not save_allowed:
+		return "Saving is currently disabled."
+
+	if not save_blockers.is_empty():
+		return "Saving is currently disabled."
+
+	return ""
 
 
 func autosave_level_entered(level: Node) -> bool:
@@ -53,22 +90,44 @@ func autosave_level_exiting(level: Node) -> bool:
 
 
 func save_game(reason: String = "manual", level: Node = null) -> bool:
-	if not is_valid_slot(autosave_slot):
-		autosave_slot = active_slot
+	if not ensure_autosave_target():
+		return false
 
 	return write_save_to_slot(autosave_slot, reason, level)
 
 
+func ensure_autosave_target() -> bool:
+	if has_autosave_target and is_valid_slot(autosave_slot):
+		return true
+
+	for slot in range(1, SAVE_SLOT_COUNT + 1):
+		if not save_exists(slot):
+			active_slot = slot
+			autosave_slot = slot
+			has_autosave_target = true
+			return true
+
+	last_error = "Autosave skipped because no save slot has been loaded or overwritten."
+	return false
+
+
 func save_game_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
-	if not set_active_slot(slot):
+	if not is_valid_slot(slot):
+		last_error = "Save slot %d is outside the supported range." % slot
 		return false
 
-	return write_save_to_slot(slot, reason, level)
+	var save_succeeded: bool = write_save_to_slot(slot, reason, level)
+	if save_succeeded:
+		active_slot = slot
+		autosave_slot = slot
+		has_autosave_target = true
+
+	return save_succeeded
 
 
 func write_save_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
-	if not save_allowed:
-		last_error = "Saving is currently disabled."
+	if not is_save_allowed():
+		last_error = get_save_disabled_message()
 		return false
 
 	if not is_valid_slot(slot):
@@ -77,7 +136,7 @@ func write_save_to_slot(slot: int, reason: String = "manual", level: Node = null
 
 	var save_level := level if level != null else get_current_level()
 	var save_path := get_save_path(slot)
-	var save_data := build_save_data(reason, save_level)
+	var save_data := build_save_data(reason, save_level, slot)
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	if file == null:
 		last_error = "Could not open %s for writing. Error: %s" % [save_path, error_string(FileAccess.get_open_error())]
@@ -93,10 +152,45 @@ func load_slot_into_current_level(slot: int) -> bool:
 	if data.is_empty():
 		return false
 
-	if not set_active_slot(slot):
+	if not is_valid_slot(slot):
+		last_error = "Save slot %d is outside the supported range." % slot
 		return false
 
-	return apply_save_to_current_level(data)
+	var load_succeeded: bool = apply_save_to_current_level(data)
+	if load_succeeded:
+		set_active_slot(slot)
+
+	return load_succeeded
+
+
+func spend_life_and_respawn_player_in_place() -> bool:
+	if player_lives <= 0:
+		last_error = "No lives remaining."
+		return false
+
+	var player: Node2D = get_tree().get_first_node_in_group("player") as Node2D
+	if player == null:
+		last_error = "Could not find player for respawn."
+		return false
+
+	player_lives = max(player_lives - 1, 0)
+	if player_lives <= 0:
+		last_error = "No lives remaining."
+		return false
+
+	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):
+		CombatStateManager.clear_all()
+
+	if player.has_method("soft_respawn_in_place"):
+		player.soft_respawn_in_place(LIFE_LOSS_EXTRA_INVULNERABILITY_TIME)
+	elif player.has_method("soft_respawn_at_position"):
+		player.soft_respawn_at_position(player.global_position, LIFE_LOSS_EXTRA_INVULNERABILITY_TIME)
+	else:
+		if player.has_method("restore_after_load"):
+			player.restore_after_load()
+
+	last_error = ""
+	return true
 
 
 func delete_save(slot: int) -> bool:
@@ -206,7 +300,7 @@ func load_game(slot: int = active_slot) -> Dictionary:
 	return data
 
 
-func apply_save_to_current_level(data: Dictionary) -> bool:
+func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool = false) -> bool:
 	var level := get_current_level()
 	if level == null or data.is_empty():
 		return false
@@ -215,6 +309,12 @@ func apply_save_to_current_level(data: Dictionary) -> bool:
 	if saved_level_path != "" and saved_level_path != get_level_path(level):
 		last_error = "Save data belongs to a different level."
 		return false
+
+	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):
+		CombatStateManager.clear_all()
+
+	if not preserve_current_lives:
+		player_lives = clamp(int(data.get("player_lives", MAX_PLAYER_LIVES)), 0, MAX_PLAYER_LIVES)
 
 	apply_player_state(level, data.get("player", {}))
 	if not uses_level_owned_hostile_state(level):
@@ -241,7 +341,7 @@ func get_current_level() -> Node:
 	return get_tree().current_scene
 
 
-func build_save_data(reason: String, level: Node) -> Dictionary:
+func build_save_data(reason: String, level: Node, slot: int) -> Dictionary:
 	var defeated_banshee_state: Array = []
 	if not uses_level_owned_hostile_state(level):
 		defeated_banshee_state = collect_defeated_banshees(level)
@@ -252,8 +352,9 @@ func build_save_data(reason: String, level: Node) -> Dictionary:
 
 	return {
 		"version": SAVE_VERSION,
-		"slot": active_slot,
+		"slot": slot,
 		"reason": reason,
+		"player_lives": player_lives,
 		"saved_at_unix": Time.get_unix_time_from_system(),
 		"saved_at_datetime": Time.get_datetime_string_from_system(),
 		"level_path": get_level_path(level),

@@ -1,7 +1,7 @@
 [gd_scene load_steps=13 format=3 uid="uid://b8egi4524xjg"]
 
-[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://assets/characters/NPCs/celtic_villagers.png" id="1_pgo3k"]
-[ext_resource type="Script" path="res://assets/characters/NPCs/villagerController.gd" id="2_nltpa"]
+[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://assets/characters/NPCs/Celtic Villagers/celtic_villagers.png" id="1_pgo3k"]
+[ext_resource type="Script" path="res://assets/characters/NPCs/Celtic Villagers/villagerController.gd" id="2_nltpa"]
 [ext_resource type="Script" path="res://assets/interactions/InteractableProximityArea.gd" id="3_interact"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="4_4u3lr"]
 [ext_resource type="Resource" uid="uid://mx581ub27hfh" path="res://assets/dialogue/villager_elder_default.tres" id="4_dialogue"]
@@ -51,6 +51,8 @@ radius = 48.0104
 
 [node name="ElderVillager" type="CharacterBody2D"]
 y_sort_enabled = true
+collision_layer = 8
+collision_mask = 15
 script = ExtResource("2_nltpa")
 dialogue_bank = ExtResource("4_dialogue")
 
@@ -61,7 +63,7 @@ animation = &"idle"
 frame_progress = 0.890568
 offset = Vector2(0, -153)
 
-[node name="Flag" parent="." instance=ExtResource("4_4u3lr")]
+[node name="Effects" parent="." instance=ExtResource("4_4u3lr")]
 position = Vector2(0, -60)
 scale = Vector2(1.5, 1.5)
 

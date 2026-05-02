@@ -6,6 +6,7 @@ var curve: Curve2D
 var route_loaded: bool = false
 var path_offset: float = 0.0
 var path_length: float = 0.0
+var path_travel_direction: float = 1.0
 var ping_pong_direction: float = 1.0
 var points: Array[Vector2] = []
 var point_index: int = 0
@@ -119,7 +120,7 @@ func advance_path_offset(speed: float, delta: float, ping_pong: bool):
 
 		return
 
-	path_offset = wrapf(path_offset + speed * delta, 0.0, path_length)
+	path_offset = wrapf(path_offset + speed * delta * path_travel_direction, 0.0, path_length)
 
 
 func advance_point(ping_pong: bool):
@@ -138,7 +139,13 @@ func advance_point(ping_pong: bool):
 
 		return
 
-	point_index = (point_index + 1) % points.size()
+	point_index = posmod(point_index + point_direction, points.size())
+
+
+func reverse_direction():
+	path_travel_direction *= -1.0
+	ping_pong_direction *= -1.0
+	point_direction *= -1
 
 
 func select_nearest(world_position: Vector2):
@@ -200,6 +207,7 @@ func get_anchor_path_offset(distance: float, ping_pong: bool) -> float:
 func to_save_data() -> Dictionary:
 	return {
 		"path_offset": path_offset,
+		"path_travel_direction": path_travel_direction,
 		"ping_pong_direction": ping_pong_direction,
 		"point_index": point_index,
 		"point_direction": point_direction,
@@ -213,6 +221,7 @@ func apply_save_data(data: Variant):
 	var saved_data: Dictionary = data
 	if has_smooth_route():
 		path_offset = clamp(float(saved_data.get("path_offset", path_offset)), 0.0, path_length)
+		path_travel_direction = get_saved_direction(float(saved_data.get("path_travel_direction", path_travel_direction)))
 		ping_pong_direction = get_saved_direction(float(saved_data.get("ping_pong_direction", ping_pong_direction)))
 
 	if not points.is_empty():
