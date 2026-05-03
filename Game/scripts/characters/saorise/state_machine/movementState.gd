@@ -29,23 +29,25 @@ func physics_update(player, delta):
 
 	# Dash
 	var wants_dash: bool = Input.is_action_just_pressed("dash") or Input.is_action_just_pressed("ui_accept")
-	if wants_dash and player.can_dash and player.can_current_form_dash() and player.health.can_dash():
+	var can_afford_dash: bool = player.can_dash_without_stamina() or player.health.can_dash()
+	if wants_dash and player.can_dash and player.can_current_form_dash() and can_afford_dash:
 		player.change_state("dash")
 		return
 
 	# Block
-	if Input.is_action_pressed("right_click") and player.can_current_form_block() and player.health.can_start_block():
+	var can_afford_block: bool = player.can_block_without_stamina() or player.health.can_start_block()
+	if Input.is_action_pressed("right_click") and player.can_current_form_block() and can_afford_block:
 		player.change_state("block")
 		return
 
 	# Run
-	var is_running = input_vector != Vector2.ZERO and Input.is_action_pressed("run") and player.health.can_run()
-	var current_speed = player.walk_speed
+	var is_running: bool = input_vector != Vector2.ZERO and (player.current_form_always_runs() or (Input.is_action_pressed("run") and player.health.can_run()))
+	var current_speed: float = player.walk_speed
 
 	if is_running:
 		current_speed = player.run_speed
 
-	player.health.set_running(is_running)
+	player.health.set_running(is_running and player.current_form_uses_stamina())
 	player.velocity = input_vector * current_speed
 
 	update_animation(player, input_vector, is_running)
@@ -74,11 +76,9 @@ func update_animation(player, dir, is_running):
 
 	# Horizontal movement
 	if use_horizontal:
-		var anim = "walking"
-
-		if is_running:
-			anim = "running"
-
+		var anim: StringName = player.get_form_movement_animation(true, false, is_running)
+		if player.sprite.sprite_frames != null and not player.sprite.sprite_frames.has_animation(anim):
+			anim = &"idle"
 		player.sprite.play(anim)
 
 		if dir.x < 0:
@@ -94,11 +94,17 @@ func update_animation(player, dir, is_running):
 
 	# Vertical movement
 	if dir.y < 0:
-		player.sprite.play("running_up" if is_running else "walking_up")
+		var up_anim: StringName = player.get_form_movement_animation(false, true, is_running)
+		if player.sprite.sprite_frames != null and not player.sprite.sprite_frames.has_animation(up_anim):
+			up_anim = &"idle_up" if player.sprite.sprite_frames.has_animation(&"idle_up") else &"idle"
+		player.sprite.play(up_anim)
 		player.last_facing = "up"
 
 	elif dir.y > 0:
-		player.sprite.play("running_down" if is_running else "walking_down")
+		var down_anim: StringName = player.get_form_movement_animation(false, false, is_running)
+		if player.sprite.sprite_frames != null and not player.sprite.sprite_frames.has_animation(down_anim):
+			down_anim = &"idle_down" if player.sprite.sprite_frames.has_animation(&"idle_down") else &"idle"
+		player.sprite.play(down_anim)
 		player.last_facing = "down"
 
 	player.sprite.flip_h = false

@@ -63,7 +63,8 @@ func physics_update(player, delta):
 	elif phase == Phase.IDLE:
 		play_block_idle(player)
 
-		if player.health.stamina <= 0.0 or not Input.is_action_pressed("right_click"):
+		var stamina_empty: bool = player.health.stamina <= 0.0 and not player.can_block_without_stamina()
+		if stamina_empty or not Input.is_action_pressed("right_click"):
 			start_releasing(player)
 
 	elif phase == Phase.RELEASING:
@@ -95,7 +96,9 @@ func start_releasing(player):
 
 func play_block_action(player):
 	player.sprite.speed_scale = 1.0
+	set_animation_loop(player, block_action_anim_name, false)
 	player.sprite.play(block_action_anim_name)
+	player.sprite.set_frame_and_progress(0, 0.0)
 
 	update_block_facing(player)
 
@@ -105,10 +108,13 @@ func play_block_release(player, from_raising: bool):
 	var action_frame_progress: float = player.sprite.frame_progress
 
 	player.sprite.speed_scale = 1.0
+	set_animation_loop(player, block_release_anim_name, false)
 	player.sprite.play(block_release_anim_name)
 
 	if from_raising:
 		seek_release_animation_to_matching_pose(player, action_frame, action_frame_progress)
+	else:
+		player.sprite.set_frame_and_progress(0, 0.0)
 
 	update_block_facing(player)
 
@@ -130,6 +136,7 @@ func play_block_idle(player):
 	block_idle_anim_name = get_block_animation_name(player, "block_idle")
 
 	if player.sprite.animation != block_idle_anim_name or not player.sprite.is_playing():
+		set_animation_loop(player, block_idle_anim_name, true)
 		player.sprite.play(block_idle_anim_name)
 
 	update_block_facing(player)
@@ -182,9 +189,18 @@ func get_block_animation_name(player, base_anim_name: String) -> String:
 	return base_anim_name
 
 
+func set_animation_loop(player, anim_name: String, loop_enabled: bool):
+	var sprite_frames: SpriteFrames = player.sprite.sprite_frames
+	if sprite_frames == null or not sprite_frames.has_animation(anim_name):
+		return
+
+	sprite_frames.set_animation_loop(anim_name, loop_enabled)
+
+
 func update_movement(player, delta: float):
 	var input_vector: Vector2 = player.get_move_input_vector()
 	player.remember_input_direction(input_vector)
 
-	player.velocity = input_vector * player.walk_speed * player.block_speed_modifier
+	var movement_speed: float = player.run_speed if player.current_form_always_runs() else player.walk_speed
+	player.velocity = input_vector * movement_speed * player.block_speed_modifier
 	player.move_with_villager_blocking(delta)

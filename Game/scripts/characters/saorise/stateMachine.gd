@@ -1,6 +1,9 @@
 extends CharacterBody2D
 
 signal interaction_requested(interactable: Node2D)
+signal transformation_timer_changed(current_time: float, max_time: float, active: bool)
+signal transformation_state_changed(active: bool)
+signal transformation_cooldown_changed(current: float, max: float, active: bool)
 
 const DEFAULT_TUNING: PlayerTuning = preload("res://resources/characters/saorise/player_tuning.tres")
 
@@ -49,6 +52,13 @@ var current_interactable: Node2D
 var pending_interaction_target: Node2D
 var dialogue_input_locked: bool = false
 var blink_generation: int = 0
+var is_transforming: bool = false
+var transformation_time_remaining: float = 0.0
+var transformation_duration: float = 0.0
+var transformation_generation: int = 0
+var transformation_cooldown_seconds: float = 30.0
+var transformation_cooldown_timer: float = 0.0
+var life_respawn_pending: bool = false
 
 
 func _ready():
@@ -72,6 +82,7 @@ func _ready():
 	hitbox_manager = preload("res://scripts/characters/saorise/combat/attackBoxManager.gd").new()
 	hitbox_manager.attack_box = attack_box
 	hitbox_manager.player_health = health
+	hitbox_manager.damage_source = self
 	hitbox_manager.setup()
 	configure_hitbox_manager()
 
@@ -114,9 +125,9 @@ func cache_form_definitions():
 
 
 func activate_form(form_id: StringName) -> bool:
-	var form: PlayerFormDefinition = forms_by_id.get(form_id)
+	var form: PlayerFormDefinition = forms_by_id.get(form_id) as PlayerFormDefinition
 	if form == null:
-		form = forms_by_id.get(initial_form_id)
+		form = forms_by_id.get(initial_form_id) as PlayerFormDefinition
 	if form == null and not form_definitions.is_empty():
 		form = form_definitions[0]
 	if form == null:
@@ -130,6 +141,8 @@ func activate_form(form_id: StringName) -> bool:
 	apply_form_visuals(form)
 	apply_form_collisions(form)
 	configure_hitbox_manager()
+	if health != null and health.has_method("set_stamina_costs_enabled"):
+		health.set_stamina_costs_enabled(current_form_uses_stamina())
 	return true
 
 
@@ -215,6 +228,10 @@ func configure_hitbox_manager():
 
 	hitbox_manager.attack_damage = attack_damage
 	hitbox_manager.combo_2_damage_multiplier = combo_2_damage_multiplier
+	var form_damage_multiplier: float = 1.0
+	if current_form != null:
+		form_damage_multiplier = current_form.attack_damage_multiplier
+	hitbox_manager.form_attack_damage_multiplier = form_damage_multiplier
 	if current_form != null and hitbox_manager.has_method("set_attack_profiles"):
 		hitbox_manager.set_attack_profiles(current_form.get_attack_profiles())
 
@@ -244,6 +261,18 @@ func _physics_process(delta):
 		velocity = Vector2.ZERO
 		return
 
+	if is_transforming:
+		velocity = Vector2.ZERO
+		update_effects()
+		return
+
+	if not dialogue_input_locked:
+		update_transformation_timer(delta)
+	if is_transforming:
+		velocity = Vector2.ZERO
+		update_effects()
+		return
+
 	if not can_dash:
 		dash_cooldown_timer -= delta
 
@@ -252,6 +281,10 @@ func _physics_process(delta):
 
 	if attack_cooldown_timer > 0:
 		attack_cooldown_timer -= delta
+
+	if transformation_cooldown_timer > 0.0:
+		transformation_cooldown_timer = maxf(transformation_cooldown_timer - delta, 0.0)
+		emit_transformation_cooldown_progress()
 
 	if dialogue_input_locked:
 		hold_dialogue_idle()
@@ -271,7 +304,10 @@ func _unhandled_input(event: InputEvent):
 	if dialogue_input_locked:
 		return
 
-	if event.is_action_pressed("interact"):
+	if event.is_action_pressed("transform"):
+		try_start_wolf_transformation()
+		get_viewport().set_input_as_handled()
+	elif event.is_action_pressed("interact"):
 		current_interactable = get_current_interactable()
 		pending_interaction_target = current_interactable
 		get_viewport().set_input_as_handled()
@@ -325,6 +361,222 @@ func set_dialogue_input_locked(locked: bool):
 
 	hold_dialogue_idle()
 	update_effects()
+
+
+func try_start_wolf_transformation() -> bool:
+	if current_form_id == &"wolf" or is_transforming:
+		return false
+
+	if not has_wolf_transformation_unlocked():
+		return false
+
+	if transformation_cooldown_timer > 0.0:
+		return false
+
+	if dialogue_input_locked or dead:
+		return false
+
+	start_wolf_transformation()
+	return true
+
+
+func has_wolf_transformation_unlocked() -> bool:
+	if SaveManager == null or not SaveManager.has_method("get_upgrade_state"):
+		return false
+
+	var state: Dictionary = SaveManager.get_upgrade_state()
+	var unlocked: Variant = state.get("unlocked", {})
+	return unlocked is Dictionary and bool(unlocked.get("wolf_transformation", false))
+
+
+func start_wolf_transformation():
+	var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
+	if wolf_form == null:
+		return
+
+	transformation_duration = wolf_form.transformation_duration_seconds
+	if transformation_duration <= 0.0:
+		transformation_duration = 30.0
+	transformation_time_remaining = transformation_duration
+	transformation_generation += 1
+	var generation: int = transformation_generation
+
+	begin_transform_lock()
+	set_form(&"wolf")
+	transformation_state_changed.emit(true)
+	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
+	await play_transformation_animation(false)
+
+	if generation != transformation_generation or dead:
+		return
+
+	is_transforming = false
+	hold_dialogue_idle()
+	update_effects()
+
+
+func finish_wolf_transformation():
+	if current_form_id != &"wolf" or is_transforming:
+		return
+
+	transformation_generation += 1
+	var generation: int = transformation_generation
+	begin_transform_lock()
+	transformation_time_remaining = 0.0
+	transformation_timer_changed.emit(0.0, transformation_duration, true)
+	await play_transformation_animation(true)
+
+	if generation != transformation_generation or dead:
+		return
+
+	set_form(&"human")
+	is_transforming = false
+	transformation_duration = 0.0
+	transformation_time_remaining = 0.0
+	transformation_state_changed.emit(false)
+	transformation_timer_changed.emit(0.0, 0.0, false)
+	start_transformation_cooldown()
+	hold_dialogue_idle()
+	update_effects()
+
+
+func begin_transform_lock():
+	is_transforming = true
+	velocity = Vector2.ZERO
+	can_attack_from_hold = false
+	if hitbox_manager:
+		hitbox_manager.deactivate_attack_hitbox()
+	health.set_running(false)
+	health.set_blocking(false)
+	health.set_parry_window(false)
+	health.end_parry_bonus()
+	if states.has("move") and current_state != states.get("move"):
+		change_state("move")
+
+
+func play_transformation_animation(reverse: bool):
+	var anim_name: StringName = get_transformation_animation_name()
+	if sprite == null or sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(anim_name):
+		await get_tree().process_frame
+		return
+
+	sprite.speed_scale = 1.0
+	sprite.flip_h = last_horizontal_facing == "left"
+	if reverse:
+		sprite.play(anim_name, -1.0, true)
+	else:
+		sprite.play(anim_name)
+
+	await sprite.animation_finished
+	sprite.speed_scale = 1.0
+
+
+func get_transformation_animation_name() -> StringName:
+	if current_form != null:
+		return current_form.transformation_animation
+
+	return &"transformation"
+
+
+func update_transformation_timer(delta: float):
+	if current_form_id != &"wolf":
+		return
+
+	if transformation_duration <= 0.0:
+		return
+
+	transformation_time_remaining = maxf(transformation_time_remaining - delta, 0.0)
+	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
+	if transformation_time_remaining <= 0.0:
+		finish_wolf_transformation()
+
+
+func start_transformation_cooldown():
+	transformation_cooldown_timer = transformation_cooldown_seconds
+	emit_transformation_cooldown_progress()
+
+
+func clear_transformation_cooldown():
+	transformation_cooldown_timer = 0.0
+	transformation_cooldown_changed.emit(0.0, 0.0, false)
+
+
+func emit_transformation_cooldown_progress():
+	if transformation_cooldown_timer <= 0.0 or transformation_cooldown_seconds <= 0.0:
+		transformation_cooldown_changed.emit(0.0, 0.0, false)
+		return
+
+	var cooldown_progress := transformation_cooldown_seconds - transformation_cooldown_timer
+	transformation_cooldown_changed.emit(cooldown_progress, transformation_cooldown_seconds, true)
+
+
+func is_wolf_form() -> bool:
+	return current_form_id == &"wolf"
+
+
+func is_transforming_forms() -> bool:
+	return is_transforming
+
+
+func is_life_respawn_pending() -> bool:
+	return life_respawn_pending
+
+
+func current_form_uses_stamina() -> bool:
+	return current_form == null or current_form.uses_stamina
+
+
+func current_form_always_runs() -> bool:
+	return current_form != null and current_form.always_run
+
+
+func can_dash_without_stamina() -> bool:
+	return not current_form_uses_stamina()
+
+
+func can_block_without_stamina() -> bool:
+	return not current_form_uses_stamina()
+
+
+func get_form_movement_animation(use_horizontal: bool, moving_up: bool, is_running: bool) -> StringName:
+	if current_form == null:
+		if use_horizontal:
+			return &"running" if is_running else &"walking"
+		if moving_up:
+			return &"running_up" if is_running else &"walking_up"
+		return &"running_down" if is_running else &"walking_down"
+
+	if use_horizontal:
+		return current_form.run_side_animation if is_running else current_form.walk_side_animation
+	if moving_up:
+		return current_form.run_up_animation if is_running else current_form.walk_up_animation
+	return current_form.run_down_animation if is_running else current_form.walk_down_animation
+
+
+func get_attack_animation_prefix() -> StringName:
+	if current_form != null:
+		return current_form.attack_animation_prefix
+
+	return &"unarmed_attack"
+
+
+func get_save_form_id() -> StringName:
+	if current_form_id == &"wolf" or is_transforming:
+		return &"human"
+
+	return current_form_id
+
+
+func end_transformation_immediately():
+	transformation_generation += 1
+	is_transforming = false
+	transformation_duration = 0.0
+	transformation_time_remaining = 0.0
+	clear_transformation_cooldown()
+	if current_form_id == &"wolf":
+		set_form(&"human")
+	transformation_state_changed.emit(false)
+	transformation_timer_changed.emit(0.0, 0.0, false)
 
 
 func is_dialogue_input_locked() -> bool:
@@ -514,8 +766,10 @@ func get_current_form_id() -> StringName:
 
 
 func _on_died():
+	end_transformation_immediately()
 	stop_sprite_blink()
 	dead = true
+	life_respawn_pending = true
 	velocity = Vector2.ZERO
 	health.set_blocking(false)
 	health.set_parry_window(false)
@@ -542,7 +796,11 @@ func _on_died():
 
 func respawn_after_death():
 	if SaveManager != null and SaveManager.has_method("spend_life_and_respawn_player_in_place"):
-		SaveManager.spend_life_and_respawn_player_in_place()
+		if not SaveManager.spend_life_and_respawn_player_in_place():
+			life_respawn_pending = false
+		return
+
+	life_respawn_pending = false
 
 
 func soft_respawn_in_place(extra_invulnerability_time: float = 0.0):
@@ -550,9 +808,11 @@ func soft_respawn_in_place(extra_invulnerability_time: float = 0.0):
 
 
 func soft_respawn_at_position(respawn_position: Vector2, extra_invulnerability_time: float = 0.0):
+	end_transformation_immediately()
 	stop_sprite_blink()
 	global_position = respawn_position
 	dead = false
+	life_respawn_pending = false
 	visible = true
 	velocity = Vector2.ZERO
 	nearby_interactables.clear()
@@ -591,8 +851,10 @@ func soft_respawn_at_position(respawn_position: Vector2, extra_invulnerability_t
 
 
 func restore_after_load():
+	end_transformation_immediately()
 	stop_sprite_blink()
 	dead = false
+	life_respawn_pending = false
 	visible = true
 	velocity = Vector2.ZERO
 	nearby_interactables.clear()

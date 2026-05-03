@@ -41,6 +41,20 @@ const DEFAULT_ATTACK_PROFILES := {
 @export var can_interact := true
 @export var can_talk := true
 
+@export_group("Movement")
+@export var always_run := false
+@export var uses_stamina := true
+@export var walk_side_animation: StringName = &"walking"
+@export var walk_up_animation: StringName = &"walking_up"
+@export var walk_down_animation: StringName = &"walking_down"
+@export var run_side_animation: StringName = &"running"
+@export var run_up_animation: StringName = &"running_up"
+@export var run_down_animation: StringName = &"running_down"
+
+@export_group("Transformation")
+@export var transformation_duration_seconds: float = 0.0
+@export var transformation_animation: StringName = &"transformation"
+
 @export_group("Movement Collision")
 @export var movement_shape: Shape2D
 @export var movement_shape_position := Vector2(0.0420001, -4.332)
@@ -53,6 +67,8 @@ const DEFAULT_ATTACK_PROFILES := {
 
 @export_group("Combat")
 @export var attack_profiles: Dictionary = {}
+@export var attack_animation_prefix: StringName = &"unarmed_attack"
+@export var attack_damage_multiplier: float = 1.0
 
 
 func get_attack_profiles() -> Dictionary:

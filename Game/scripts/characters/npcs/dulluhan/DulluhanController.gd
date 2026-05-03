@@ -1,5 +1,8 @@
 extends CharacterBody2D
 
+signal transformation_granted_for_story
+signal final_teaser_completed
+
 const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
 const UNLOCK_DIALOGUE := [
 	"The old shape in your blood is awake now.",
@@ -7,6 +10,9 @@ const UNLOCK_DIALOGUE := [
 ]
 const REPEAT_DIALOGUE := [
 	"The wolf is yours now. Learn its hunger before you trust it.",
+]
+const FINAL_TEASER_DIALOGUE := [
+	"Good show, perhaps you will be good entertainment after all, have fun with that vampire",
 ]
 
 @export var hidden_alpha: float = 0.35
@@ -18,6 +24,8 @@ const REPEAT_DIALOGUE := [
 var story_visible: bool = true
 var revealed: bool = false
 var transformation_granted: bool = false
+var final_teaser_active: bool = false
+var waiting_for_story_progress: bool = false
 var dialogue_active: bool = false
 var active_dialogue_bubble: DialogueBubble
 var current_dialogue_player: Node2D
@@ -33,7 +41,10 @@ func _ready():
 func set_story_visible(should_show: bool):
 	story_visible = should_show
 	visible = should_show
+	waiting_for_story_progress = false
 	set_collision_enabled(should_show)
+	if not should_show:
+		final_teaser_active = false
 	if should_show:
 		revealed = false
 		apply_story_alpha()
@@ -49,13 +60,45 @@ func hide_for_story():
 	set_story_visible(false)
 
 
+func set_waiting_for_story_progress(waiting: bool):
+	waiting_for_story_progress = waiting
+	if waiting:
+		story_visible = true
+		visible = true
+		final_teaser_active = false
+		revealed = false
+		apply_story_alpha()
+		play_idle()
+		set_collision_enabled(false)
+	else:
+		set_story_visible(true)
+
+
+func start_final_teaser(final_position: Vector2):
+	global_position = final_position
+	final_teaser_active = true
+	transformation_granted = true
+	waiting_for_story_progress = false
+	set_story_visible(true)
+
+
+func set_final_teaser_completed(completed: bool):
+	final_teaser_active = false
+	if completed:
+		hide_for_story()
+
+
 func interact(player: Node2D):
+	if waiting_for_story_progress:
+		return
+
 	if dialogue_active:
 		if active_dialogue_bubble != null:
 			active_dialogue_bubble.advance()
 		return
 
-	var sequence := create_dialogue_sequence(REPEAT_DIALOGUE if transformation_granted else UNLOCK_DIALOGUE)
+	var raw_dialogue := FINAL_TEASER_DIALOGUE if final_teaser_active else (REPEAT_DIALOGUE if transformation_granted else UNLOCK_DIALOGUE)
+	var sequence := create_dialogue_sequence(raw_dialogue)
 	start_dialogue(player, sequence)
 
 
@@ -88,6 +131,7 @@ func start_dialogue(player: Node2D, sequence: DialogueSequence):
 func _on_dialogue_bubble_closed(completed: bool = false):
 	active_dialogue_bubble = null
 	var should_grant_transformation := completed and not transformation_granted
+	var should_complete_final_teaser := completed and final_teaser_active
 	var dialogue_player := current_dialogue_player
 	dialogue_active = false
 	current_dialogue_player = null
@@ -99,16 +143,21 @@ func _on_dialogue_bubble_closed(completed: bool = false):
 
 	if should_grant_transformation:
 		grant_transformation_upgrade()
+		set_waiting_for_story_progress(true)
+
+	if should_complete_final_teaser:
+		final_teaser_active = false
+		hide_for_story()
+		final_teaser_completed.emit()
 
 
 func grant_transformation_upgrade():
 	transformation_granted = true
-	if SaveManager == null:
-		return
-
-	SaveManager.unlock_upgrade(&"wolf_transformation")
-	SaveManager.set_stat_level(&"wolf_transformation", 0)
-	SaveManager.save_game("wolf_transformation_unlock", get_tree().current_scene)
+	if SaveManager != null:
+		SaveManager.unlock_upgrade(&"wolf_transformation")
+		SaveManager.set_stat_level(&"wolf_transformation", 0)
+		SaveManager.save_game("wolf_transformation_unlock", get_tree().current_scene)
+	transformation_granted_for_story.emit()
 
 
 func has_transformation_upgrade() -> bool:
@@ -156,7 +205,7 @@ func refresh_player_detection():
 
 
 func reveal_for_player_approach():
-	if not story_visible or revealed:
+	if not story_visible or waiting_for_story_progress or revealed:
 		return
 
 	revealed = true

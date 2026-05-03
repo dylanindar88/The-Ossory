@@ -325,7 +325,7 @@ z_as_relative = false
 y_sort_enabled = true
 
 [node name="Saorise" parent="PlayableWorld/Environment/Characters" instance=ExtResource("23_yc8ub")]
-position = Vector2(-1141, 404)
+position = Vector2(471, -42)
 
 [node name="HostileNPCs" type="Node2D" parent="PlayableWorld/Environment/Characters"]
 z_as_relative = false
@@ -684,7 +684,7 @@ script = ExtResource("35_lsc")
 
 [node name="BansheeVillageFlowController" type="Node" parent="."]
 script = ExtResource("36_flow")
-dev_start_preset = "dulluhan_transformation_unlocked"
+dev_start_preset = "second_banshee_report_ready"
 elder_reveal_sequence = ExtResource("37_elder_reveal")
 elder_waiting_sequence = ExtResource("38_elder_waiting")
 elder_respawning_sequence = ExtResource("39_elder_respawning")

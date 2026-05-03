@@ -38,6 +38,7 @@ var parry_bonus_timer := 0.0
 var stamina_exhausted := false
 var dead := false
 var invulnerability_source: Node = null
+var stamina_costs_enabled := true
 
 func _ready():
 	apply_tuning()
@@ -91,7 +92,7 @@ func _process(delta):
 	if parry_bonus_timer > 0:
 		parry_bonus_timer -= delta
 
-	if blocking:
+	if blocking and stamina_costs_enabled:
 		drain_block_stamina(delta)
 	elif running:
 		drain_run_stamina(delta)
@@ -230,6 +231,9 @@ func has_enough_dash_stamina() -> bool:
 	return stamina >= dash_stamina_cost
 
 func can_start_block() -> bool:
+	if not stamina_costs_enabled:
+		return true
+
 	return not is_stamina_exhausted() and stamina > 0.0
 
 func can_dash() -> bool:
@@ -265,12 +269,14 @@ func end_parry_bonus():
 	parry_bonus_timer = 0.0
 
 func on_block_succeeded():
-	spend_stamina(block_stamina_cost)
+	if stamina_costs_enabled:
+		spend_stamina(block_stamina_cost)
 	start_block_invulnerability(block_invulnerability_time)
 
-func on_dash_started():
+func on_dash_started(spend_dash_stamina: bool = true):
 	set_dashing(true)
-	spend_stamina(dash_stamina_cost)
+	if spend_dash_stamina:
+		spend_stamina(dash_stamina_cost)
 
 func on_parry_succeeded():
 	parry_window_active = false
@@ -281,7 +287,13 @@ func can_parry_damage() -> bool:
 	return parry_window_active and not block_invulnerable
 
 func can_block_damage() -> bool:
-	return blocking and stamina > 0.0
+	return blocking and (not stamina_costs_enabled or stamina > 0.0)
+
+
+func set_stamina_costs_enabled(enabled: bool):
+	stamina_costs_enabled = enabled
+	if not stamina_costs_enabled:
+		stamina_exhausted = false
 
 func is_block_effect_active() -> bool:
 	return block_invulnerable or can_block_damage()

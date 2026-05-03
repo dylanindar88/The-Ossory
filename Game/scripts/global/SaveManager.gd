@@ -290,9 +290,6 @@ func spend_life_and_respawn_player_in_place() -> bool:
 		last_error = "No lives remaining."
 		return false
 
-	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):
-		CombatStateManager.clear_all()
-
 	if player.has_method("soft_respawn_in_place"):
 		player.soft_respawn_in_place(LIFE_LOSS_EXTRA_INVULNERABILITY_TIME)
 	elif player.has_method("soft_respawn_at_position"):
@@ -510,7 +507,9 @@ func collect_player_state(level: Node) -> Dictionary:
 		"camera_zoom": 2.25,
 	}
 
-	if player.has_method("get_current_form_id"):
+	if player.has_method("get_save_form_id"):
+		data["form_id"] = str(player.get_save_form_id())
+	elif player.has_method("get_current_form_id"):
 		data["form_id"] = str(player.get_current_form_id())
 
 	if health_node != null:

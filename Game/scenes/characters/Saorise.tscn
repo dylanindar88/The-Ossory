@@ -49,6 +49,7 @@ form_definitions = Array[Resource("res://scripts/characters/saorise/PlayerFormDe
 [node name="Forms" type="Node2D" parent="."]
 
 [node name="HumanForm" type="Node2D" parent="Forms"]
+visible = false
 
 [node name="Body" type="AnimatedSprite2D" parent="Forms/HumanForm"]
 y_sort_enabled = true
@@ -56,11 +57,10 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"idle_down"
+animation = &"block_release"
 offset = Vector2(0, -90)
 
 [node name="WolfForm" type="Node2D" parent="Forms"]
-visible = false
 
 [node name="Body" type="AnimatedSprite2D" parent="Forms/WolfForm"]
 y_sort_enabled = true
@@ -69,6 +69,8 @@ position = Vector2(0, -1)
 scale = Vector2(0.4, 0.4)
 sprite_frames = ExtResource("5_db6kb")
 animation = &"transformation"
+frame = 21
+frame_progress = 1.0
 offset = Vector2(0, -61.545)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]

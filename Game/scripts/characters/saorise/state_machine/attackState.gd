@@ -43,7 +43,8 @@ func physics_update(player, delta):
 		next_combo_pressed = true
 
 	var input_vector: Vector2 = player.get_move_input_vector()
-	player.velocity = input_vector * player.walk_speed * player.attack_speed_modifier
+	var movement_speed: float = player.run_speed if player.current_form_always_runs() else player.walk_speed
+	player.velocity = input_vector * movement_speed * player.attack_speed_modifier
 	player.move_with_villager_blocking(delta)
 
 	if attack_timer <= 0:
@@ -122,11 +123,12 @@ func transition_attack_animation(player) -> float:
 
 
 func get_attack_animation_name(player, part: int) -> String:
-	var side_anim_name := "unarmed_attack_%d" % part
+	var prefix: String = str(player.get_attack_animation_prefix())
+	var side_anim_name: String = "%s_%d" % [prefix, part]
 	if attack_direction == "left" or attack_direction == "right":
 		return side_anim_name
 
-	var vertical_anim_name := "unarmed_attack_%s%d" % [attack_direction, part]
+	var vertical_anim_name: String = "%s_%s%d" % [prefix, attack_direction, part]
 	var sprite_frames: SpriteFrames = player.sprite.sprite_frames
 	if sprite_frames != null and sprite_frames.has_animation(vertical_anim_name):
 		return vertical_anim_name

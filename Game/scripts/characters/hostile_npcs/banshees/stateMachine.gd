@@ -41,6 +41,7 @@ var hurt_speed_modifier_override: float = -1.0
 var return_patrol_target: Vector2
 var return_patrol_path_offset: float = 0.0
 var return_patrol_point_index: int = 0
+var returning_to_static_position: bool = false
 var patrol_speed: float
 var patrol_arrival_distance: float
 var run_speed: float
@@ -57,6 +58,9 @@ var story_revealed: bool = false
 var story_spawn_position: Vector2
 var story_spawn_facing_left: bool = false
 var suppress_story_detection: bool = false
+var last_damage_source: Node = null
+var last_killer_form_id: StringName = &""
+var refreshing_player_ranges_after_transform: bool = false
 
 
 func _ready():
@@ -187,14 +191,23 @@ func get_default_state() -> String:
 	return "idle"
 
 
-func take_damage(amount: int, ignore_invulnerability: bool = false):
+func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null):
 	if dead or not combat_enabled:
 		return
 
 	stop_health_regeneration()
+	last_damage_source = damage_source
+	last_killer_form_id = get_damage_source_form_id(damage_source)
 	var damage_applied: bool = health.take_damage(amount, ignore_invulnerability)
 	if damage_applied and not dead:
 		enter_hurt_state()
+
+
+func get_damage_source_form_id(damage_source: Node) -> StringName:
+	if damage_source != null and damage_source.has_method("get_current_form_id"):
+		return damage_source.get_current_form_id()
+
+	return &""
 
 
 func on_attack_blocked():
@@ -262,23 +275,23 @@ func return_to_default_state():
 		begin_return_to_patrol()
 		return
 
-	return_to_static_position()
+	begin_return_to_static_position()
 
 
-func return_to_static_position():
-	global_position = story_spawn_position
-	velocity = Vector2.ZERO
-	resume_assigned_villager()
-	change_state(get_default_state())
-	start_health_regeneration()
+func begin_return_to_static_position():
+	keep_assigned_villager_waiting()
+	returning_to_static_position = true
+	return_patrol_target = story_spawn_position
+	change_state("return_to_patrol")
 
 
 func begin_return_to_patrol():
 	if not has_patrol_route():
-		change_state("idle")
+		begin_return_to_static_position()
 		return
 
 	keep_assigned_villager_waiting()
+	returning_to_static_position = false
 	return_patrol_path_offset = patrol_route.path_offset
 	return_patrol_point_index = patrol_route.point_index
 	return_patrol_target = get_return_patrol_target()
@@ -293,7 +306,9 @@ func get_return_patrol_target() -> Vector2:
 
 
 func complete_return_to_patrol():
-	if has_assigned_villager():
+	if returning_to_static_position:
+		returning_to_static_position = false
+	elif has_assigned_villager():
 		select_nearest_patrol_point()
 	elif has_smooth_patrol_route():
 		patrol_route.path_offset = return_patrol_path_offset
@@ -302,12 +317,12 @@ func complete_return_to_patrol():
 
 	velocity = Vector2.ZERO
 	resume_assigned_villager()
-	change_state("patrol")
+	change_state(get_default_state())
 	start_health_regeneration()
 
 
 func move_toward_return_patrol_target(delta: float) -> bool:
-	if has_assigned_villager():
+	if has_assigned_villager() and not returning_to_static_position:
 		return villager_stalk_behavior.move_toward_return_target(delta)
 
 	var to_target: Vector2 = return_patrol_target - global_position
@@ -421,7 +436,13 @@ func move_toward_assigned_villager():
 
 
 func has_player_target() -> bool:
-	return player != null and is_instance_valid(player) and player.is_inside_tree() and player.visible
+	if player == null or not is_instance_valid(player) or not player.is_inside_tree():
+		return false
+
+	if player.has_method("is_life_respawn_pending") and bool(player.call("is_life_respawn_pending")):
+		return true
+
+	return player.visible
 
 
 func get_direction_to_player() -> Vector2:
@@ -617,9 +638,12 @@ func end_story_detection_suppression_after_physics():
 
 
 func restore_after_load():
+	last_damage_source = null
+	last_killer_form_id = &""
 	dead = false
 	visible = true
 	velocity = Vector2.ZERO
+	returning_to_static_position = false
 	clear_combat_engagement()
 	attack_cooldown_timer = 0.0
 	player_in_detection = false
@@ -783,6 +807,10 @@ func _on_player_detection_body_entered(body: Node2D):
 
 func _on_player_detection_body_exited(body: Node2D):
 	if body == player:
+		if should_defer_player_range_exit(body):
+			refresh_player_ranges_after_transform()
+			return
+
 		player_in_detection = false
 		update_combat_engagement()
 
@@ -803,6 +831,10 @@ func _on_attack_range_body_entered(body: Node2D):
 
 func _on_attack_range_body_exited(body: Node2D):
 	if body == player:
+		if should_defer_player_range_exit(body):
+			refresh_player_ranges_after_transform()
+			return
+
 		player_in_attack_range = false
 		update_combat_engagement()
 
@@ -824,6 +856,10 @@ func _on_tracking_range_body_exited(body: Node2D):
 	if body != player:
 		return
 
+	if should_defer_player_range_exit(body):
+		refresh_player_ranges_after_transform()
+		return
+
 	player_in_tracking = false
 	player_in_detection = false
 	player_in_attack_range = false
@@ -832,6 +868,54 @@ func _on_tracking_range_body_exited(body: Node2D):
 
 func should_ignore_player_aggro() -> bool:
 	return dead or not combat_enabled or suppress_story_detection or (CombatStateManager != null and CombatStateManager.is_dialogue_active())
+
+
+func should_defer_player_range_exit(body: Node2D) -> bool:
+	if body == null:
+		return false
+
+	if body.has_method("is_transforming_forms") and bool(body.call("is_transforming_forms")):
+		return true
+
+	return body.has_method("is_life_respawn_pending") and bool(body.call("is_life_respawn_pending"))
+
+
+func refresh_player_ranges_after_transform():
+	if refreshing_player_ranges_after_transform:
+		return
+
+	refreshing_player_ranges_after_transform = true
+	call_deferred("refresh_player_ranges_after_transform_deferred")
+
+
+func refresh_player_ranges_after_transform_deferred():
+	await get_tree().physics_frame
+	refreshing_player_ranges_after_transform = false
+
+	if player == null or not is_instance_valid(player):
+		player_in_detection = false
+		player_in_attack_range = false
+		player_in_tracking = false
+		update_combat_engagement()
+		return
+
+	player_in_detection = is_player_overlapping_area(player_detection_area)
+	player_in_attack_range = is_player_overlapping_area(attack_range)
+	player_in_tracking = is_player_overlapping_area(tracking_range) or player_in_detection or player_in_attack_range
+
+	if player_in_tracking:
+		stop_health_regeneration()
+		if current_state_name == "idle" or current_state_name == "patrol" or current_state_name == "return_to_patrol":
+			change_state("scream")
+		else:
+			update_combat_engagement()
+		return
+
+	update_combat_engagement()
+
+
+func is_player_overlapping_area(area: Area2D) -> bool:
+	return get_overlapping_player(area) == player
 
 
 func refresh_player_detection_after_dialogue():

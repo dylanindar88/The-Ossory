@@ -5,7 +5,9 @@ var attack_box: Area2D
 var collision_shape: CollisionShape2D
 var attack_damage: int
 var combo_2_damage_multiplier: float = 1.5
+var form_attack_damage_multiplier: float = 1.0
 var player_health: Node
+var damage_source: Node
 
 var active_attack_targets: Array[Node2D] = []
 var current_combo_part: int = 0
@@ -136,7 +138,7 @@ func _on_attack_hit(area: Area2D):
 	register_hit(target)
 
 	if target.has_method("take_damage"):
-		target.take_damage(get_current_attack_damage(), should_ignore_invulnerability())
+		target.take_damage(get_current_attack_damage(), should_ignore_invulnerability(), damage_source)
 
 
 func _hit_current_overlaps():
@@ -149,6 +151,7 @@ func _hit_current_overlaps():
 
 func get_current_attack_damage() -> int:
 	var damage := float(attack_damage)
+	damage *= form_attack_damage_multiplier
 
 	if current_combo_part == 2:
 		damage *= combo_2_damage_multiplier

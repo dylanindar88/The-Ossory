@@ -7,7 +7,7 @@ var dash_direction = Vector2.ZERO
 func enter(player):
 	player.can_dash = false
 	player.dash_cooldown_timer = player.dash_cooldown
-	player.health.on_dash_started()
+	player.health.on_dash_started(player.current_form_uses_stamina())
 
 	dash_timer = player.dash_duration
 
