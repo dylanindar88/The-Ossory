@@ -3,14 +3,14 @@ extends Resource
 
 const DEFAULT_ATTACK_PROFILES := {
 	"right": {
-		1: {"size": Vector2(41, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
-		2: {"size": Vector2(41, 41), "position": Vector2(23, -32), "rotation": -PI / 2.0},
-		3: {"size": Vector2(41, 31), "position": Vector2(18, -32), "rotation": -PI / 2.0},
+		1: {"size": Vector2(41, 31), "position": Vector2(18, -25), "rotation": -PI / 2.0},
+		2: {"size": Vector2(41, 43), "position": Vector2(24, -25), "rotation": -PI / 2.0},
+		3: {"size": Vector2(41, 31), "position": Vector2(18, -25), "rotation": -PI / 2.0},
 	},
 	"left": {
-		1: {"size": Vector2(41, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
-		2: {"size": Vector2(41, 41), "position": Vector2(-23, -32), "rotation": -PI / 2.0},
-		3: {"size": Vector2(41, 31), "position": Vector2(-18, -32), "rotation": -PI / 2.0},
+		1: {"size": Vector2(41, 31), "position": Vector2(-18, -25), "rotation": -PI / 2.0},
+		2: {"size": Vector2(41, 43), "position": Vector2(-24, -25), "rotation": -PI / 2.0},
+		3: {"size": Vector2(41, 31), "position": Vector2(-18, -25), "rotation": -PI / 2.0},
 	},
 	"down": {
 		1: {"size": Vector2(36, 52), "position": Vector2(0, -7), "rotation": 0.0},
@@ -18,9 +18,9 @@ const DEFAULT_ATTACK_PROFILES := {
 		3: {"size": Vector2(36, 52), "position": Vector2(0, -7), "rotation": 0.0},
 	},
 	"up": {
-		1: {"size": Vector2(31, 42), "position": Vector2(0, -43), "rotation": 0.0},
-		2: {"size": Vector2(31, 52), "position": Vector2(0, -48), "rotation": 0.0},
-		3: {"size": Vector2(31, 42), "position": Vector2(0, -43), "rotation": 0.0},
+		1: {"size": Vector2(31, 42), "position": Vector2(0, -48), "rotation": 0.0},
+		2: {"size": Vector2(31, 56), "position": Vector2(0, -55), "rotation": 0.0},
+		3: {"size": Vector2(31, 42), "position": Vector2(0, -48), "rotation": 0.0},
 	},
 }
 
@@ -69,6 +69,7 @@ const DEFAULT_ATTACK_PROFILES := {
 @export var attack_profiles: Dictionary = {}
 @export var attack_animation_prefix: StringName = &"unarmed_attack"
 @export var attack_damage_multiplier: float = 1.0
+@export var incoming_damage_multiplier: float = 1.0
 
 
 func get_attack_profiles() -> Dictionary:

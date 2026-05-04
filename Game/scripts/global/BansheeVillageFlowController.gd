@@ -11,6 +11,7 @@ const STAGE_VILLAGE_CLEARED_LEGACY = "village_cleared"
 const STAGE_FINAL_DULLUHAN_READY = "final_dulluhan_ready"
 const DEFAULT_ELDER_POST_TRANSFORMATION_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/banshee_village_elder_post_transformation.tres")
 const DEFAULT_ELDER_WOLF_HUNT_CLEARED_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/banshee_village_elder_village_cleared.tres")
+const DEFAULT_ELDER_FINAL_DULLUHAN_COMPLETE_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/banshee_village_elder_final_dulluhan_complete.tres")
 const BANSHEE_CLEAR_RESPAWN = "respawn"
 const BANSHEE_CLEAR_TEMPORARY_WOLF = "temporary_wolf_clear"
 const BANSHEE_CLEAR_PERMANENT_WOLF = "permanent_wolf_clear"
@@ -23,8 +24,10 @@ const DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED = "dulluhan_transformation_unl
 const DEV_PRESET_SECOND_BANSHEE_REPORT_READY = "second_banshee_report_ready"
 const DEV_PRESET_AUTOSAVE_BLOCKER = "banshee_village_dev_preset"
 const DEV_PRESET_SAVE_WRITE_BLOCKER = "banshee_village_dev_preset"
-const LEVEL_STATE_VERSION = 1
+const LEVEL_STATE_VERSION = 2
 const DIALOGUE_CHOICE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueChoiceBubble.tscn")
+const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
+const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 20 seconds.\nPress Tab to view transformation stats."
 
 @export_enum(
 	"none",
@@ -52,6 +55,7 @@ const DIALOGUE_CHOICE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/Dialo
 @export var elder_respawning_sequence: DialogueSequence
 @export var elder_post_transformation_sequence: DialogueSequence = DEFAULT_ELDER_POST_TRANSFORMATION_SEQUENCE
 @export var elder_wolf_hunt_cleared_sequence: DialogueSequence = DEFAULT_ELDER_WOLF_HUNT_CLEARED_SEQUENCE
+@export var elder_final_dulluhan_complete_sequence: DialogueSequence = DEFAULT_ELDER_FINAL_DULLUHAN_COMPLETE_SEQUENCE
 @export var male_stalked_sequence: DialogueSequence
 @export var female_stalked_sequence: DialogueSequence
 @export var male_clear_sequence: DialogueSequence
@@ -74,6 +78,11 @@ var elder_choice_bubble: DialogueChoiceBubble
 var banshees: Array[Node] = []
 var state_generation: int = 0
 var final_dulluhan_teaser_completed: bool = false
+var story_transform_prompt_consumed: bool = false
+var story_wolf_lock_active: bool = false
+var final_wolf_instruction_shown: bool = false
+var story_prompt_label: Label
+var story_prompt_generation: int = 0
 
 
 func _ready():
@@ -103,6 +112,9 @@ func collect_level_state() -> Dictionary:
 		"revealed_banshee_paths": revealed_banshee_paths.keys(),
 		"permanently_cleared_banshee_paths": permanently_cleared_banshee_paths.keys(),
 		"final_dulluhan_teaser_completed": final_dulluhan_teaser_completed,
+		"story_transform_prompt_consumed": story_transform_prompt_consumed,
+		"story_wolf_lock_active": story_wolf_lock_active,
+		"final_wolf_instruction_shown": final_wolf_instruction_shown,
 		"banshees": collect_banshee_states(),
 		"villagers": collect_villager_states(),
 	}
@@ -180,6 +192,9 @@ func apply_level_state(state: Dictionary):
 	quest_stage = get_valid_stage(str(normalized_state.get("quest_stage", STAGE_INTRO)))
 	banshee_kill_count = maxi(int(normalized_state.get("banshee_kill_count", 0)), 0)
 	final_dulluhan_teaser_completed = bool(normalized_state.get("final_dulluhan_teaser_completed", false))
+	story_transform_prompt_consumed = bool(normalized_state.get("story_transform_prompt_consumed", false))
+	story_wolf_lock_active = bool(normalized_state.get("story_wolf_lock_active", false))
+	final_wolf_instruction_shown = bool(normalized_state.get("final_wolf_instruction_shown", false))
 	cleared_villager_paths = {}
 	defeated_banshees.clear()
 	permanently_cleared_banshee_paths = {}
@@ -207,9 +222,13 @@ func apply_level_state(state: Dictionary):
 		quest_stage = STAGE_READY_TO_REPORT
 	if (quest_stage == STAGE_REPORT_COMPLETE or quest_stage == STAGE_WOLF_HUNT_READY) and are_all_banshees_permanently_cleared():
 		quest_stage = STAGE_WOLF_HUNT_CLEARED
+	if quest_stage == STAGE_WOLF_HUNT_CLEARED or quest_stage == STAGE_FINAL_DULLUHAN_READY:
+		story_wolf_lock_active = false
+		story_transform_prompt_consumed = true
 
 	restore_saved_villager_states()
 	restore_stage_world_state()
+	restore_story_transformation_state()
 	saved_banshee_states.clear()
 	saved_villager_states.clear()
 
@@ -292,6 +311,9 @@ func build_dev_level_state(preset: String) -> Dictionary:
 		"revealed_banshee_paths": [],
 		"permanently_cleared_banshee_paths": permanent_paths,
 		"final_dulluhan_teaser_completed": false,
+		"story_transform_prompt_consumed": preset != DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED,
+		"story_wolf_lock_active": false,
+		"final_wolf_instruction_shown": false,
 		"banshees": [],
 		"villagers": [],
 	}
@@ -316,6 +338,7 @@ func apply_dev_transformation_unlock():
 	if dulluhan != null:
 		dulluhan.set("transformation_granted", true)
 	refresh_quest_presentation()
+	refresh_story_transform_prompt()
 
 
 func clear_dev_preset_combat_state():
@@ -326,12 +349,18 @@ func clear_dev_preset_combat_state():
 
 
 func connect_player_interactions():
-	if player == null or not player.has_signal("interaction_requested"):
+	if player == null:
 		return
 
-	var callback: Callable = Callable(self, "_on_player_interaction_requested")
-	if not player.is_connected("interaction_requested", callback):
-		player.connect("interaction_requested", callback)
+	if player.has_signal("interaction_requested"):
+		var callback: Callable = Callable(self, "_on_player_interaction_requested")
+		if not player.is_connected("interaction_requested", callback):
+			player.connect("interaction_requested", callback)
+
+	if player.has_signal("transformation_state_changed"):
+		var transform_callback: Callable = Callable(self, "_on_player_transformation_state_changed")
+		if not player.is_connected("transformation_state_changed", transform_callback):
+			player.connect("transformation_state_changed", transform_callback)
 
 
 func connect_elder_dialogue():
@@ -407,6 +436,10 @@ func apply_intro_defaults():
 	quest_stage = STAGE_INTRO
 	banshee_kill_count = 0
 	final_dulluhan_teaser_completed = false
+	story_transform_prompt_consumed = false
+	story_wolf_lock_active = false
+	final_wolf_instruction_shown = false
+	hide_story_prompt()
 	cleared_villager_paths.clear()
 	revealed_banshee_paths.clear()
 	permanently_cleared_banshee_paths.clear()
@@ -432,11 +465,17 @@ func refresh_quest_presentation():
 	# Presentation refresh must not reset actor position, health, death, or patrol state.
 	if quest_stage == STAGE_INTRO:
 		set_elder_sequence(elder_reveal_sequence)
+	elif final_dulluhan_teaser_completed:
+		set_elder_sequence(elder_final_dulluhan_complete_sequence if elder_final_dulluhan_complete_sequence != null else elder_wolf_hunt_cleared_sequence)
 	elif quest_stage == STAGE_WOLF_HUNT_CLEARED:
+		set_elder_sequence(elder_wolf_hunt_cleared_sequence if elder_wolf_hunt_cleared_sequence != null else elder_waiting_sequence)
+	elif quest_stage == STAGE_FINAL_DULLUHAN_READY:
 		set_elder_sequence(elder_wolf_hunt_cleared_sequence if elder_wolf_hunt_cleared_sequence != null else elder_waiting_sequence)
 	elif quest_stage == STAGE_WOLF_HUNT_READY:
 		set_elder_sequence(elder_post_transformation_sequence if elder_post_transformation_sequence != null else elder_respawning_sequence)
 	elif quest_stage == STAGE_READY_TO_REPORT:
+		set_elder_sequence(elder_respawning_sequence)
+	elif quest_stage == STAGE_DULLUHAN_AVAILABLE:
 		set_elder_sequence(elder_respawning_sequence)
 	else:
 		set_elder_sequence(elder_waiting_sequence)
@@ -444,6 +483,7 @@ func refresh_quest_presentation():
 	update_elder_flag()
 	update_kill_counter()
 	update_dulluhan_visibility()
+	refresh_story_transform_prompt()
 
 
 func restore_saved_villager_states():
@@ -467,6 +507,7 @@ func apply_banshee_villager_presentation(combat_enabled: bool):
 
 		if permanent_clear or saved_dead or villager_is_clear:
 			set_villager_clear_sequence(villager)
+			complete_villager_banshee_story(villager)
 			apply_cleared_banshee_state(banshee, saved_state)
 			defeated_banshees[banshee] = true
 			if saved_dead and not permanent_clear:
@@ -545,6 +586,16 @@ func set_villager_clear_sequence(villager: Node):
 		return
 
 	set_villager_dialogue_override(villager, get_villager_sequence(villager, false))
+
+
+func complete_villager_banshee_story(villager: Node):
+	if villager == null or villager == elder:
+		return
+
+	if villager.has_method("on_assigned_banshee_defeated"):
+		villager.on_assigned_banshee_defeated()
+	elif villager.has_method("complete_story_pause"):
+		villager.complete_story_pause()
 
 
 func set_villager_dialogue_override(villager: Node, sequence: DialogueSequence):
@@ -663,6 +714,7 @@ func begin_wolf_hunt_ready_stage():
 		return
 
 	quest_stage = STAGE_WOLF_HUNT_READY
+	story_transform_prompt_consumed = false
 	refresh_quest_presentation()
 	save_wolf_clear_progress()
 
@@ -790,7 +842,7 @@ func _on_banshee_defeated(banshee: Node):
 		apply_cleared_banshee_state(banshee)
 		update_kill_counter()
 		if is_wolf_hunt_stage() and are_all_banshees_permanently_cleared():
-			begin_wolf_hunt_cleared_stage()
+			begin_wolf_hunt_cleared_stage(true)
 		save_wolf_clear_progress()
 		return
 
@@ -831,9 +883,17 @@ func is_wolf_hunt_stage() -> bool:
 	return quest_stage == STAGE_WOLF_HUNT_READY or quest_stage == STAGE_REPORT_COMPLETE
 
 
-func begin_wolf_hunt_cleared_stage():
+func begin_wolf_hunt_cleared_stage(show_completion_prompt: bool = false):
 	quest_stage = STAGE_WOLF_HUNT_CLEARED
+	story_transform_prompt_consumed = true
+	if story_wolf_lock_active or is_player_in_wolf_form():
+		story_wolf_lock_active = false
+		if player != null and player.has_method("end_story_wolf_transformation_lock"):
+			player.end_story_wolf_transformation_lock(true)
 	refresh_quest_presentation()
+	if show_completion_prompt and not final_wolf_instruction_shown:
+		final_wolf_instruction_shown = true
+		show_story_prompt(FINAL_WOLF_INSTRUCTION_TEXT, 7.5)
 
 
 func begin_final_dulluhan_stage():
@@ -993,3 +1053,103 @@ func get_final_dulluhan_position() -> Vector2:
 		return marker.global_position
 
 	return final_dulluhan_position
+
+
+func restore_story_transformation_state():
+	if story_wolf_lock_active and is_wolf_hunt_stage():
+		story_transform_prompt_consumed = true
+		hide_story_prompt()
+		if player != null and player.has_method("restore_story_wolf_transformation_lock"):
+			player.restore_story_wolf_transformation_lock()
+		return
+
+	if player != null and player.has_method("is_story_wolf_transformation_locked") and bool(player.call("is_story_wolf_transformation_locked")):
+		if player.has_method("end_story_wolf_transformation_lock"):
+			player.end_story_wolf_transformation_lock(false)
+
+	refresh_story_transform_prompt()
+
+
+func refresh_story_transform_prompt():
+	if should_show_story_transform_prompt():
+		show_story_prompt(STORY_TRANSFORM_PROMPT_TEXT)
+	else:
+		hide_story_prompt()
+
+
+func should_show_story_transform_prompt() -> bool:
+	return quest_stage == STAGE_WOLF_HUNT_READY and has_wolf_transformation_upgrade() and not story_transform_prompt_consumed and not story_wolf_lock_active
+
+
+func _on_player_transformation_state_changed(active: bool):
+	if not active:
+		if story_wolf_lock_active:
+			story_wolf_lock_active = false
+		return
+
+	if story_transform_prompt_consumed or story_wolf_lock_active:
+		return
+
+	if not is_wolf_hunt_stage():
+		return
+
+	story_transform_prompt_consumed = true
+	story_wolf_lock_active = true
+	hide_story_prompt()
+	if player != null and player.has_method("start_story_wolf_transformation_lock"):
+		player.start_story_wolf_transformation_lock()
+	save_wolf_clear_progress()
+
+
+func is_player_in_wolf_form() -> bool:
+	return player != null and player.has_method("get_current_form_id") and player.get_current_form_id() == &"wolf"
+
+
+func show_story_prompt(text: String, timeout_seconds: float = 0.0):
+	var label := get_story_prompt_label()
+	if label == null:
+		return
+
+	story_prompt_generation += 1
+	label.text = text
+	label.visible = true
+	if timeout_seconds > 0.0:
+		hide_story_prompt_after_delay(story_prompt_generation, timeout_seconds)
+
+
+func hide_story_prompt():
+	story_prompt_generation += 1
+	if story_prompt_label != null and is_instance_valid(story_prompt_label):
+		story_prompt_label.visible = false
+
+
+func hide_story_prompt_after_delay(generation: int, timeout_seconds: float):
+	await get_tree().create_timer(timeout_seconds).timeout
+	if generation == story_prompt_generation:
+		hide_story_prompt()
+
+
+func get_story_prompt_label() -> Label:
+	if player == null:
+		return null
+
+	if story_prompt_label != null and is_instance_valid(story_prompt_label):
+		return story_prompt_label
+
+	story_prompt_label = Label.new()
+	story_prompt_label.name = "BansheeVillageStoryPrompt"
+	story_prompt_label.z_as_relative = false
+	story_prompt_label.z_index = 250
+	story_prompt_label.position = Vector2(-120.0, -120.0)
+	story_prompt_label.size = Vector2(240.0, 58.0)
+	story_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	story_prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	story_prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	story_prompt_label.add_theme_font_size_override("font_size", 9)
+	story_prompt_label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.82, 1.0))
+	story_prompt_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+	story_prompt_label.add_theme_constant_override("shadow_offset_x", 1)
+	story_prompt_label.add_theme_constant_override("shadow_offset_y", 1)
+	story_prompt_label.visible = false
+	player.add_child(story_prompt_label)
+	return story_prompt_label

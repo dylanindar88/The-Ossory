@@ -41,10 +41,12 @@ var stamina_gauge_border: TextureRect
 var transformation_row: Node2D
 var transformation_bar: TextureProgressBar
 var transformation_gauge_border: TextureRect
+var player_gauges_enabled: bool = true
 
 
 func _ready():
 	stamina_container.visible = false
+	player_gauges_enabled = should_show_player_gauges()
 	cache_template_values()
 	transformation_progress_texture = create_transformation_progress_texture()
 	cooldown_progress_texture = create_cooldown_progress_texture()
@@ -66,6 +68,11 @@ func _ready():
 		var cooldown_callback: Callable = Callable(self, "_on_transformation_cooldown_changed")
 		if not player_node.is_connected("transformation_cooldown_changed", cooldown_callback):
 			player_node.connect("transformation_cooldown_changed", cooldown_callback)
+
+	if SaveManager != null and SaveManager.has_signal("gauge_display_settings_changed"):
+		var settings_callback: Callable = Callable(self, "_on_gauge_display_settings_changed")
+		if not SaveManager.is_connected("gauge_display_settings_changed", settings_callback):
+			SaveManager.connect("gauge_display_settings_changed", settings_callback)
 
 	call_deferred("finish_gauge_setup")
 
@@ -97,7 +104,16 @@ func _on_transformation_cooldown_changed(current: float, max_cooldown: float, ac
 		update_display()
 
 
+func _on_gauge_display_settings_changed(_show_hud_gauges: bool, show_player_gauges: bool):
+	player_gauges_enabled = show_player_gauges
+	update_display()
+
+
 func update_display():
+	if not player_gauges_enabled:
+		stamina_container.visible = false
+		return
+
 	if not has_gauge_rows():
 		stamina_container.visible = false
 		return
@@ -269,3 +285,11 @@ func create_cooldown_progress_texture() -> Texture2D:
 	gradient_texture.gradient = gradient
 	gradient_texture.width = 44
 	return gradient_texture
+
+
+func should_show_player_gauges() -> bool:
+	if SaveManager != null and SaveManager.has_method("get_gauge_display_settings"):
+		var settings: Dictionary = SaveManager.get_gauge_display_settings()
+		return bool(settings.get("show_player_gauges", true))
+
+	return true

@@ -1,18 +1,26 @@
 extends Node
 
 signal upgrade_state_changed
+signal player_lives_changed(current_lives: int, max_lives: int)
+signal gauge_display_settings_changed(show_hud_gauges: bool, show_player_gauges: bool)
 
 const SAVE_VERSION := 1
 const MANUAL_SAVE_SLOT_COUNT := 3
 const AUTOSAVE_SLOT := 4
 const SAVE_SLOT_COUNT := 4
 const SAVE_PATH_FORMAT := "user://save_slot_%d.json"
-const MAX_PLAYER_LIVES := 5
+const SETTINGS_PATH := "user://settings.cfg"
+const SETTING_SHOW_HUD_GAUGES := "show_hud_gauges"
+const SETTING_SHOW_PLAYER_GAUGES := "show_player_gauges"
+const BASE_PLAYER_LIVES := 3
+const MAX_PLAYER_LIVES := 6
 const LIFE_LOSS_EXTRA_INVULNERABILITY_TIME := 0.5
 
+var show_hud_gauges: bool = true
+var show_player_gauges: bool = true
 var active_slot: int = 1
 var autosave_slot: int = AUTOSAVE_SLOT
-var player_lives: int = MAX_PLAYER_LIVES
+var player_lives: int = BASE_PLAYER_LIVES
 var save_allowed: bool = true
 var save_blockers: Dictionary = {}
 var save_write_blockers: Dictionary = {}
@@ -22,6 +30,7 @@ var current_level: Node
 var last_error: String = ""
 var upgrade_state: Dictionary = {
 	"unlocked": {
+		"attack": true,
 		"health": true,
 		"stamina": true,
 		"dash_count": true,
@@ -29,6 +38,52 @@ var upgrade_state: Dictionary = {
 	"stat_levels": {},
 	"equipped_weapon_id": "unarmed",
 }
+
+
+func _ready():
+	load_settings()
+
+
+func load_settings():
+	var config: ConfigFile = ConfigFile.new()
+	var error: Error = config.load(SETTINGS_PATH)
+	if error != OK:
+		show_hud_gauges = true
+		show_player_gauges = true
+		return
+
+	show_hud_gauges = bool(config.get_value("ui", SETTING_SHOW_HUD_GAUGES, true))
+	show_player_gauges = bool(config.get_value("ui", SETTING_SHOW_PLAYER_GAUGES, true))
+	if not show_hud_gauges and not show_player_gauges:
+		show_hud_gauges = true
+		show_player_gauges = true
+
+
+func save_settings():
+	var config: ConfigFile = ConfigFile.new()
+	config.set_value("ui", SETTING_SHOW_HUD_GAUGES, show_hud_gauges)
+	config.set_value("ui", SETTING_SHOW_PLAYER_GAUGES, show_player_gauges)
+	config.save(SETTINGS_PATH)
+
+
+func get_gauge_display_settings() -> Dictionary:
+	return {
+		"show_hud_gauges": show_hud_gauges,
+		"show_player_gauges": show_player_gauges,
+	}
+
+
+func set_gauge_display_settings(show_hud: bool, show_player: bool):
+	if not show_hud and not show_player:
+		return
+
+	if show_hud_gauges == show_hud and show_player_gauges == show_player:
+		return
+
+	show_hud_gauges = show_hud
+	show_player_gauges = show_player
+	save_settings()
+	gauge_display_settings_changed.emit(show_hud_gauges, show_player_gauges)
 
 
 func set_active_slot(slot: int) -> bool:
@@ -57,18 +112,35 @@ func get_player_lives() -> int:
 	return player_lives
 
 
+func get_max_player_lives() -> int:
+	var health_level: int = int(get_upgrade_stat_levels().get("health", 0))
+	return clamp(BASE_PLAYER_LIVES + health_level, BASE_PLAYER_LIVES, MAX_PLAYER_LIVES)
+
+
 func reset_player_lives():
-	player_lives = MAX_PLAYER_LIVES
+	player_lives = get_max_player_lives()
+	player_lives_changed.emit(player_lives, get_max_player_lives())
+
+
+func set_player_lives_for_dev(lives: int):
+	if not OS.is_debug_build() and not Engine.is_editor_hint():
+		return
+
+	player_lives = clamp(lives, 0, get_max_player_lives())
+	player_lives_changed.emit(player_lives, get_max_player_lives())
 
 
 func reset_upgrade_state():
+	var previous_max_lives: int = get_max_player_lives()
 	upgrade_state = get_default_upgrade_state()
+	reconcile_player_lives_after_max_change(previous_max_lives, false)
 	upgrade_state_changed.emit()
 
 
 func get_default_upgrade_state() -> Dictionary:
 	return {
 		"unlocked": {
+			"attack": true,
 			"health": true,
 			"stamina": true,
 			"dash_count": true,
@@ -98,6 +170,7 @@ func set_stat_level(stat_id: StringName, level: int) -> bool:
 	if id == "":
 		return false
 
+	var previous_max_lives: int = get_max_player_lives()
 	var stat_levels: Dictionary = get_upgrade_stat_levels()
 	var clean_level: int = maxi(level, 0)
 	if int(stat_levels.get(id, 0)) == clean_level:
@@ -105,6 +178,8 @@ func set_stat_level(stat_id: StringName, level: int) -> bool:
 
 	stat_levels[id] = clean_level
 	upgrade_state["stat_levels"] = stat_levels
+	if id == "health":
+		reconcile_player_lives_after_max_change(previous_max_lives, true)
 	upgrade_state_changed.emit()
 	return true
 
@@ -114,6 +189,7 @@ func get_upgrade_state() -> Dictionary:
 
 
 func apply_upgrade_state(data: Variant):
+	var previous_max_lives: int = get_max_player_lives()
 	var default_state := get_default_upgrade_state()
 	if data is Dictionary:
 		var source: Dictionary = data
@@ -127,7 +203,17 @@ func apply_upgrade_state(data: Variant):
 		default_state["equipped_weapon_id"] = str(source.get("equipped_weapon_id", "unarmed"))
 
 	upgrade_state = default_state
+	reconcile_player_lives_after_max_change(previous_max_lives, false)
 	upgrade_state_changed.emit()
+
+
+func reconcile_player_lives_after_max_change(previous_max_lives: int, grant_new_lives: bool):
+	var current_max_lives: int = get_max_player_lives()
+	if grant_new_lives and current_max_lives > previous_max_lives:
+		player_lives += current_max_lives - previous_max_lives
+
+	player_lives = clamp(player_lives, 0, current_max_lives)
+	player_lives_changed.emit(player_lives, current_max_lives)
 
 
 func get_upgrade_unlocked() -> Dictionary:
@@ -238,6 +324,10 @@ func save_game_to_slot(slot: int, reason: String = "manual", level: Node = null)
 
 
 func write_save_to_slot(slot: int, reason: String = "manual", level: Node = null) -> bool:
+	if is_autosave_slot(slot) and not autosave_blockers.is_empty():
+		last_error = ""
+		return false
+
 	if not is_save_write_allowed():
 		last_error = get_save_disabled_message()
 		return false
@@ -286,6 +376,7 @@ func spend_life_and_respawn_player_in_place() -> bool:
 		return false
 
 	player_lives = max(player_lives - 1, 0)
+	player_lives_changed.emit(player_lives, get_max_player_lives())
 	if player_lives <= 0:
 		last_error = "No lives remaining."
 		return false
@@ -425,10 +516,10 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):
 		CombatStateManager.clear_all()
 
-	if not preserve_current_lives:
-		player_lives = clamp(int(data.get("player_lives", MAX_PLAYER_LIVES)), 0, MAX_PLAYER_LIVES)
-
 	apply_upgrade_state(data.get("upgrade_state", {}))
+	if not preserve_current_lives:
+		player_lives = clamp(int(data.get("player_lives", get_max_player_lives())), 0, get_max_player_lives())
+		player_lives_changed.emit(player_lives, get_max_player_lives())
 	apply_player_state(level, data.get("player", {}))
 	if not uses_level_owned_hostile_state(level):
 		apply_defeated_banshees(level, data.get("defeated_banshees", []))

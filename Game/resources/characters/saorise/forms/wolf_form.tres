@@ -1,7 +1,7 @@
 [gd_resource type="Resource" script_class="PlayerFormDefinition" load_steps=6 format=3 uid="uid://bjt3jxdpfurt"]
 
 [ext_resource type="Script" path="res://scripts/characters/saorise/PlayerFormDefinition.gd" id="1_form"]
-[ext_resource type="Resource" path="res://resources/characters/saorise/forms/wolf_tuning.tres" id="2_tuning"]
+[ext_resource type="Resource" uid="uid://c76h3alhofwfk" path="res://resources/characters/saorise/forms/wolf_tuning.tres" id="2_tuning"]
 [ext_resource type="SpriteFrames" uid="uid://cvmwrihq7kyud" path="res://resources/characters/saorise/sprites/wolfMovement.tres" id="3_frames"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hurt"]
@@ -46,4 +46,5 @@ hurt_shape_position = Vector2(0, -20)
 hurt_shape_rotation = 0.0
 attack_profiles = {}
 attack_animation_prefix = &"attack"
-attack_damage_multiplier = 1.0
+attack_damage_multiplier = 1.5
+incoming_damage_multiplier = 1.0

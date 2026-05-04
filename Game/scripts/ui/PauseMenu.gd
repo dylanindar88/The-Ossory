@@ -13,12 +13,15 @@ extends CanvasLayer
 @onready var save_slots_back_button: Button = $Overlay/Panel/SaveSlotsView/BackOption/Button
 @onready var save_slots_status_label: Label = $Overlay/Panel/SaveSlotsView/SaveSlotsStatusLabel
 @onready var zoom_slider: HSlider = $Overlay/Panel/OptionsView/ZoomSlider
+@onready var hud_gauges_checkbox: CheckBox = $Overlay/Panel/OptionsView/GaugeLocationOptions/HudGaugeOption
+@onready var player_gauges_checkbox: CheckBox = $Overlay/Panel/OptionsView/GaugeLocationOptions/PlayerGaugeOption
 
 var camera: Camera2D
 var pause_open: bool = false
 var pause_allowed: bool = true
 var pending_confirmation_slot: int = 0
 var pending_confirmation_action: String = ""
+var syncing_gauge_checkboxes: bool = false
 
 
 func _ready():
@@ -37,9 +40,12 @@ func _ready():
 	back_button.pressed.connect(open_main_menu)
 	save_slots_back_button.pressed.connect(open_main_menu)
 	zoom_slider.value_changed.connect(_on_zoom_slider_value_changed)
+	hud_gauges_checkbox.toggled.connect(_on_hud_gauges_toggled)
+	player_gauges_checkbox.toggled.connect(_on_player_gauges_toggled)
 	connect_save_slot_buttons()
 
 	configure_zoom_slider()
+	configure_gauge_checkboxes()
 
 
 func _unhandled_input(event):
@@ -98,6 +104,7 @@ func open_main_menu():
 
 func open_options():
 	configure_zoom_slider()
+	configure_gauge_checkboxes()
 	menu_view.visible = false
 	options_view.visible = true
 	save_slots_view.visible = false
@@ -271,6 +278,47 @@ func _on_zoom_slider_value_changed(value: float):
 		camera.change_zoom(value)
 	else:
 		camera.zoom = Vector2(value, value)
+
+
+func configure_gauge_checkboxes():
+	if hud_gauges_checkbox == null or player_gauges_checkbox == null:
+		return
+
+	var settings: Dictionary = {}
+	if SaveManager != null and SaveManager.has_method("get_gauge_display_settings"):
+		settings = SaveManager.get_gauge_display_settings()
+	syncing_gauge_checkboxes = true
+	hud_gauges_checkbox.button_pressed = bool(settings.get("show_hud_gauges", true))
+	player_gauges_checkbox.button_pressed = bool(settings.get("show_player_gauges", true))
+	if not hud_gauges_checkbox.button_pressed and not player_gauges_checkbox.button_pressed:
+		hud_gauges_checkbox.button_pressed = true
+		player_gauges_checkbox.button_pressed = true
+	syncing_gauge_checkboxes = false
+
+
+func _on_hud_gauges_toggled(enabled: bool):
+	if syncing_gauge_checkboxes:
+		return
+
+	apply_gauge_display_choice(enabled, player_gauges_checkbox.button_pressed, hud_gauges_checkbox)
+
+
+func _on_player_gauges_toggled(enabled: bool):
+	if syncing_gauge_checkboxes:
+		return
+
+	apply_gauge_display_choice(hud_gauges_checkbox.button_pressed, enabled, player_gauges_checkbox)
+
+
+func apply_gauge_display_choice(show_hud: bool, show_player: bool, changed_checkbox: CheckBox):
+	if not show_hud and not show_player:
+		syncing_gauge_checkboxes = true
+		changed_checkbox.button_pressed = true
+		syncing_gauge_checkboxes = false
+		return
+
+	if SaveManager != null and SaveManager.has_method("set_gauge_display_settings"):
+		SaveManager.set_gauge_display_settings(show_hud, show_player)
 
 
 func set_pause_allowed(allowed: bool):

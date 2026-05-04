@@ -7,6 +7,7 @@ const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubb
 const UNLOCK_DIALOGUE := [
 	"The old shape in your blood is awake now.",
 	"When the time comes, wear the wolf and the dead will stay dead.",
+	"Return to the elder. They will know what this shape is for.",
 ]
 const REPEAT_DIALOGUE := [
 	"The wolf is yours now. Learn its hunger before you trust it.",

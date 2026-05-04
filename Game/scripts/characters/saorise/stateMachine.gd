@@ -6,6 +6,7 @@ signal transformation_state_changed(active: bool)
 signal transformation_cooldown_changed(current: float, max: float, active: bool)
 
 const DEFAULT_TUNING: PlayerTuning = preload("res://resources/characters/saorise/player_tuning.tres")
+const TRANSFORMATION_AUTOSAVE_BLOCKER = "player_transforming"
 
 @export var tuning: PlayerTuning = DEFAULT_TUNING
 @export var initial_form_id: StringName = &"human"
@@ -58,6 +59,7 @@ var transformation_duration: float = 0.0
 var transformation_generation: int = 0
 var transformation_cooldown_seconds: float = 30.0
 var transformation_cooldown_timer: float = 0.0
+var story_wolf_transformation_locked: bool = false
 var life_respawn_pending: bool = false
 
 
@@ -337,7 +339,14 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, damage_sourc
 	if current_state and current_state.has_method("prepare_for_incoming_damage"):
 		current_state.prepare_for_incoming_damage(self)
 
-	return health.take_damage(amount, ignore_invulnerability, damage_source)
+	return health.take_damage(amount, ignore_invulnerability, damage_source, get_current_form_incoming_damage_multiplier())
+
+
+func get_current_form_incoming_damage_multiplier() -> float:
+	if current_form != null:
+		return current_form.incoming_damage_multiplier
+
+	return 1.0
 
 
 func set_dialogue_input_locked(locked: bool):
@@ -411,12 +420,13 @@ func start_wolf_transformation():
 		return
 
 	is_transforming = false
+	set_transformation_autosave_blocked(false)
 	hold_dialogue_idle()
 	update_effects()
 
 
 func finish_wolf_transformation():
-	if current_form_id != &"wolf" or is_transforming:
+	if current_form_id != &"wolf" or is_transforming or story_wolf_transformation_locked:
 		return
 
 	transformation_generation += 1
@@ -436,12 +446,14 @@ func finish_wolf_transformation():
 	transformation_state_changed.emit(false)
 	transformation_timer_changed.emit(0.0, 0.0, false)
 	start_transformation_cooldown()
+	set_transformation_autosave_blocked(false)
 	hold_dialogue_idle()
 	update_effects()
 
 
 func begin_transform_lock():
 	is_transforming = true
+	set_transformation_autosave_blocked(true)
 	velocity = Vector2.ZERO
 	can_attack_from_hold = false
 	if hitbox_manager:
@@ -482,6 +494,9 @@ func update_transformation_timer(delta: float):
 	if current_form_id != &"wolf":
 		return
 
+	if story_wolf_transformation_locked:
+		return
+
 	if transformation_duration <= 0.0:
 		return
 
@@ -496,9 +511,82 @@ func start_transformation_cooldown():
 	emit_transformation_cooldown_progress()
 
 
+func start_story_wolf_transformation_lock():
+	if current_form_id != &"wolf":
+		return
+
+	story_wolf_transformation_locked = true
+	if transformation_duration <= 0.0:
+		var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
+		transformation_duration = wolf_form.transformation_duration_seconds if wolf_form != null else 20.0
+	transformation_time_remaining = maxf(transformation_time_remaining, transformation_duration)
+	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
+
+
+func restore_story_wolf_transformation_lock():
+	var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
+	if wolf_form == null:
+		return
+
+	transformation_generation += 1
+	story_wolf_transformation_locked = true
+	is_transforming = false
+	transformation_duration = wolf_form.transformation_duration_seconds
+	if transformation_duration <= 0.0:
+		transformation_duration = 20.0
+	transformation_time_remaining = transformation_duration
+	clear_transformation_cooldown()
+	set_form(&"wolf")
+	transformation_state_changed.emit(true)
+	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
+	set_transformation_autosave_blocked(false)
+
+
+func end_story_wolf_transformation_lock(start_refill_from_zero: bool = true):
+	if not story_wolf_transformation_locked and current_form_id != &"wolf":
+		return
+
+	story_wolf_transformation_locked = false
+	transformation_generation += 1
+	var generation: int = transformation_generation
+
+	if current_form_id == &"wolf":
+		begin_transform_lock()
+		transformation_time_remaining = 0.0
+		transformation_timer_changed.emit(0.0, transformation_duration, true)
+		await play_transformation_animation(true)
+
+		if generation != transformation_generation or dead:
+			return
+
+		set_form(&"human")
+
+	is_transforming = false
+	transformation_duration = 0.0
+	transformation_time_remaining = 0.0
+	transformation_state_changed.emit(false)
+	transformation_timer_changed.emit(0.0, 0.0, false)
+	if start_refill_from_zero:
+		start_transformation_cooldown()
+	else:
+		clear_transformation_cooldown()
+	set_transformation_autosave_blocked(false)
+	hold_dialogue_idle()
+	update_effects()
+
+
+func is_story_wolf_transformation_locked() -> bool:
+	return story_wolf_transformation_locked
+
+
 func clear_transformation_cooldown():
 	transformation_cooldown_timer = 0.0
 	transformation_cooldown_changed.emit(0.0, 0.0, false)
+
+
+func set_transformation_autosave_blocked(blocked: bool):
+	if SaveManager != null and SaveManager.has_method("set_autosave_blocked"):
+		SaveManager.set_autosave_blocked(TRANSFORMATION_AUTOSAVE_BLOCKER, blocked)
 
 
 func emit_transformation_cooldown_progress():
@@ -570,8 +658,10 @@ func get_save_form_id() -> StringName:
 func end_transformation_immediately():
 	transformation_generation += 1
 	is_transforming = false
+	story_wolf_transformation_locked = false
 	transformation_duration = 0.0
 	transformation_time_remaining = 0.0
+	set_transformation_autosave_blocked(false)
 	clear_transformation_cooldown()
 	if current_form_id == &"wolf":
 		set_form(&"human")

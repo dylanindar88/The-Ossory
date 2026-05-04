@@ -1,7 +1,11 @@
-[gd_scene load_steps=7 format=3 uid="uid://cd8kyptum0qfo"]
+[gd_scene load_steps=19 format=3 uid="uid://cd8kyptum0qfo"]
 
 [ext_resource type="Script" path="res://scripts/characters/saorise/health/healthUI.gd" id="1_ue8h7"]
 [ext_resource type="Texture2D" uid="uid://uq1qdekd7ra3" path="res://art/ui/HealthBarBorder.aseprite" id="2_bi2l4"]
+[ext_resource type="Texture2D" uid="uid://cuxx81ho4l855" path="res://art/ui/StaminaBarBorder.aseprite" id="3_stamina_border"]
+[ext_resource type="Texture2D" uid="uid://wj3ai48h2a5x" path="res://art/ui/WolfBarBorder.aseprite" id="4_wolf_border"]
+[ext_resource type="Texture2D" uid="uid://bdh8oajoq50ls" path="res://art/icons/stockIcon.png" id="5_stock_icon"]
+[ext_resource type="Texture2D" uid="uid://b7aiqnng4klq1" path="res://art/icons/stockCenter.png" id="6_stock_center"]
 
 [sub_resource type="Gradient" id="Gradient_gsh0t"]
 offsets = PackedFloat32Array(0.609195)
@@ -9,13 +13,44 @@ colors = PackedColorArray(0, 0, 0, 1)
 
 [sub_resource type="GradientTexture2D" id="GradientTexture2D_m3wux"]
 gradient = SubResource("Gradient_gsh0t")
+width = 139
 
-[sub_resource type="Gradient" id="Gradient_sh1xw"]
-offsets = PackedFloat32Array(0.00574713, 1)
-colors = PackedColorArray(1, 0.0588235, 0, 1, 0.0313726, 1, 0, 1)
+[sub_resource type="Gradient" id="Gradient_w4bip"]
+colors = PackedColorArray(0.1, 0.95, 0.2, 1, 0.1, 0.95, 0.2, 1)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_1gu6o"]
-gradient = SubResource("Gradient_sh1xw")
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_i5jfq"]
+gradient = SubResource("Gradient_w4bip")
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5hhw7"]
+atlas = ExtResource("6_stock_center")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_3m3kl"]
+atlas = ExtResource("5_stock_icon")
+region = Rect2(0, 0, 64, 64)
+
+[sub_resource type="Gradient" id="Gradient_dwnbh"]
+offsets = PackedFloat32Array(0.609195)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_4ctro"]
+gradient = SubResource("Gradient_dwnbh")
+width = 139
+
+[sub_resource type="Gradient" id="Gradient_1plpg"]
+offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
+colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_yyn5j"]
+gradient = SubResource("Gradient_1plpg")
+width = 139
+
+[sub_resource type="Gradient" id="Gradient_4etge"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.55, 0.12, 0, 1, 0.95, 0.36, 0.04, 1, 1, 0.62, 0.12, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_gr3ts"]
+gradient = SubResource("Gradient_4etge")
 width = 139
 
 [node name="HUD" type="CanvasLayer"]
@@ -37,7 +72,7 @@ value = 100.0
 rounded = true
 nine_patch_stretch = true
 texture_under = SubResource("GradientTexture2D_m3wux")
-texture_progress = SubResource("GradientTexture2D_1gu6o")
+texture_progress = SubResource("GradientTexture2D_i5jfq")
 
 [node name="Container" type="TextureRect" parent="HealthUI"]
 layout_mode = 0
@@ -48,12 +83,159 @@ offset_bottom = 128.5
 scale = Vector2(0.6, 0.6)
 texture = ExtResource("2_bi2l4")
 
+[node name="StockIconCluster" type="Control" parent="HealthUI"]
+anchors_preset = 0
+offset_left = 245.0
+offset_top = 2.5
+offset_right = 293.0
+offset_bottom = 50.5
+scale = Vector2(1.6, 1.6)
+
+[node name="StockCenter" type="TextureRect" parent="HealthUI/StockIconCluster"]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 32.0
+offset_bottom = 32.0
+texture = SubResource("AtlasTexture_5hhw7")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stock1" type="TextureRect" parent="HealthUI/StockIconCluster"]
+layout_mode = 0
+offset_left = 16.0
+offset_right = 32.0
+offset_bottom = 16.0
+texture = SubResource("AtlasTexture_3m3kl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stock2" type="TextureRect" parent="HealthUI/StockIconCluster"]
+layout_mode = 0
+offset_left = 29.8564
+offset_top = 24.0
+offset_right = 45.8564
+offset_bottom = 40.0
+texture = SubResource("AtlasTexture_3m3kl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stock3" type="TextureRect" parent="HealthUI/StockIconCluster"]
+layout_mode = 0
+offset_left = 2.14359
+offset_top = 24.0
+offset_right = 18.1436
+offset_bottom = 40.0
+texture = SubResource("AtlasTexture_3m3kl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stock4" type="TextureRect" parent="HealthUI/StockIconCluster"]
+visible = false
+modulate = Color(1, 1, 1, 0.25)
+layout_mode = 0
+offset_left = -0.628949
+offset_top = 29.5597
+offset_right = 15.3711
+offset_bottom = 45.5597
+texture = SubResource("AtlasTexture_3m3kl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stock5" type="TextureRect" parent="HealthUI/StockIconCluster"]
+visible = false
+modulate = Color(1, 1, 1, 0.25)
+layout_mode = 0
+offset_left = -1.1
+offset_top = 12.4
+offset_right = 14.9
+offset_bottom = 28.4
+texture = SubResource("AtlasTexture_3m3kl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Stock6" type="TextureRect" parent="HealthUI/StockIconCluster"]
+visible = false
+modulate = Color(1, 1, 1, 0.25)
+layout_mode = 0
+offset_left = 16.3522
+offset_top = 38.9937
+offset_right = 32.3522
+offset_bottom = 54.9937
+texture = SubResource("AtlasTexture_3m3kl")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="HudStaminaGauge" type="Control" parent="HealthUI"]
+anchors_preset = 0
+offset_left = 14.0
+offset_top = 75.0
+offset_right = 194.0
+offset_bottom = 93.0
+scale = Vector2(0.796743, 2.57449)
+
+[node name="Bar" type="TextureProgressBar" parent="HealthUI/HudStaminaGauge"]
+layout_mode = 0
+offset_left = 28.8598
+offset_top = 1.44611
+offset_right = 190.86
+offset_bottom = 9.44611
+scale = Vector2(0.765816, 0.694461)
+max_value = 1.0
+value = 1.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_4ctro")
+texture_progress = SubResource("GradientTexture2D_yyn5j")
+
+[node name="Border" type="TextureRect" parent="HealthUI/HudStaminaGauge"]
+texture_filter = 1
+layout_mode = 0
+offset_left = -3.0
+offset_top = -6.0
+offset_right = 381.0
+offset_bottom = 122.0
+scale = Vector2(0.485, 0.16)
+texture = ExtResource("3_stamina_border")
+
+[node name="HudWolfGauge" type="Control" parent="HealthUI"]
+anchors_preset = 0
+offset_left = 14.0
+offset_top = 103.0
+offset_right = 194.0
+offset_bottom = 121.0
+scale = Vector2(0.797936, 2.4827)
+
+[node name="Bar" type="TextureProgressBar" parent="HealthUI/HudWolfGauge"]
+layout_mode = 0
+offset_left = 29.2214
+offset_top = 1.59103
+offset_right = 191.221
+offset_bottom = 9.59103
+scale = Vector2(0.764496, 0.694283)
+max_value = 1.0
+value = 1.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_4ctro")
+texture_progress = SubResource("GradientTexture2D_gr3ts")
+
+[node name="Border" type="TextureRect" parent="HealthUI/HudWolfGauge"]
+texture_filter = 1
+layout_mode = 0
+offset_left = -3.0
+offset_top = -6.0
+offset_right = 381.0
+offset_bottom = 122.0
+scale = Vector2(0.485, 0.16)
+texture = ExtResource("4_wolf_border")
+
 [node name="BansheeKillCounter" type="Label" parent="."]
 visible = false
 offset_left = 33.0
-offset_top = 162.0
+offset_top = 236.0
 offset_right = 229.0
-offset_bottom = 188.0
+offset_bottom = 262.0
 theme_override_colors/font_color = Color(0.92, 0.92, 0.92, 1)
 theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
 theme_override_constants/shadow_offset_x = 1

@@ -794,6 +794,11 @@ func _on_player_detection_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	if should_defer_player_range_change(body):
+		player = body
+		refresh_player_ranges_after_transform()
+		return
+
 	if should_ignore_player_aggro():
 		return
 
@@ -819,6 +824,11 @@ func _on_attack_range_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	if should_defer_player_range_change(body):
+		player = body
+		refresh_player_ranges_after_transform()
+		return
+
 	if should_ignore_player_aggro():
 		return
 
@@ -841,6 +851,11 @@ func _on_attack_range_body_exited(body: Node2D):
 
 func _on_tracking_range_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
+		return
+
+	if should_defer_player_range_change(body):
+		player = body
+		refresh_player_ranges_after_transform()
 		return
 
 	if should_ignore_player_aggro():
@@ -871,6 +886,10 @@ func should_ignore_player_aggro() -> bool:
 
 
 func should_defer_player_range_exit(body: Node2D) -> bool:
+	return should_defer_player_range_change(body)
+
+
+func should_defer_player_range_change(body: Node2D) -> bool:
 	if body == null:
 		return false
 
@@ -890,15 +909,20 @@ func refresh_player_ranges_after_transform():
 
 func refresh_player_ranges_after_transform_deferred():
 	await get_tree().physics_frame
-	refreshing_player_ranges_after_transform = false
 
 	if player == null or not is_instance_valid(player):
+		refreshing_player_ranges_after_transform = false
 		player_in_detection = false
 		player_in_attack_range = false
 		player_in_tracking = false
 		update_combat_engagement()
 		return
 
+	if should_defer_player_range_change(player):
+		call_deferred("refresh_player_ranges_after_transform_deferred")
+		return
+
+	refreshing_player_ranges_after_transform = false
 	player_in_detection = is_player_overlapping_area(player_detection_area)
 	player_in_attack_range = is_player_overlapping_area(attack_range)
 	player_in_tracking = is_player_overlapping_area(tracking_range) or player_in_detection or player_in_attack_range

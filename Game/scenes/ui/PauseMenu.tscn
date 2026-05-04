@@ -170,6 +170,7 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="SaveSlotsView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -513,7 +514,6 @@ text = "Back"
 flat = true
 
 [node name="OptionsView" type="VBoxContainer" parent="Overlay/Panel"]
-visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -539,6 +539,26 @@ min_value = 1.75
 max_value = 3.0
 step = 0.05
 value = 2.25
+
+[node name="GaugeLocationLabel" type="Label" parent="Overlay/Panel/OptionsView"]
+layout_mode = 2
+text = "Gauge Location"
+horizontal_alignment = 1
+
+[node name="GaugeLocationOptions" type="VBoxContainer" parent="Overlay/Panel/OptionsView"]
+custom_minimum_size = Vector2(300, 78)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HudGaugeOption" type="CheckBox" parent="Overlay/Panel/OptionsView/GaugeLocationOptions"]
+layout_mode = 2
+button_pressed = true
+text = "Under Health Bar"
+
+[node name="PlayerGaugeOption" type="CheckBox" parent="Overlay/Panel/OptionsView/GaugeLocationOptions"]
+layout_mode = 2
+button_pressed = true
+text = "Under Player"
 
 [node name="BackOption" type="Control" parent="Overlay/Panel/OptionsView"]
 custom_minimum_size = Vector2(280, 52)

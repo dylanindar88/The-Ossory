@@ -1,12 +1,44 @@
-[gd_resource type="SpriteFrames" load_steps=4 format=3 uid="uid://crack4j7h3skq"]
+[gd_resource type="SpriteFrames" load_steps=12 format=3 uid="uid://crack4j7h3skq"]
 
 [ext_resource type="Texture2D" uid="uid://d0o10vjd5ykfl" path="res://art/icons/skillsAndEquipmentIcons.png" id="1_yumdr"]
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_ce84j"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_damage_1"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(0, 640, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_damage_2"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(64, 640, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dash_1"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(0, 768, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_dash_2"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(64, 768, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6wm1g"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(0, 576, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_k2cfj"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(64, 576, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_w7oab"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(0, 512, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_rwvla"]
+atlas = ExtResource("1_yumdr")
+region = Rect2(64, 512, 64, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wolf_1"]
 atlas = ExtResource("1_yumdr")
 region = Rect2(0, 704, 64, 64)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_syo3r"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_wolf_2"]
 atlas = ExtResource("1_yumdr")
 region = Rect2(64, 704, 64, 64)
 
@@ -14,12 +46,56 @@ region = Rect2(64, 704, 64, 64)
 animations = [{
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_ce84j")
+"texture": SubResource("AtlasTexture_damage_1")
 }, {
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_syo3r")
+"texture": SubResource("AtlasTexture_damage_2")
 }],
 "loop": true,
-"name": &"wolf_transformation_duration",
+"name": &"damage",
+"speed": 3.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dash_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_dash_2")
+}],
+"loop": true,
+"name": &"dash",
+"speed": 3.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6wm1g")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_k2cfj")
+}],
+"loop": true,
+"name": &"health",
+"speed": 3.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_w7oab")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_rwvla")
+}],
+"loop": true,
+"name": &"stamina",
+"speed": 3.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wolf_1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wolf_2")
+}],
+"loop": true,
+"name": &"wolf",
 "speed": 3.0
 }]

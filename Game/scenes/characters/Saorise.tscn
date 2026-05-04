@@ -5,9 +5,9 @@
 [ext_resource type="SpriteFrames" uid="uid://y18dodspwu2h" path="res://resources/characters/saorise/sprites/saoriseMovement.tres" id="2_injfk"]
 [ext_resource type="Script" path="res://scripts/characters/saorise/Camera2D.gd" id="3_2wmxe"]
 [ext_resource type="Script" path="res://scripts/characters/saorise/health/saoriseHealth.gd" id="4_q0m2k"]
-[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="5_61k8r"]
 [ext_resource type="Script" path="res://scripts/ui/PlayerStaminaBar.gd" id="5_2813q"]
 [ext_resource type="SpriteFrames" uid="uid://cvmwrihq7kyud" path="res://resources/characters/saorise/sprites/wolfMovement.tres" id="5_db6kb"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="8_bg1ki"]
 [ext_resource type="Resource" uid="uid://bnorp2nbf1cjh" path="res://resources/characters/saorise/forms/human_form.tres" id="8_human_form"]
 [ext_resource type="Resource" uid="uid://bjt3jxdpfurt" path="res://resources/characters/saorise/forms/wolf_form.tres" id="9_wolf_form"]
 
@@ -49,7 +49,6 @@ form_definitions = Array[Resource("res://scripts/characters/saorise/PlayerFormDe
 [node name="Forms" type="Node2D" parent="."]
 
 [node name="HumanForm" type="Node2D" parent="Forms"]
-visible = false
 
 [node name="Body" type="AnimatedSprite2D" parent="Forms/HumanForm"]
 y_sort_enabled = true
@@ -57,7 +56,7 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"block_release"
+animation = &"idle_down"
 offset = Vector2(0, -90)
 
 [node name="WolfForm" type="Node2D" parent="Forms"]
@@ -101,7 +100,7 @@ offset_top = -3.0
 offset_right = 363.0
 offset_bottom = 125.0
 scale = Vector2(0.109314, 0.102298)
-texture = ExtResource("5_61k8r")
+texture = ExtResource("8_bg1ki")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -24)

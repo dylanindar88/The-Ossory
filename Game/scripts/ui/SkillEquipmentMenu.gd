@@ -90,20 +90,29 @@ func refresh_slots():
 func get_slot_definitions() -> Array[Dictionary]:
 	var large_radius := 58.0
 	var small_radius := 35.0
+	var stat_center := Vector2(375, 245)
+	var stat_cluster_radius := 65.0
 	return [
 		make_slot(&"god_ability_1", "god_ability", Vector2(352, 45), large_radius, 0, 5),
 		make_slot(&"god_ability_2", "god_ability", Vector2(180, 157), large_radius, 0, 5),
 		make_slot(&"god_ability_3", "god_ability", Vector2(524, 157), large_radius, 0, 5),
 		make_slot(&"god_ability_4", "god_ability", Vector2(244, 349), large_radius, 0, 5),
 		make_slot(&"god_ability_5", "god_ability", Vector2(460, 349), large_radius, 0, 5),
-		make_slot(&"health", "stat", Vector2(334, 204), small_radius, 0, 6),
-		make_slot(&"stamina", "stat", Vector2(416, 204), small_radius, 0, 6),
-		make_slot(&"dash_count", "stat", Vector2(334, 286), small_radius, 0, 3),
-		make_slot(&"wolf_transformation", "stat", Vector2(416, 286), small_radius, 4, 4, &"wolf_transformation_duration"),
+		make_slot(&"wolf_transformation", "stat", get_pentagram_slot_position(stat_center, stat_cluster_radius, 0, true), small_radius, 4, 4, &"wolf"),
+		make_slot(&"health", "stat", get_pentagram_slot_position(stat_center, stat_cluster_radius, 1, true), small_radius, 3, 3, &"health"),
+		make_slot(&"stamina", "stat", get_pentagram_slot_position(stat_center, stat_cluster_radius, 2, true), small_radius, 0, 6, &"stamina"),
+		make_slot(&"dash_count", "stat", get_pentagram_slot_position(stat_center, stat_cluster_radius, 3, true), small_radius, 0, 3, &"dash"),
+		make_slot(&"attack", "stat", get_pentagram_slot_position(stat_center, stat_cluster_radius, 4, true), small_radius, 0, 6, &"damage"),
 		make_slot(&"weapon_1", "weapon", Vector2(186, 516), large_radius, 0, 5),
 		make_slot(&"weapon_2", "weapon", Vector2(352, 516), large_radius, 0, 5),
 		make_slot(&"weapon_3", "weapon", Vector2(518, 516), large_radius, 0, 5),
 	]
+
+
+func get_pentagram_slot_position(center: Vector2, radius: float, index: int, upside_down: bool = false) -> Vector2:
+	var start_angle := PI * 0.5 if upside_down else -PI * 0.5
+	var angle := start_angle + TAU * float(index) / 5.0
+	return center + Vector2(cos(angle), sin(angle)) * radius
 
 
 func make_slot(slot_id: StringName, slot_type: String, position: Vector2, radius: float, max_level: int, segment_count: int, icon_animation: StringName = &"") -> Dictionary:
