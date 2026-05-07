@@ -2,6 +2,8 @@
 
 This refactor is for maintainability only. The village should play, save, load, and feel the same after each pass.
 
+For future level setup, use `res://docs/content_authoring.md` and `res://templates/level/README.md`.
+
 ## Behavior Checklist
 
 - Intro elder dialogue starts the first banshee hunt.

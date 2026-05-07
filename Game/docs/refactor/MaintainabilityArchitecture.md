@@ -2,6 +2,8 @@
 
 This refactor keeps public scene/autoload APIs stable while moving dense internal responsibilities into focused helpers. The goal is easier future development for levels, quests, bosses, and actors without changing game behavior or save compatibility.
 
+For concrete content setup checklists, use `res://docs/content_authoring.md` and the README files under `res://templates/`.
+
 ## Public Entry Points
 
 - `BansheeVillageFlowController.gd` remains the public Banshee Village coordinator and level-state provider.

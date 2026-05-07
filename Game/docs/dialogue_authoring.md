@@ -2,6 +2,8 @@
 
 Most NPC dialogue is edited through Godot resources in `res://resources/dialogue/`.
 
+For full NPC and level setup conventions, see `res://docs/content_authoring.md`.
+
 ## Resource Types
 
 - `DialogueSequence` is the core text resource. Edit its `pages` array to change the lines shown in a dialogue bubble.
