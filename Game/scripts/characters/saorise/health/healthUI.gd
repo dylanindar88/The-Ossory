@@ -45,13 +45,13 @@ var hud_gauges_enabled: bool = true
 
 func _ready():
 	set_process(false)
+	if Engine.is_editor_hint():
+		call_deferred("setup_editor_preview")
+		return
+
 	create_gauge_textures()
 	configure_hud_gauge_bars()
-	setup_stock_icons(Engine.is_editor_hint())
-
-	if Engine.is_editor_hint():
-		setup_editor_preview()
-		return
+	setup_stock_icons(false)
 
 	hud_gauges_enabled = should_show_hud_gauges()
 	player = get_tree().get_first_node_in_group("player")
@@ -178,6 +178,10 @@ func setup_stock_icons(editor_preview: bool = false):
 
 
 func setup_editor_preview():
+	create_gauge_textures()
+	configure_hud_gauge_bars()
+	setup_stock_icons(true)
+
 	hud_gauges_enabled = true
 	health_bar.min_value = 0.0
 	health_bar.max_value = 100.0

@@ -42,6 +42,13 @@ const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
 const WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG = "wolf_transformation_unlocked_by_dulluhan"
 const DIALOGUE_CHOICE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueChoiceBubble.tscn")
+const STAGE_RULES_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const DEV_PRESET_BUILDER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageDevPresetBuilder.gd")
+const PROGRESSION_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageProgressionController.gd")
+const INTERIOR_TRAVEL_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageInteriorTravelController.gd")
+const STORY_PROMPT_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageStoryPromptController.gd")
+const PRESENTATION_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillagePresentationController.gd")
+const ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageEncounterController.gd")
 const BISHOP_CHOICE_PROMPT_TEXT = "Confront the bishop?"
 const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
@@ -124,6 +131,12 @@ var bishop_confrontation_accepted_for_level: bool = false
 var dulluhan_story_origin_position: Vector2 = Vector2.ZERO
 var story_prompt_label: Label
 var story_prompt_generation: int = 0
+var dev_preset_builder
+var progression_controller
+var interior_travel_controller
+var story_prompt_controller
+var presentation_controller
+var encounter_controller
 
 
 func _ready():
@@ -148,6 +161,18 @@ func _ready():
 			dulluhan_flag = dulluhan.get_node_or_null("Flag") as EffectList
 	kill_counter = get_node_or_null(kill_counter_path) as Label
 	banshees = get_banshees()
+	dev_preset_builder = DEV_PRESET_BUILDER_SCRIPT.new()
+	dev_preset_builder.setup(self)
+	progression_controller = PROGRESSION_CONTROLLER_SCRIPT.new()
+	progression_controller.setup(self)
+	interior_travel_controller = INTERIOR_TRAVEL_CONTROLLER_SCRIPT.new()
+	interior_travel_controller.setup(self)
+	story_prompt_controller = STORY_PROMPT_CONTROLLER_SCRIPT.new()
+	story_prompt_controller.setup(self)
+	presentation_controller = PRESENTATION_CONTROLLER_SCRIPT.new()
+	presentation_controller.setup(self)
+	encounter_controller = ENCOUNTER_CONTROLLER_SCRIPT.new()
+	encounter_controller.setup(self)
 
 	connect_player_interactions()
 	connect_elder_dialogue()
@@ -340,30 +365,15 @@ func get_saved_bool(state: Dictionary, key: String, default_value: bool) -> bool
 
 
 func infer_dulluhan_transformation_granted_from_stage(stage: String) -> bool:
-	return (
-		stage == STAGE_WOLF_HUNT_READY
-		or stage == STAGE_REPORT_COMPLETE
-		or stage == STAGE_WOLF_HUNT_CLEARED
-		or stage == STAGE_FINAL_DULLUHAN_READY
-		or stage == STAGE_VINCENT_HOUSE_AVAILABLE
-		or stage == STAGE_THIRD_WAVE_ELDER_READY
-		or stage == STAGE_THIRD_WAVE_ACTIVE
-		or stage == STAGE_THIRD_WAVE_CLEARED
-		or stage == STAGE_BISHOP_PATH_READY
-	)
+	return STAGE_RULES_SCRIPT.infer_dulluhan_transformation_granted_from_stage(stage)
 
 
 func infer_vincent_house_dialogue_completed_from_stage(stage: String) -> bool:
-	return (
-		stage == STAGE_THIRD_WAVE_ELDER_READY
-		or stage == STAGE_THIRD_WAVE_ACTIVE
-		or stage == STAGE_THIRD_WAVE_CLEARED
-		or stage == STAGE_BISHOP_PATH_READY
-	)
+	return STAGE_RULES_SCRIPT.infer_vincent_house_dialogue_completed_from_stage(stage)
 
 
 func infer_bishop_confrontation_accepted_from_stage(stage: String) -> bool:
-	return stage == STAGE_BISHOP_PATH_READY
+	return STAGE_RULES_SCRIPT.infer_bishop_confrontation_accepted_from_stage(stage)
 
 
 func sync_local_progression_flags_to_globals():
@@ -402,151 +412,7 @@ func reconcile_wolf_transformation_unlock_with_local_story():
 
 
 func apply_dev_start_preset() -> bool:
-	var preset: String = get_valid_dev_start_preset(dev_start_preset)
-	if SaveManager != null and SaveManager.has_method("consume_pending_dev_start_preset"):
-		var pending_preset: String = SaveManager.consume_pending_dev_start_preset(get_parent().scene_file_path)
-		if pending_preset != "":
-			preset = get_valid_dev_start_preset(pending_preset)
-	if preset == DEV_PRESET_NONE:
-		if SaveManager != null and SaveManager.has_method("set_autosave_blocked"):
-			SaveManager.set_autosave_blocked(DEV_PRESET_AUTOSAVE_BLOCKER, false)
-		if SaveManager != null and SaveManager.has_method("set_save_write_blocked"):
-			SaveManager.set_save_write_blocked(DEV_PRESET_SAVE_WRITE_BLOCKER, false)
-		return false
-
-	# Dev presets are temporary boot states for testing; skip the level-enter autosave
-	# without using the normal save blocker that also gates menus and interactions.
-	if SaveManager != null:
-		if SaveManager.has_method("set_autosave_blocked"):
-			SaveManager.set_autosave_blocked(DEV_PRESET_AUTOSAVE_BLOCKER, true)
-		else:
-			SaveManager.autosave_suppressed = true
-
-	apply_dev_story_flags(preset)
-	apply_level_state(build_dev_level_state(preset))
-	if preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED or preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY or preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
-		apply_dev_transformation_unlock()
-	call_deferred("clear_dev_preset_combat_state")
-
-	return true
-
-
-func get_valid_dev_start_preset(preset: String) -> String:
-	if preset == DEV_PRESET_START:
-		return preset
-	if preset == DEV_PRESET_ELDER_QUEST_ACCEPTED:
-		return preset
-	if preset == DEV_PRESET_FIRST_BANSHEE_REPORT_READY:
-		return preset
-	if preset == DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE:
-		return preset
-	if preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED:
-		return preset
-	if preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY:
-		return preset
-	if preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
-		return preset
-
-	return DEV_PRESET_NONE
-
-
-func build_dev_level_state(preset: String) -> Dictionary:
-	var stage: String = STAGE_INTRO
-	var kill_count: int = 0
-	var permanent_paths: Array = []
-	if preset == DEV_PRESET_ELDER_QUEST_ACCEPTED:
-		stage = STAGE_COMBAT_ACTIVE
-	elif preset == DEV_PRESET_FIRST_BANSHEE_REPORT_READY:
-		stage = STAGE_READY_TO_REPORT
-		kill_count = report_kill_threshold
-	elif preset == DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE:
-		stage = STAGE_DULLUHAN_AVAILABLE
-		kill_count = report_kill_threshold
-	elif preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED:
-		stage = STAGE_WOLF_HUNT_READY
-		kill_count = report_kill_threshold
-	elif preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY:
-		stage = STAGE_WOLF_HUNT_CLEARED
-		kill_count = report_kill_threshold + banshees.size()
-		permanent_paths = get_all_banshee_paths()
-	elif preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
-		stage = STAGE_THIRD_WAVE_CLEARED
-		kill_count = report_kill_threshold + banshees.size()
-		permanent_paths = get_all_banshee_paths()
-	var dev_dulluhan_transformation_granted: bool = is_dev_preset_after_dulluhan_unlock(preset)
-
-	return {
-		"state_version": LEVEL_STATE_VERSION,
-		"quest_stage": stage,
-		"banshee_kill_count": kill_count,
-		"revealed_banshee_paths": [],
-		"permanently_cleared_banshee_paths": permanent_paths,
-		"final_dulluhan_teaser_completed": preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
-		"story_transform_prompt_consumed": preset != DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED,
-		"story_wolf_lock_active": false,
-		"final_wolf_instruction_shown": false,
-		"active_interior_id": "",
-		"third_wave_spawned": preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
-		"dulluhan_transformation_granted_for_level": dev_dulluhan_transformation_granted,
-		"vincent_house_dialogue_completed_for_level": preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
-		"bishop_confrontation_accepted_for_level": false,
-		"dulluhan": {},
-		"banshees": [],
-		"villagers": [],
-	}
-
-
-func is_dev_preset_after_dulluhan_unlock(preset: String) -> bool:
-	return (
-		preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED
-		or preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY
-		or preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY
-	)
-
-
-func get_all_banshee_paths() -> Array:
-	var paths: Array = []
-	for banshee in banshees:
-		var banshee_path: String = get_relative_node_path(banshee)
-		if banshee_path != "":
-			paths.append(banshee_path)
-
-	return paths
-
-
-func apply_dev_story_flags(preset: String):
-	if SaveManager == null or not SaveManager.has_method("set_story_flag"):
-		return
-
-	if preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
-		SaveManager.set_story_flag(VINCENT_HOUSE_DIALOGUE_FLAG, true)
-		SaveManager.set_story_flag(BISHOP_CONFRONTATION_ACCEPTED_FLAG, false)
-	SaveManager.set_story_flag(WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG, is_dev_preset_after_dulluhan_unlock(preset))
-
-
-func apply_dev_transformation_unlock():
-	if SaveManager == null:
-		return
-
-	SaveManager.unlock_upgrade(&"wolf_transformation")
-	SaveManager.set_stat_level(&"wolf_transformation", 0)
-	if SaveManager.has_method("set_story_flag"):
-		SaveManager.set_story_flag(WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG, true)
-	dulluhan_transformation_granted_for_level = true
-	if dulluhan != null:
-		if dulluhan.has_method("set_transformation_granted_for_story_save"):
-			dulluhan.call("set_transformation_granted_for_story_save", true)
-		else:
-			dulluhan.set("transformation_granted", true)
-	refresh_quest_presentation()
-	refresh_story_transform_prompt()
-
-
-func clear_dev_preset_combat_state():
-	await get_tree().physics_frame
-	await get_tree().physics_frame
-	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):
-		CombatStateManager.clear_all()
+	return dev_preset_builder != null and dev_preset_builder.apply_dev_start_preset()
 
 
 func connect_player_interactions():
@@ -834,105 +700,23 @@ func restore_saved_villager_states():
 
 
 func apply_banshee_villager_presentation(combat_enabled: bool):
-	for banshee in banshees:
-		var banshee_path: String = get_relative_node_path(banshee)
-		var saved_state: Dictionary = {}
-		if saved_banshee_states.has(banshee_path):
-			var raw_saved_state: Variant = saved_banshee_states[banshee_path]
-			if raw_saved_state is Dictionary:
-				saved_state = raw_saved_state
-
-		var villager: Node = get_banshee_assigned_villager(banshee)
-		var villager_path: String = get_relative_node_path(villager)
-		var permanent_clear: bool = permanently_cleared_banshee_paths.has(banshee_path)
-		var villager_is_clear: bool = permanent_clear or cleared_villager_paths.has(villager_path)
-		var saved_dead: bool = bool(saved_state.get("dead", false))
-
-		if permanent_clear or saved_dead or villager_is_clear:
-			set_villager_clear_sequence(villager)
-			complete_villager_banshee_story(villager)
-			apply_cleared_banshee_state(banshee, saved_state)
-			defeated_banshees[banshee] = true
-			if saved_dead and not permanent_clear:
-				schedule_banshee_respawn(banshee)
-			continue
-
-		set_villager_stalked_sequence(villager)
-		if saved_state.is_empty() and saved_villager_states.is_empty():
-			reset_villager_stalk_state(villager)
-		apply_active_banshee_state(banshee, combat_enabled, saved_state)
+	encounter_controller.apply_banshee_villager_presentation(combat_enabled)
 
 
 func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state: Dictionary = {}):
-	if banshee == null:
-		return
-
-	if banshee.has_method("set_combat_variant"):
-		banshee.set_combat_variant(get_banshee_combat_variant_for_story())
-
-	var banshee_path: String = get_relative_node_path(banshee)
-	var is_revealed: bool = combat_enabled and revealed_banshee_paths.has(banshee_path)
-	if saved_state.has("revealed"):
-		is_revealed = combat_enabled and bool(saved_state.get("revealed", false))
-
-	var alpha: float = hidden_banshee_alpha
-	if is_revealed:
-		alpha = 1.0
-
-	if not saved_state.is_empty() and banshee.has_method("restore_from_story_save"):
-		if third_wave_spawned or is_third_wave_stage():
-			saved_state["combat_variant"] = BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
-		banshee.restore_from_story_save(saved_state, hidden_banshee_alpha, combat_enabled, is_revealed)
-		return
-
-	if banshee.has_method("restore_for_story_load"):
-		banshee.restore_for_story_load(hidden_banshee_alpha, combat_enabled, is_revealed)
-		return
-
-	if banshee.has_method("restore_after_load"):
-		banshee.restore_after_load()
-
-	if banshee.has_method("set_story_combat_enabled"):
-		if combat_enabled and banshee.has_method("enable_story_combat"):
-			banshee.enable_story_combat(alpha)
-		elif not combat_enabled and banshee.has_method("disable_story_combat"):
-			banshee.disable_story_combat(alpha)
-		else:
-			banshee.set_story_combat_enabled(combat_enabled, alpha)
-
-	if banshee.has_method("set_story_revealed"):
-		banshee.set_story_revealed(is_revealed, hidden_banshee_alpha)
+	encounter_controller.apply_active_banshee_state(banshee, combat_enabled, saved_state)
 
 
 func apply_cleared_banshee_state(banshee: Node, saved_state: Dictionary = {}):
-	if banshee == null:
-		return
-
-	if banshee.has_method("set_combat_variant"):
-		banshee.set_combat_variant(get_banshee_combat_variant_for_story())
-
-	var banshee_path: String = get_relative_node_path(banshee)
-	revealed_banshee_paths.erase(banshee_path)
-
-	if not saved_state.is_empty() and banshee.has_method("restore_dead_from_story_save"):
-		if third_wave_spawned or is_third_wave_stage():
-			saved_state["combat_variant"] = BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
-		banshee.restore_dead_from_story_save(saved_state, hidden_banshee_alpha)
-	elif banshee.has_method("hide_as_story_defeated"):
-		banshee.hide_as_story_defeated(hidden_banshee_alpha)
+	encounter_controller.apply_cleared_banshee_state(banshee, saved_state)
 
 
 func get_banshee_combat_variant_for_story() -> String:
-	if third_wave_spawned or is_third_wave_stage():
-		return BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
-
-	return BANSHEE_VARIANT_CORRUPTED_MELEE
+	return encounter_controller.get_banshee_combat_variant_for_story()
 
 
 func set_all_banshee_combat_variants(variant: String):
-	for banshee in banshees:
-		if banshee != null and banshee.has_method("set_combat_variant"):
-			banshee.set_combat_variant(variant)
+	encounter_controller.set_all_banshee_combat_variants(variant)
 
 
 func set_elder_sequence(sequence: DialogueSequence):
@@ -1030,12 +814,7 @@ func get_relative_node_path(node: Node) -> String:
 
 
 func get_valid_stage(stage: String) -> String:
-	if stage == STAGE_VILLAGE_CLEARED_LEGACY:
-		return STAGE_WOLF_HUNT_CLEARED
-	if stage == STAGE_COMBAT_ACTIVE or stage == STAGE_READY_TO_REPORT or stage == STAGE_DULLUHAN_AVAILABLE or stage == STAGE_REPORT_COMPLETE or stage == STAGE_WOLF_HUNT_READY or stage == STAGE_WOLF_HUNT_CLEARED or stage == STAGE_FINAL_DULLUHAN_READY or stage == STAGE_VINCENT_HOUSE_AVAILABLE or stage == STAGE_THIRD_WAVE_ELDER_READY or stage == STAGE_THIRD_WAVE_ACTIVE or stage == STAGE_THIRD_WAVE_CLEARED or stage == STAGE_BISHOP_PATH_READY:
-		return stage
-
-	return STAGE_INTRO
+	return STAGE_RULES_SCRIPT.get_valid_stage(stage)
 
 
 func has_wolf_transformation_upgrade() -> bool:
@@ -1048,90 +827,31 @@ func has_wolf_transformation_upgrade() -> bool:
 
 
 func begin_combat_stage():
-	close_elder_choice_prompt(false)
-	state_generation += 1
-	quest_stage = STAGE_COMBAT_ACTIVE
-	banshee_kill_count = 0
-	third_wave_spawned = false
-	cleared_villager_paths.clear()
-	revealed_banshee_paths.clear()
-	permanently_cleared_banshee_paths.clear()
-	defeated_banshees.clear()
-	set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_MELEE)
-	restore_stage_world_state()
+	progression_controller.begin_combat_stage()
 
 
 func begin_ready_to_report_stage():
-	quest_stage = STAGE_READY_TO_REPORT
-	refresh_quest_presentation()
+	progression_controller.begin_ready_to_report_stage()
 
 
 func complete_report_stage():
-	close_elder_choice_prompt(false)
-	quest_stage = STAGE_DULLUHAN_AVAILABLE
-	refresh_quest_presentation()
+	progression_controller.complete_report_stage()
 
 
 func begin_wolf_hunt_ready_stage():
-	if quest_stage == STAGE_WOLF_HUNT_CLEARED:
-		return
-
-	if are_all_banshees_permanently_cleared():
-		begin_wolf_hunt_cleared_stage()
-		save_wolf_clear_progress()
-		return
-
-	quest_stage = STAGE_WOLF_HUNT_READY
-	dulluhan_transformation_granted_for_level = true
-	story_transform_prompt_consumed = false
-	refresh_quest_presentation()
-	sync_story_wolf_transformation_lock()
-	save_wolf_clear_progress()
+	progression_controller.begin_wolf_hunt_ready_stage()
 
 
 func begin_wolf_hunt_stage():
-	if are_all_banshees_permanently_cleared():
-		begin_wolf_hunt_cleared_stage()
-		save_wolf_clear_progress()
-		return
-
-	quest_stage = STAGE_REPORT_COMPLETE
-	dulluhan_transformation_granted_for_level = true
-	refresh_quest_presentation()
-	sync_story_wolf_transformation_lock()
-	save_wolf_clear_progress()
+	progression_controller.begin_wolf_hunt_stage()
 
 
 func begin_third_wave_elder_ready_stage():
-	state_generation += 1
-	quest_stage = STAGE_THIRD_WAVE_ELDER_READY
-	third_wave_spawned = true
-	vincent_house_dialogue_completed_for_level = true
-	bishop_confrontation_accepted_for_level = false
-	if SaveManager != null and SaveManager.has_method("set_story_flag"):
-		SaveManager.set_story_flag(BISHOP_CONFRONTATION_ACCEPTED_FLAG, false)
-	banshee_kill_count = 0
-	story_wolf_lock_active = false
-	story_transform_prompt_consumed = true
-	cleared_villager_paths.clear()
-	revealed_banshee_paths.clear()
-	permanently_cleared_banshee_paths.clear()
-	defeated_banshees.clear()
-	set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED)
-	restore_stage_world_state()
-	sync_story_wolf_transformation_lock()
-	save_third_wave_progress("banshee_third_wave_spawn")
+	progression_controller.begin_third_wave_elder_ready_stage()
 
 
 func begin_third_wave_active_stage():
-	if are_all_banshees_permanently_cleared():
-		begin_third_wave_cleared_stage()
-		save_third_wave_progress("banshee_third_wave_cleared")
-		return
-
-	quest_stage = STAGE_THIRD_WAVE_ACTIVE
-	refresh_quest_presentation()
-	save_third_wave_progress("banshee_third_wave_start")
+	progression_controller.begin_third_wave_active_stage()
 
 
 func _on_player_interaction_requested(interactable: Node2D):
@@ -1273,28 +993,15 @@ func _on_interior_vincent_dialogue_finished(_vincent: Node):
 
 
 func can_enter_vincent_house() -> bool:
-	return quest_stage == STAGE_VINCENT_HOUSE_AVAILABLE or is_third_wave_stage() or quest_stage == STAGE_BISHOP_PATH_READY
+	return interior_travel_controller.can_enter_vincent_house()
 
 
 func enter_vincent_house():
-	if player == null or vincent_house_interior == null:
-		return
-
-	active_interior_id = VINCENT_HOUSE_INTERIOR_ID
-	set_interior_active(vincent_house_interior, true)
-	sync_vincent_house_occupancy()
-	reparent_player_to(get_node_or_null(vincent_house_interior_player_parent_path))
-	move_player_to_interior(vincent_house_interior)
+	interior_travel_controller.enter_vincent_house()
 
 
 func move_player_to_interior(interior: Node2D):
-	var entry_position: Vector2 = interior.global_position
-	if interior.has_method("get_entry_position"):
-		var raw_entry_position: Variant = interior.call("get_entry_position")
-		if raw_entry_position is Vector2:
-			entry_position = raw_entry_position
-
-	move_player_to_position(entry_position)
+	interior_travel_controller.move_player_to_interior(interior)
 
 
 func _on_vincent_house_exit_requested(_interior: Node2D):
@@ -1302,21 +1009,11 @@ func _on_vincent_house_exit_requested(_interior: Node2D):
 
 
 func exit_vincent_house():
-	reparent_player_to(get_node_or_null(exterior_player_parent_path))
-	var return_marker := get_node_or_null(vincent_house_return_marker_path) as Node2D
-	if return_marker != null:
-		move_player_to_position(return_marker.global_position)
-	else:
-		push_warning("Could not find VincentHouse return marker '%s'." % vincent_house_return_marker_path)
-
-	active_interior_id = ""
-	set_interior_active(vincent_house_interior, false)
-	if should_start_third_wave_after_house_exit():
-		begin_third_wave_elder_ready_stage()
+	interior_travel_controller.exit_vincent_house()
 
 
 func should_start_third_wave_after_house_exit() -> bool:
-	return quest_stage == STAGE_VINCENT_HOUSE_AVAILABLE and not third_wave_spawned and is_vincent_house_dialogue_completed()
+	return interior_travel_controller.should_start_third_wave_after_house_exit()
 
 
 func is_vincent_house_dialogue_completed() -> bool:
@@ -1328,95 +1025,23 @@ func is_bishop_confrontation_accepted() -> bool:
 
 
 func move_player_to_position(target_position: Vector2):
-	if player == null:
-		return
-
-	if player.has_method("clear_interaction_targets"):
-		player.clear_interaction_targets()
-
-	if player is Node2D:
-		(player as Node2D).global_position = target_position
-		(player as Node2D).set_deferred("velocity", Vector2.ZERO)
-
-	if player.has_method("hold_dialogue_idle"):
-		player.hold_dialogue_idle()
+	interior_travel_controller.move_player_to_position(target_position)
 
 
 func set_interior_active(interior: Node2D, active: bool):
-	if interior == null:
-		return
-
-	if interior.has_method("set_active_room"):
-		interior.call("set_active_room", active)
-	else:
-		interior.visible = active
-		interior.process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
+	interior_travel_controller.set_interior_active(interior, active)
 
 
 func restore_active_interior_state():
-	var inside_vincent_house := active_interior_id == VINCENT_HOUSE_INTERIOR_ID
-	set_interior_active(vincent_house_interior, inside_vincent_house)
-	sync_vincent_house_occupancy()
-	if inside_vincent_house:
-		reparent_player_to(get_node_or_null(vincent_house_interior_player_parent_path))
-	else:
-		reparent_player_to(get_node_or_null(exterior_player_parent_path))
+	interior_travel_controller.restore_active_interior_state()
 
 
 func reparent_player_to(new_parent: Node):
-	if player == null or new_parent == null or player.get_parent() == new_parent:
-		return
-
-	if player is Node2D:
-		var player_node := player as Node2D
-		var saved_global_position := player_node.global_position
-		player.reparent(new_parent, true)
-		player_node.global_position = saved_global_position
-	else:
-		player.reparent(new_parent, true)
+	interior_travel_controller.reparent_player_to(new_parent)
 
 
 func _on_banshee_defeated(banshee: Node):
-	if quest_stage == STAGE_INTRO or defeated_banshees.has(banshee):
-		return
-
-	defeated_banshees[banshee] = true
-	banshee_kill_count += 1
-	var banshee_path: String = get_relative_node_path(banshee)
-	revealed_banshee_paths.erase(banshee_path)
-	var killed_by_wolf: bool = was_banshee_killed_by_wolf(banshee)
-
-	var villager: Node = get_banshee_assigned_villager(banshee)
-	var villager_path: String = get_relative_node_path(villager)
-	if villager_path != "":
-		cleared_villager_paths[villager_path] = true
-	set_villager_clear_sequence(villager)
-
-	if killed_by_wolf and transformed_banshee_clear_policy != BANSHEE_CLEAR_RESPAWN:
-		if transformed_banshee_clear_policy == BANSHEE_CLEAR_PERMANENT_WOLF and banshee_path != "":
-			permanently_cleared_banshee_paths[banshee_path] = true
-		apply_cleared_banshee_state(banshee)
-		update_kill_counter()
-		if quest_stage == STAGE_REPORT_COMPLETE and are_all_banshees_permanently_cleared():
-			begin_wolf_hunt_cleared_stage(true)
-		elif quest_stage == STAGE_THIRD_WAVE_ACTIVE and are_all_banshees_permanently_cleared():
-			begin_third_wave_cleared_stage()
-		elif (quest_stage == STAGE_WOLF_HUNT_READY or quest_stage == STAGE_THIRD_WAVE_ELDER_READY) and are_all_banshees_permanently_cleared():
-			refresh_quest_presentation()
-		if is_third_wave_stage():
-			save_third_wave_progress("banshee_third_wave_progress")
-		else:
-			save_wolf_clear_progress()
-		return
-
-	update_kill_counter()
-	schedule_banshee_respawn(banshee)
-
-	if quest_stage == STAGE_COMBAT_ACTIVE and banshee_kill_count >= report_kill_threshold:
-		begin_ready_to_report_stage()
-
-	if is_third_wave_combat_stage():
-		save_third_wave_progress("banshee_third_wave_progress")
+	progression_controller.handle_banshee_defeated(banshee)
 
 
 func was_banshee_killed_by_wolf(banshee: Node) -> bool:
@@ -1446,308 +1071,103 @@ func are_all_banshees_permanently_cleared() -> bool:
 
 
 func is_wolf_hunt_stage() -> bool:
-	return quest_stage == STAGE_WOLF_HUNT_READY or quest_stage == STAGE_REPORT_COMPLETE
+	return STAGE_RULES_SCRIPT.is_wolf_hunt_stage(quest_stage)
 
 
 func is_third_wave_stage() -> bool:
-	return quest_stage == STAGE_THIRD_WAVE_ELDER_READY or quest_stage == STAGE_THIRD_WAVE_ACTIVE or quest_stage == STAGE_THIRD_WAVE_CLEARED or quest_stage == STAGE_BISHOP_PATH_READY
+	return STAGE_RULES_SCRIPT.is_third_wave_stage(quest_stage)
 
 
 func is_third_wave_combat_stage() -> bool:
-	return quest_stage == STAGE_THIRD_WAVE_ELDER_READY or quest_stage == STAGE_THIRD_WAVE_ACTIVE
+	return STAGE_RULES_SCRIPT.is_third_wave_combat_stage(quest_stage)
 
 
 func begin_wolf_hunt_cleared_stage(show_completion_prompt: bool = false):
-	quest_stage = STAGE_WOLF_HUNT_CLEARED
-	story_transform_prompt_consumed = true
-	if story_wolf_lock_active or is_player_in_wolf_form():
-		story_wolf_lock_active = false
-		if player != null and player.has_method("end_story_wolf_transformation_lock"):
-			player.end_story_wolf_transformation_lock(true)
-	refresh_quest_presentation()
-	if show_completion_prompt and not final_wolf_instruction_shown:
-		final_wolf_instruction_shown = true
-		show_story_prompt(FINAL_WOLF_INSTRUCTION_TEXT, 7.5)
+	progression_controller.begin_wolf_hunt_cleared_stage(show_completion_prompt)
 
 
 func begin_final_dulluhan_stage():
-	dulluhan_transformation_granted_for_level = true
-	quest_stage = STAGE_FINAL_DULLUHAN_READY
-	refresh_quest_presentation()
-	save_wolf_clear_progress()
+	progression_controller.begin_final_dulluhan_stage()
 
 
 func begin_third_wave_cleared_stage():
-	quest_stage = STAGE_THIRD_WAVE_CLEARED
-	refresh_quest_presentation()
+	progression_controller.begin_third_wave_cleared_stage()
 
 
 func accept_bishop_confrontation():
-	bishop_confrontation_accepted_for_level = true
-	if SaveManager != null and SaveManager.has_method("set_story_flag"):
-		SaveManager.set_story_flag(BISHOP_CONFRONTATION_ACCEPTED_FLAG, true)
-	quest_stage = STAGE_BISHOP_PATH_READY
-	refresh_quest_presentation()
-	save_third_wave_progress("banshee_bishop_confrontation_accept")
+	progression_controller.accept_bishop_confrontation()
 
 
 func decline_bishop_confrontation():
-	refresh_quest_presentation()
-	save_third_wave_progress("banshee_bishop_confrontation_decline")
+	progression_controller.decline_bishop_confrontation()
 
 
 func save_wolf_clear_progress():
-	if SaveManager != null and SaveManager.has_method("save_game"):
-		SaveManager.save_game("banshee_wolf_clear", get_parent())
+	progression_controller.save_wolf_clear_progress()
 
 
 func save_third_wave_progress(reason: String):
-	if SaveManager != null and SaveManager.has_method("save_game"):
-		SaveManager.save_game(reason, get_parent())
+	progression_controller.save_third_wave_progress(reason)
 
 
 func _on_banshee_detected_player_for_reveal(banshee: Node):
-	if quest_stage == STAGE_INTRO or banshee == null:
-		return
-
-	if defeated_banshees.has(banshee):
-		return
-
-	var banshee_path: String = get_relative_node_path(banshee)
-	if banshee_path == "":
-		return
-
-	revealed_banshee_paths[banshee_path] = true
-	if banshee.has_method("set_story_revealed"):
-		banshee.set_story_revealed(true, hidden_banshee_alpha)
+	encounter_controller.handle_banshee_detected_player_for_reveal(banshee)
 
 
 func schedule_banshee_respawn(banshee: Node):
-	if banshee == null:
-		return
-
-	var scheduled_generation: int = state_generation
-	await get_tree().create_timer(respawn_delay_seconds).timeout
-	if scheduled_generation != state_generation:
-		return
-
-	respawn_banshee(banshee)
+	encounter_controller.schedule_banshee_respawn(banshee)
 
 
 func respawn_banshee(banshee: Node):
-	if quest_stage == STAGE_INTRO or banshee == null or not is_instance_valid(banshee):
-		return
-
-	if not defeated_banshees.has(banshee):
-		return
-
-	var banshee_path: String = get_relative_node_path(banshee)
-	if permanently_cleared_banshee_paths.has(banshee_path):
-		return
-
-	defeated_banshees.erase(banshee)
-	revealed_banshee_paths.erase(banshee_path)
-
-	var villager: Node = get_banshee_assigned_villager(banshee)
-	var villager_path: String = get_relative_node_path(villager)
-	if villager_path != "":
-		cleared_villager_paths.erase(villager_path)
-	set_villager_stalked_sequence(villager)
-	reset_villager_stalk_state(villager)
-
-	if banshee.has_method("respawn_for_story"):
-		if banshee.has_method("set_combat_variant"):
-			banshee.set_combat_variant(get_banshee_combat_variant_for_story())
-		banshee.respawn_for_story(hidden_banshee_alpha)
-	elif banshee.has_method("restore_after_load"):
-		if banshee.has_method("set_combat_variant"):
-			banshee.set_combat_variant(get_banshee_combat_variant_for_story())
-		banshee.restore_after_load()
-		if banshee.has_method("enable_story_combat"):
-			banshee.enable_story_combat(hidden_banshee_alpha)
-		elif banshee.has_method("set_story_combat_enabled"):
-			banshee.set_story_combat_enabled(true, hidden_banshee_alpha)
+	encounter_controller.respawn_banshee(banshee)
 
 
 func update_kill_counter():
-	if kill_counter == null:
-		return
-
-	kill_counter.visible = should_show_kill_counter()
-	if not kill_counter.visible:
-		return
-
-	if quest_stage == STAGE_REPORT_COMPLETE or quest_stage == STAGE_THIRD_WAVE_ACTIVE:
-		kill_counter.text = "Cleared: %d/%d" % [permanently_cleared_banshee_paths.size(), banshees.size()]
-		return
-
-	var shown_count: int = mini(banshee_kill_count, report_kill_threshold)
-	kill_counter.text = "Banshees: %d/%d" % [shown_count, report_kill_threshold]
+	presentation_controller.update_kill_counter()
 
 
 func should_show_kill_counter() -> bool:
-	return (
-		quest_stage == STAGE_COMBAT_ACTIVE
-		or quest_stage == STAGE_READY_TO_REPORT
-		or quest_stage == STAGE_REPORT_COMPLETE
-		or quest_stage == STAGE_THIRD_WAVE_ACTIVE
-	)
+	return presentation_controller.should_show_kill_counter()
 
 
 func update_exterior_vincent_presentation():
-	if exterior_vincent == null:
-		return
-
-	var visible_for_story := should_show_exterior_vincent()
-	exterior_vincent.visible = visible_for_story
-	exterior_vincent.process_mode = Node.PROCESS_MODE_INHERIT if visible_for_story else Node.PROCESS_MODE_DISABLED
-	if exterior_vincent.has_method("set_house_dialogue_enabled"):
-		exterior_vincent.set_house_dialogue_enabled(false)
-	if exterior_vincent.has_method("set_interaction_enabled"):
-		exterior_vincent.set_interaction_enabled(visible_for_story)
-
-	if visible_for_story:
-		var marker := get_node_or_null(vincent_beside_elder_marker_path) as Node2D
-		if marker != null:
-			exterior_vincent.global_position = marker.global_position
-		elif elder is Node2D:
-			exterior_vincent.global_position = (elder as Node2D).global_position + Vector2(58.0, 0.0)
-
-	if should_show_bishop_direction_progression():
-		if exterior_vincent.has_method("set_level_dialogue_override"):
-			exterior_vincent.set_level_dialogue_override(create_bishop_direction_sequence(), true)
-	elif exterior_vincent.has_method("clear_level_dialogue_override"):
-		exterior_vincent.clear_level_dialogue_override()
+	presentation_controller.update_exterior_vincent_presentation()
 
 
 func sync_vincent_house_occupancy():
-	if vincent_house_interior == null or not vincent_house_interior.has_method("set_vincent_present"):
-		return
-
-	vincent_house_interior.set_vincent_present(not should_show_exterior_vincent())
-	var interior_vincent: Node = get_interior_vincent()
-	if interior_vincent != null and interior_vincent.has_method("set_house_dialogue_completed_override"):
-		interior_vincent.call("set_house_dialogue_completed_override", true, vincent_house_dialogue_completed_for_level)
+	presentation_controller.sync_vincent_house_occupancy()
 
 
 func should_show_exterior_vincent() -> bool:
-	return quest_stage == STAGE_THIRD_WAVE_CLEARED or quest_stage == STAGE_BISHOP_PATH_READY or (quest_stage == STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared())
+	return presentation_controller.should_show_exterior_vincent()
 
 
 func should_show_bishop_direction_progression() -> bool:
-	return not is_bishop_confrontation_accepted() and (quest_stage == STAGE_THIRD_WAVE_CLEARED or (quest_stage == STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared()))
+	return presentation_controller.should_show_bishop_direction_progression()
 
 
 func update_route_exit_gates():
-	set_route_exit_enabled(west_route_exit, true)
-	set_route_exit_enabled(east_route_exit, is_third_hunt_completed_for_route_travel())
-	set_route_exit_enabled(south_route_exit, is_bishop_confrontation_accepted() or quest_stage == STAGE_BISHOP_PATH_READY)
+	presentation_controller.update_route_exit_gates()
 
 
 func set_route_exit_enabled(route_exit: Node, enabled: bool):
-	if route_exit == null:
-		return
-
-	if route_exit.has_method("set_travel_enabled"):
-		route_exit.set_travel_enabled(enabled)
-	else:
-		route_exit.set("travel_enabled", enabled)
+	presentation_controller.set_route_exit_enabled(route_exit, enabled)
 
 
 func is_third_hunt_completed_for_route_travel() -> bool:
-	return quest_stage == STAGE_THIRD_WAVE_CLEARED or quest_stage == STAGE_BISHOP_PATH_READY
+	return presentation_controller.is_third_hunt_completed_for_route_travel()
 
 
 func update_elder_flag():
-	if elder_flag == null:
-		return
-
-	if should_show_bishop_direction_progression():
-		elder_flag.set_effects(["flag"])
-		return
-
-	if quest_stage == STAGE_THIRD_WAVE_ELDER_READY:
-		elder_flag.set_effects(["flag"])
-		return
-
-	if final_dulluhan_teaser_completed:
-		elder_flag.clear_effects()
-		return
-
-	if quest_stage == STAGE_INTRO or quest_stage == STAGE_READY_TO_REPORT or quest_stage == STAGE_WOLF_HUNT_READY or quest_stage == STAGE_WOLF_HUNT_CLEARED:
-		elder_flag.set_effects(["flag"])
-	else:
-		elder_flag.clear_effects()
+	presentation_controller.update_elder_flag()
 
 
 func update_dulluhan_flag():
-	if dulluhan_flag == null:
-		return
-
-	if final_dulluhan_teaser_completed:
-		dulluhan_flag.clear_effects()
-		return
-
-	if quest_stage == STAGE_DULLUHAN_AVAILABLE and not is_dulluhan_transformation_granted():
-		dulluhan_flag.set_effects(["flag"])
-	elif quest_stage == STAGE_FINAL_DULLUHAN_READY:
-		dulluhan_flag.set_effects(["flag"])
-	else:
-		dulluhan_flag.clear_effects()
+	presentation_controller.update_dulluhan_flag()
 
 
 func update_dulluhan_visibility():
-	if dulluhan == null:
-		return
-
-	if is_third_wave_combat_stage():
-		if dulluhan is Node2D:
-			(dulluhan as Node2D).global_position = dulluhan_story_origin_position
-		if dulluhan.has_method("set_waiting_for_story_progress"):
-			dulluhan.set_waiting_for_story_progress(true)
-		elif dulluhan.has_method("set_story_visible"):
-			dulluhan.set_story_visible(true)
-		else:
-			dulluhan.visible = true
-		return
-
-	if final_dulluhan_teaser_completed:
-		if dulluhan.has_method("set_final_teaser_completed"):
-			dulluhan.set_final_teaser_completed(true)
-		elif dulluhan.has_method("set_story_visible"):
-			dulluhan.set_story_visible(false)
-		else:
-			dulluhan.visible = false
-		return
-
-	if quest_stage == STAGE_FINAL_DULLUHAN_READY:
-		if dulluhan.has_method("start_final_teaser"):
-			dulluhan.start_final_teaser(get_final_dulluhan_position())
-		elif dulluhan.has_method("set_story_visible"):
-			if dulluhan is Node2D:
-				(dulluhan as Node2D).global_position = get_final_dulluhan_position()
-			dulluhan.set_story_visible(true)
-		else:
-			if dulluhan is Node2D:
-				(dulluhan as Node2D).global_position = get_final_dulluhan_position()
-			dulluhan.visible = true
-		return
-
-	if quest_stage == STAGE_DULLUHAN_AVAILABLE and not is_dulluhan_transformation_granted():
-		if dulluhan.has_method("set_story_visible"):
-			dulluhan.set_story_visible(true)
-		else:
-			dulluhan.visible = true
-	elif is_dulluhan_transformation_granted() and (quest_stage == STAGE_WOLF_HUNT_READY or quest_stage == STAGE_REPORT_COMPLETE or quest_stage == STAGE_WOLF_HUNT_CLEARED):
-		if dulluhan.has_method("set_waiting_for_story_progress"):
-			dulluhan.set_waiting_for_story_progress(true)
-		elif dulluhan.has_method("set_story_visible"):
-			dulluhan.set_story_visible(true)
-	else:
-		if dulluhan.has_method("set_story_visible"):
-			dulluhan.set_story_visible(false)
-		else:
-			dulluhan.visible = false
+	presentation_controller.update_dulluhan_visibility()
 
 
 func is_dulluhan_transformation_granted() -> bool:
@@ -1755,89 +1175,31 @@ func is_dulluhan_transformation_granted() -> bool:
 
 
 func get_final_dulluhan_position() -> Vector2:
-	var marker: Node2D = get_node_or_null(final_dulluhan_marker_path) as Node2D
-	if marker != null:
-		return marker.global_position
-
-	return final_dulluhan_position
+	return presentation_controller.get_final_dulluhan_position()
 
 
 func restore_story_transformation_state():
-	if story_wolf_lock_active and is_wolf_hunt_stage():
-		story_transform_prompt_consumed = true
-		hide_story_prompt()
-		if player != null and player.has_method("restore_story_wolf_transformation_lock"):
-			player.restore_story_wolf_transformation_lock()
-		return
-
-	if player != null and player.has_method("is_story_wolf_transformation_locked") and bool(player.call("is_story_wolf_transformation_locked")):
-		if player.has_method("end_story_wolf_transformation_lock"):
-			player.end_story_wolf_transformation_lock(false)
-
-	refresh_story_transform_prompt()
+	story_prompt_controller.restore_story_transformation_state()
 
 
 func sync_story_wolf_transformation_lock():
-	if player == null:
-		return
-
-	if not is_wolf_hunt_stage():
-		story_wolf_lock_active = false
-		if is_player_story_wolf_transformation_locked() and player.has_method("end_story_wolf_transformation_lock"):
-			player.end_story_wolf_transformation_lock(false)
-		return
-
-	if not story_wolf_lock_active:
-		return
-
-	story_transform_prompt_consumed = true
-	hide_story_prompt()
-	if is_player_in_wolf_form() and not is_player_story_wolf_transformation_locked() and player.has_method("start_story_wolf_transformation_lock"):
-		player.start_story_wolf_transformation_lock()
+	story_prompt_controller.sync_story_wolf_transformation_lock()
 
 
 func refresh_story_transform_prompt():
-	if should_show_story_transform_prompt():
-		show_story_prompt(STORY_TRANSFORM_PROMPT_TEXT)
-	else:
-		hide_story_prompt()
-	sync_story_wolf_transformation_lock()
+	story_prompt_controller.refresh_story_transform_prompt()
 
 
 func should_show_story_transform_prompt() -> bool:
-	return quest_stage == STAGE_WOLF_HUNT_READY and has_wolf_transformation_upgrade() and not story_transform_prompt_consumed and not story_wolf_lock_active
+	return story_prompt_controller.should_show_story_transform_prompt()
 
 
 func _on_player_transformation_state_changed(active: bool):
-	if not active:
-		if story_wolf_lock_active:
-			if not is_wolf_hunt_stage():
-				story_wolf_lock_active = false
-				return
-			if is_player_life_respawn_pending():
-				return
-			call_deferred("restore_story_wolf_transformation_lock_after_unexpected_end")
-		return
-
-	if not is_wolf_hunt_stage():
-		sync_story_wolf_transformation_lock()
-		return
-
-	story_transform_prompt_consumed = true
-	story_wolf_lock_active = true
-	hide_story_prompt()
-	if player != null and player.has_method("start_story_wolf_transformation_lock"):
-		player.start_story_wolf_transformation_lock()
-	save_wolf_clear_progress()
+	story_prompt_controller.handle_player_transformation_state_changed(active)
 
 
 func restore_story_wolf_transformation_lock_after_unexpected_end():
-	if not story_wolf_lock_active or not is_wolf_hunt_stage() or is_player_life_respawn_pending():
-		return
-
-	if player != null and player.has_method("restore_story_wolf_transformation_lock"):
-		player.restore_story_wolf_transformation_lock()
-	save_wolf_clear_progress()
+	story_prompt_controller.restore_story_wolf_transformation_lock_after_unexpected_end()
 
 
 func is_player_in_wolf_form() -> bool:
@@ -1853,50 +1215,16 @@ func is_player_story_wolf_transformation_locked() -> bool:
 
 
 func show_story_prompt(text: String, timeout_seconds: float = 0.0):
-	var label := get_story_prompt_label()
-	if label == null:
-		return
-
-	story_prompt_generation += 1
-	label.text = text
-	label.visible = true
-	if timeout_seconds > 0.0:
-		hide_story_prompt_after_delay(story_prompt_generation, timeout_seconds)
+	story_prompt_controller.show_story_prompt(text, timeout_seconds)
 
 
 func hide_story_prompt():
-	story_prompt_generation += 1
-	if story_prompt_label != null and is_instance_valid(story_prompt_label):
-		story_prompt_label.visible = false
+	story_prompt_controller.hide_story_prompt()
 
 
 func hide_story_prompt_after_delay(generation: int, timeout_seconds: float):
-	await get_tree().create_timer(timeout_seconds).timeout
-	if generation == story_prompt_generation:
-		hide_story_prompt()
+	story_prompt_controller.hide_story_prompt_after_delay(generation, timeout_seconds)
 
 
 func get_story_prompt_label() -> Label:
-	if player == null:
-		return null
-
-	if story_prompt_label != null and is_instance_valid(story_prompt_label):
-		return story_prompt_label
-
-	story_prompt_label = Label.new()
-	story_prompt_label.name = "BansheeVillageStoryPrompt"
-	story_prompt_label.z_as_relative = false
-	story_prompt_label.z_index = 250
-	story_prompt_label.position = Vector2(-120.0, -120.0)
-	story_prompt_label.size = Vector2(240.0, 58.0)
-	story_prompt_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	story_prompt_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	story_prompt_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	story_prompt_label.add_theme_font_size_override("font_size", 9)
-	story_prompt_label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.82, 1.0))
-	story_prompt_label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
-	story_prompt_label.add_theme_constant_override("shadow_offset_x", 1)
-	story_prompt_label.add_theme_constant_override("shadow_offset_y", 1)
-	story_prompt_label.visible = false
-	player.add_child(story_prompt_label)
-	return story_prompt_label
+	return story_prompt_controller.get_story_prompt_label()

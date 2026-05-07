@@ -40,8 +40,8 @@ func set_active_room(active: bool):
 	visible = active
 	process_mode = Node.PROCESS_MODE_INHERIT if active else Node.PROCESS_MODE_DISABLED
 	if exit_area != null:
-		exit_area.monitoring = active
-		exit_area.monitorable = active
+		exit_area.set_deferred("monitoring", active)
+		exit_area.set_deferred("monitorable", active)
 
 
 func set_vincent_present(present: bool):

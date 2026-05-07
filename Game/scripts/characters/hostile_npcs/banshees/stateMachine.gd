@@ -34,6 +34,9 @@ var hitbox_manager: BansheeAttackBoxManager
 var player: Node2D
 var patrol_route := PatrolRoute.new()
 var villager_stalk_behavior := BansheeVillagerStalkBehavior.new()
+var combat_area_controller := BansheeCombatAreaController.new()
+var aggro_sensor := BansheeAggroSensor.new()
+var story_lifecycle := BansheeStoryLifecycle.new()
 
 var player_in_detection: bool = false
 var player_in_attack_range: bool = false
@@ -84,7 +87,6 @@ var story_spawn_facing_left: bool = false
 var suppress_story_detection: bool = false
 var last_damage_source: Node = null
 var last_killer_form_id: StringName = &""
-var refreshing_player_ranges_after_transform: bool = false
 
 
 func _ready():
@@ -93,6 +95,9 @@ func _ready():
 	story_spawn_facing_left = facing_left
 
 	add_to_group("hostile_npcs")
+	combat_area_controller.setup(self)
+	aggro_sensor.setup(self)
+	story_lifecycle.setup(self)
 	configure_collision()
 	connect_ranges()
 	setup_villager_stalk_behavior()
@@ -179,40 +184,11 @@ func setup_villager_stalk_behavior():
 
 
 func configure_collision():
-	collision_layer = 0
-	collision_mask = 0
-
-	hurt_box.add_to_group("enemies")
-	hurt_box.monitorable = true
-	hurt_box.monitoring = true
-	hurt_box.collision_layer = 4
-	hurt_box.collision_mask = 0
-
-	attack_box.collision_layer = 0
-	attack_box.collision_mask = 2
-
-	for area in [player_detection_area, attack_range, tracking_range]:
-		area.monitoring = true
-		area.monitorable = true
-		area.collision_layer = 0
-		area.collision_mask = 2
+	combat_area_controller.configure_collision()
 
 
 func connect_ranges():
-	if not player_detection_area.body_entered.is_connected(_on_player_detection_body_entered):
-		player_detection_area.body_entered.connect(_on_player_detection_body_entered)
-	if not player_detection_area.body_exited.is_connected(_on_player_detection_body_exited):
-		player_detection_area.body_exited.connect(_on_player_detection_body_exited)
-
-	if not attack_range.body_entered.is_connected(_on_attack_range_body_entered):
-		attack_range.body_entered.connect(_on_attack_range_body_entered)
-	if not attack_range.body_exited.is_connected(_on_attack_range_body_exited):
-		attack_range.body_exited.connect(_on_attack_range_body_exited)
-
-	if not tracking_range.body_entered.is_connected(_on_tracking_range_body_entered):
-		tracking_range.body_entered.connect(_on_tracking_range_body_entered)
-	if not tracking_range.body_exited.is_connected(_on_tracking_range_body_exited):
-		tracking_range.body_exited.connect(_on_tracking_range_body_exited)
+	aggro_sensor.connect_ranges()
 
 
 func change_state(state_name: String):
@@ -692,51 +668,27 @@ func get_animation_time_until_frame(anim_name: String, frame_number: int, fallba
 
 
 func disable_combat_areas():
-	for area in [hurt_box, attack_box, player_detection_area, attack_range, tracking_range]:
-		area.set_deferred("monitoring", false)
-		area.set_deferred("monitorable", false)
-		for child in area.get_children():
-			if child is CollisionShape2D:
-				child.set_deferred("disabled", true)
+	combat_area_controller.disable_combat_areas()
 
 
 func enable_combat_areas():
-	configure_collision()
-	for area in [hurt_box, attack_box, player_detection_area, attack_range, tracking_range]:
-		area.set_deferred("monitoring", true)
-		area.set_deferred("monitorable", true)
-		for child in area.get_children():
-			if child is CollisionShape2D:
-				child.set_deferred("disabled", false)
+	combat_area_controller.enable_combat_areas()
 
 
 func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
-	combat_enabled = enabled
-	modulate.a = visible_alpha
-	if not enabled:
-		story_revealed = false
-		stop_health_regeneration()
-		clear_combat_engagement()
-	player_in_detection = false
-	player_in_attack_range = false
-	player_in_tracking = false
-
-	if enabled and not dead:
-		enable_combat_areas()
-	else:
-		disable_combat_areas()
+	combat_area_controller.set_story_combat_enabled(enabled, visible_alpha)
 
 
 func set_damage_enabled(enabled: bool):
-	damage_enabled = enabled
+	combat_area_controller.set_damage_enabled(enabled)
 
 
 func enable_story_combat(visible_alpha: float = 1.0):
-	set_story_combat_enabled(true, visible_alpha)
+	combat_area_controller.enable_story_combat(visible_alpha)
 
 
 func disable_story_combat(visible_alpha: float):
-	set_story_combat_enabled(false, visible_alpha)
+	combat_area_controller.disable_story_combat(visible_alpha)
 
 
 #
@@ -745,52 +697,15 @@ func disable_story_combat(visible_alpha: float):
 
 
 func set_story_revealed(revealed: bool, hidden_alpha: float):
-	story_revealed = revealed
-	if story_revealed:
-		modulate.a = 1.0
-	else:
-		modulate.a = hidden_alpha
+	story_lifecycle.set_story_revealed(revealed, hidden_alpha)
 
 
 func hide_as_story_defeated(hidden_alpha: float):
-	dead = true
-	visible = false
-	velocity = Vector2.ZERO
-	clear_combat_engagement()
-	stop_health_regeneration()
-	set_physics_process(false)
-	disable_combat_areas()
-	set_story_revealed(false, hidden_alpha)
-
-	var health_node: Node = health
-	if health_node != null:
-		health_node.set("dead", true)
-		health_node.set("health", 0)
+	story_lifecycle.hide_as_story_defeated(hidden_alpha)
 
 
 func collect_story_save_state() -> Dictionary:
-	var health_node: Node = health
-	var current_health: int = 0
-	var max_health_value: int = 0
-	var health_is_dead: bool = false
-	if health_node != null:
-		current_health = int(health_node.get("health"))
-		max_health_value = int(health_node.get("max_health"))
-		health_is_dead = bool(health_node.get("dead"))
-
-	return {
-		"position": vector_to_data(global_position),
-		"health": current_health,
-		"max_health": max_health_value,
-		"dead": dead or health_is_dead,
-		"revealed": story_revealed,
-		"combat_enabled": combat_enabled,
-		"damage_enabled": damage_enabled,
-		"combat_variant": combat_variant,
-		"facing_left": facing_left,
-		"patrol_route": patrol_route.to_save_data(),
-		"villager_stalk": villager_stalk_behavior.to_save_data(),
-	}
+	return story_lifecycle.collect_story_save_state()
 
 
 func set_combat_variant(variant: String):
@@ -812,176 +727,47 @@ func apply_saved_combat_variant(state: Dictionary):
 
 
 func reveal_for_story_detection():
-	if dead or not combat_enabled or story_revealed or suppress_story_detection:
-		return
-
-	story_revealed = true
-	modulate.a = 1.0
-	player_detected_for_reveal.emit(self)
+	story_lifecycle.reveal_for_story_detection()
 
 
 func begin_story_detection_suppression():
-	# Area monitoring is restored with deferred calls, so ignore one restore-frame
-	# detection pass before allowing story reveal logic to run again.
-	suppress_story_detection = true
-	call_deferred("end_story_detection_suppression_after_physics")
+	story_lifecycle.begin_story_detection_suppression()
 
 
 func end_story_detection_suppression_after_physics():
-	await get_tree().physics_frame
-	suppress_story_detection = false
+	await story_lifecycle.end_story_detection_suppression_after_physics()
 
 
 func restore_after_load():
-	last_damage_source = null
-	last_killer_form_id = &""
-	damage_enabled = true
-	dead = false
-	visible = true
-	velocity = Vector2.ZERO
-	returning_to_static_position = false
-	clear_combat_engagement()
-	attack_cooldown_timer = 0.0
-	ranged_cooldown_timer = 0.0
-	player_in_detection = false
-	player_in_attack_range = false
-	player_in_tracking = false
-	story_revealed = false
-	clear_hurt_state_overrides()
-	set_physics_process(true)
-
-	if sprite != null:
-		sprite.speed_scale = 1.0
-
-	var health_node: Node = health
-	if health_node != null:
-		health_node.set("dead", false)
-		if health_node.has_method("stop_regeneration"):
-			health_node.stop_regeneration()
-		health_node.set("invulnerable", false)
-		health_node.set("i_frame_timer", 0.0)
-		health_node.set("health", int(health_node.get("max_health")))
-		if health_node.has_signal("health_changed"):
-			health_node.emit_signal("health_changed", health_node.get("health"), health_node.get("max_health"))
-
-	player = get_tree().get_first_node_in_group("player")
-	enable_combat_areas()
-	setup_villager_stalk_behavior()
-	refresh_patrol_points()
-	apply_variant_tuning()
-
-	change_state(get_default_state())
+	story_lifecycle.restore_after_load()
 
 
 func respawn_for_story(hidden_alpha: float):
-	var respawn_position: Vector2 = get_story_respawn_position()
-	global_position = respawn_position
-	restore_after_load()
-	global_position = respawn_position
-	facing_left = story_spawn_facing_left
-	if sprite != null:
-		sprite.flip_h = facing_left
-	set_story_combat_enabled(true, hidden_alpha)
-	set_story_revealed(false, hidden_alpha)
-	stop_health_regeneration()
+	story_lifecycle.respawn_for_story(hidden_alpha)
 
 
 func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
-	begin_story_detection_suppression()
-	var restore_position: Vector2 = get_story_respawn_position()
-	global_position = restore_position
-	restore_after_load()
-	global_position = restore_position
-	facing_left = story_spawn_facing_left
-	if sprite != null:
-		sprite.flip_h = facing_left
-
-	var visible_alpha: float = hidden_alpha
-	if combat_should_be_enabled and should_be_revealed:
-		visible_alpha = 1.0
-
-	set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
-	set_damage_enabled(combat_should_be_enabled)
-	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
-	stop_health_regeneration()
+	story_lifecycle.restore_for_story_load(hidden_alpha, combat_should_be_enabled, should_be_revealed)
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
-	begin_story_detection_suppression()
-	apply_saved_combat_variant(state)
-	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
-	var saved_health: int = int(state.get("health", health.get("max_health")))
-	var saved_facing_left: bool = bool(state.get("facing_left", facing_left))
-
-	global_position = saved_position
-	restore_after_load()
-	global_position = saved_position
-	patrol_route.apply_save_data(state.get("patrol_route", {}))
-	villager_stalk_behavior.apply_save_data(state.get("villager_stalk", {}))
-	facing_left = saved_facing_left
-
-	if sprite != null:
-		sprite.flip_h = facing_left
-
-	var health_node: Node = health
-	if health_node != null:
-		apply_variant_tuning()
-		var max_health_value: int = int(health_node.get("max_health"))
-		var restored_health: int = int(clamp(saved_health, 1, max_health_value))
-		health_node.set("health", restored_health)
-		health_node.set("dead", false)
-		health_node.set("invulnerable", false)
-		health_node.set("i_frame_timer", 0.0)
-		if health_node.has_signal("health_changed"):
-			health_node.emit_signal("health_changed", restored_health, max_health_value)
-
-	var visible_alpha: float = hidden_alpha
-	if combat_should_be_enabled and should_be_revealed:
-		visible_alpha = 1.0
-
-	set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
-	set_damage_enabled(bool(state.get("damage_enabled", combat_should_be_enabled)))
-	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
-	stop_health_regeneration()
+	story_lifecycle.restore_from_story_save(state, hidden_alpha, combat_should_be_enabled, should_be_revealed)
 
 
 func restore_dead_from_story_save(state: Dictionary, hidden_alpha: float):
-	apply_saved_combat_variant(state)
-	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
-	global_position = saved_position
-	facing_left = bool(state.get("facing_left", facing_left))
-	if sprite != null:
-		sprite.flip_h = facing_left
-
-	refresh_patrol_points()
-	patrol_route.apply_save_data(state.get("patrol_route", {}))
-	setup_villager_stalk_behavior()
-	villager_stalk_behavior.apply_save_data(state.get("villager_stalk", {}))
-	hide_as_story_defeated(hidden_alpha)
+	story_lifecycle.restore_dead_from_story_save(state, hidden_alpha)
 
 
 func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
-	if not (value is Dictionary):
-		return fallback
-
-	var data: Dictionary = value
-	return Vector2(float(data.get("x", fallback.x)), float(data.get("y", fallback.y)))
+	return story_lifecycle.data_to_vector(value, fallback)
 
 
 func vector_to_data(value: Vector2) -> Dictionary:
-	return {
-		"x": value.x,
-		"y": value.y,
-	}
+	return story_lifecycle.vector_to_data(value)
 
 
 func get_story_respawn_position() -> Vector2:
-	var villager: Node = get_assigned_villager()
-	if villager is Node2D and has_patrol_route():
-		var villager_node: Node2D = villager as Node2D
-		return get_nearest_patrol_position(villager_node.global_position)
-
-	return story_spawn_position
+	return story_lifecycle.get_story_respawn_position()
 
 
 func _on_died():
@@ -994,216 +780,71 @@ func _on_died():
 
 
 func _on_player_detection_body_entered(body: Node2D):
-	if not body.is_in_group("player"):
-		return
-
-	if should_defer_player_range_change(body):
-		player = body
-		refresh_player_ranges_after_transform()
-		return
-
-	if should_ignore_player_aggro():
-		return
-
-	player = body
-	player_in_detection = true
-	player_in_tracking = true
-	stop_health_regeneration()
-	reveal_for_story_detection()
-	update_combat_engagement()
+	aggro_sensor.on_player_detection_body_entered(body)
 
 
 func _on_player_detection_body_exited(body: Node2D):
-	if body == player:
-		if should_defer_player_range_exit(body):
-			refresh_player_ranges_after_transform()
-			return
-
-		player_in_detection = false
-		update_combat_engagement()
+	aggro_sensor.on_player_detection_body_exited(body)
 
 
 func _on_attack_range_body_entered(body: Node2D):
-	if not body.is_in_group("player"):
-		return
-
-	if should_defer_player_range_change(body):
-		player = body
-		refresh_player_ranges_after_transform()
-		return
-
-	if should_ignore_player_aggro():
-		return
-
-	player = body
-	player_in_attack_range = true
-	player_in_tracking = true
-	stop_health_regeneration()
-	update_combat_engagement()
+	aggro_sensor.on_attack_range_body_entered(body)
 
 
 func _on_attack_range_body_exited(body: Node2D):
-	if body == player:
-		if should_defer_player_range_exit(body):
-			refresh_player_ranges_after_transform()
-			return
-
-		player_in_attack_range = false
-		update_combat_engagement()
+	aggro_sensor.on_attack_range_body_exited(body)
 
 
 func _on_tracking_range_body_entered(body: Node2D):
-	if not body.is_in_group("player"):
-		return
-
-	if should_defer_player_range_change(body):
-		player = body
-		refresh_player_ranges_after_transform()
-		return
-
-	if should_ignore_player_aggro():
-		return
-
-	player = body
-	if not can_tracking_range_maintain_aggro(is_currently_engaging_player()):
-		return
-
-	player_in_tracking = true
-	stop_health_regeneration()
-	update_combat_engagement()
+	aggro_sensor.on_tracking_range_body_entered(body)
 
 
 func _on_tracking_range_body_exited(body: Node2D):
-	if body != player:
-		return
-
-	if should_defer_player_range_exit(body):
-		refresh_player_ranges_after_transform()
-		return
-
-	player_in_tracking = false
-	player_in_detection = false
-	player_in_attack_range = false
-	update_combat_engagement()
+	aggro_sensor.on_tracking_range_body_exited(body)
 
 
 func should_ignore_player_aggro() -> bool:
-	return dead or not combat_enabled or suppress_story_detection or (CombatStateManager != null and CombatStateManager.is_dialogue_active())
+	return aggro_sensor.should_ignore_player_aggro()
 
 
 func should_defer_player_range_exit(body: Node2D) -> bool:
-	return should_defer_player_range_change(body)
+	return aggro_sensor.should_defer_player_range_exit(body)
 
 
 func should_defer_player_range_change(body: Node2D) -> bool:
-	if body == null:
-		return false
-
-	if body.has_method("is_transforming_forms") and bool(body.call("is_transforming_forms")):
-		return true
-
-	return body.has_method("is_life_respawn_pending") and bool(body.call("is_life_respawn_pending"))
+	return aggro_sensor.should_defer_player_range_change(body)
 
 
 func can_range_overlap_start_aggro() -> bool:
-	return player_in_detection or player_in_attack_range
+	return aggro_sensor.can_range_overlap_start_aggro()
 
 
 func can_tracking_range_maintain_aggro(was_already_engaged: bool = false) -> bool:
-	return was_already_engaged or can_range_overlap_start_aggro()
+	return aggro_sensor.can_tracking_range_maintain_aggro(was_already_engaged)
 
 
 func is_passive_aggro_state() -> bool:
-	return current_state_name == "idle" or current_state_name == "patrol" or current_state_name == "return_to_patrol"
+	return aggro_sensor.is_passive_aggro_state()
 
 
 func refresh_player_ranges_after_transform():
-	if refreshing_player_ranges_after_transform:
-		return
-
-	refreshing_player_ranges_after_transform = true
-	call_deferred("refresh_player_ranges_after_transform_deferred")
+	aggro_sensor.refresh_player_ranges_after_transform()
 
 
 func refresh_player_ranges_after_transform_deferred():
-	await get_tree().physics_frame
-
-	if should_ignore_player_aggro():
-		refreshing_player_ranges_after_transform = false
-		player_in_detection = false
-		player_in_attack_range = false
-		player_in_tracking = false
-		update_combat_engagement()
-		return
-
-	if player == null or not is_instance_valid(player):
-		refreshing_player_ranges_after_transform = false
-		player_in_detection = false
-		player_in_attack_range = false
-		player_in_tracking = false
-		update_combat_engagement()
-		return
-
-	if should_defer_player_range_change(player):
-		call_deferred("refresh_player_ranges_after_transform_deferred")
-		return
-
-	var was_already_engaged: bool = is_currently_engaging_player()
-	var overlapping_detection: bool = is_player_overlapping_area(player_detection_area)
-	var overlapping_attack: bool = is_player_overlapping_area(attack_range)
-	var overlapping_tracking: bool = is_player_overlapping_area(tracking_range)
-
-	refreshing_player_ranges_after_transform = false
-	player_in_detection = overlapping_detection
-	player_in_attack_range = overlapping_attack
-	player_in_tracking = overlapping_tracking and can_tracking_range_maintain_aggro(was_already_engaged)
-
-	if can_range_overlap_start_aggro():
-		stop_health_regeneration()
-		if is_passive_aggro_state():
-			change_state("scream")
-		else:
-			update_combat_engagement()
-		return
-
-	update_combat_engagement()
+	await aggro_sensor.refresh_player_ranges_after_transform_deferred()
 
 
 func is_player_overlapping_area(area: Area2D) -> bool:
-	return get_overlapping_player(area) == player
+	return aggro_sensor.is_player_overlapping_area(area)
 
 
 func refresh_player_detection_after_dialogue():
-	if dead or not combat_enabled or suppress_story_detection or CombatStateManager.is_dialogue_active():
-		return
-
-	var overlapping_player: Node2D = get_overlapping_player(player_detection_area)
-	if overlapping_player == null:
-		return
-
-	player = overlapping_player
-	player_in_detection = true
-	player_in_tracking = true
-	player_in_attack_range = get_overlapping_player(attack_range) != null
-	stop_health_regeneration()
-	reveal_for_story_detection()
-	if current_state_name == "idle" or current_state_name == "patrol" or current_state_name == "return_to_patrol":
-		change_state("scream")
-	else:
-		update_combat_engagement()
+	aggro_sensor.refresh_player_detection_after_dialogue()
 
 
 func get_overlapping_player(area: Area2D) -> Node2D:
-	if area == null:
-		return null
-	if not area.monitoring:
-		return null
-
-	for body in area.get_overlapping_bodies():
-		if body is Node2D and body.is_in_group("player"):
-			return body as Node2D
-
-	return null
+	return aggro_sensor.get_overlapping_player(area)
 
 
 func update_combat_engagement():

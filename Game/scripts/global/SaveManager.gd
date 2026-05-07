@@ -102,372 +102,176 @@ var upgrade_state: Dictionary = {
 	"stat_levels": {},
 	"equipped_weapon_id": "unarmed",
 }
+var settings_controller := SaveSettingsController.new()
+var upgrade_controller := SaveUpgradeController.new()
+var quest_controller := SaveQuestController.new()
+var file_controller := SaveFileController.new()
+var actor_state_controller := SaveActorStateController.new()
 
 
 func _ready():
+	settings_controller.setup(self)
+	upgrade_controller.setup(self)
+	quest_controller.setup(self)
+	file_controller.setup(self)
+	actor_state_controller.setup(self)
 	load_settings()
 
 
 func load_settings():
-	var config: ConfigFile = ConfigFile.new()
-	var error: Error = config.load(SETTINGS_PATH)
-	if error != OK:
-		show_hud_gauges = true
-		show_player_gauges = true
-		return
-
-	show_hud_gauges = bool(config.get_value("ui", SETTING_SHOW_HUD_GAUGES, true))
-	show_player_gauges = bool(config.get_value("ui", SETTING_SHOW_PLAYER_GAUGES, true))
-	default_camera_zoom = clamp(float(config.get_value("ui", SETTING_DEFAULT_CAMERA_ZOOM, 2.25)), 1.75, 3.0)
-	if not show_hud_gauges and not show_player_gauges:
-		show_hud_gauges = true
-		show_player_gauges = true
+	settings_controller.load_settings()
 
 
 func save_settings():
-	var config: ConfigFile = ConfigFile.new()
-	config.set_value("ui", SETTING_SHOW_HUD_GAUGES, show_hud_gauges)
-	config.set_value("ui", SETTING_SHOW_PLAYER_GAUGES, show_player_gauges)
-	config.set_value("ui", SETTING_DEFAULT_CAMERA_ZOOM, default_camera_zoom)
-	config.save(SETTINGS_PATH)
+	settings_controller.save_settings()
 
 
 func get_gauge_display_settings() -> Dictionary:
-	return {
-		"show_hud_gauges": show_hud_gauges,
-		"show_player_gauges": show_player_gauges,
-	}
+	return settings_controller.get_gauge_display_settings()
 
 
 func set_gauge_display_settings(show_hud: bool, show_player: bool):
-	if not show_hud and not show_player:
-		return
-
-	if show_hud_gauges == show_hud and show_player_gauges == show_player:
-		return
-
-	show_hud_gauges = show_hud
-	show_player_gauges = show_player
-	save_settings()
-	gauge_display_settings_changed.emit(show_hud_gauges, show_player_gauges)
+	settings_controller.set_gauge_display_settings(show_hud, show_player)
 
 
 func get_default_camera_zoom() -> float:
-	return default_camera_zoom
+	return settings_controller.get_default_camera_zoom()
 
 
 func set_default_camera_zoom(value: float):
-	var clean_value: float = clamp(value, 1.75, 3.0)
-	if is_equal_approx(default_camera_zoom, clean_value):
-		return
-
-	default_camera_zoom = clean_value
-	save_settings()
+	settings_controller.set_default_camera_zoom(value)
 
 
 func set_active_slot(slot: int) -> bool:
-	if not is_manual_save_slot(slot):
-		last_error = "Save slot %d is not a manual save slot." % slot
-		return false
-
-	active_slot = slot
-	last_error = ""
-	return true
+	return file_controller.set_active_slot(slot)
 
 
 func is_valid_slot(slot: int) -> bool:
-	return slot >= 1 and slot <= SAVE_SLOT_COUNT
+	return file_controller.is_valid_slot(slot)
 
 
 func is_manual_save_slot(slot: int) -> bool:
-	return slot >= 1 and slot <= MANUAL_SAVE_SLOT_COUNT
+	return file_controller.is_manual_save_slot(slot)
 
 
 func is_autosave_slot(slot: int) -> bool:
-	return slot == AUTOSAVE_SLOT
+	return file_controller.is_autosave_slot(slot)
 
 
 func get_player_lives() -> int:
-	return player_lives
+	return upgrade_controller.get_player_lives()
 
 
 func get_max_player_lives() -> int:
-	var health_level: int = int(get_upgrade_stat_levels().get("health", 0))
-	return clamp(BASE_PLAYER_LIVES + health_level, BASE_PLAYER_LIVES, MAX_PLAYER_LIVES)
+	return upgrade_controller.get_max_player_lives()
 
 
 func reset_player_lives():
-	player_lives = get_max_player_lives()
-	player_lives_changed.emit(player_lives, get_max_player_lives())
+	upgrade_controller.reset_player_lives()
 
 
 func set_player_lives_for_dev(lives: int):
-	if not OS.is_debug_build() and not Engine.is_editor_hint():
-		return
-
-	player_lives = clamp(lives, 0, get_max_player_lives())
-	player_lives_changed.emit(player_lives, get_max_player_lives())
+	upgrade_controller.set_player_lives_for_dev(lives)
 
 
 func reset_upgrade_state():
-	var previous_max_lives: int = get_max_player_lives()
-	upgrade_state = get_default_upgrade_state()
-	reconcile_player_lives_after_max_change(previous_max_lives, false)
-	upgrade_state_changed.emit()
+	upgrade_controller.reset_upgrade_state()
 
 
 func get_default_upgrade_state() -> Dictionary:
-	return {
-		"unlocked": {
-			"attack": true,
-			"health": true,
-			"stamina": true,
-			"dash_count": true,
-		},
-		"stat_levels": {},
-		"equipped_weapon_id": "unarmed",
-	}
+	return upgrade_controller.get_default_upgrade_state()
 
 
 func unlock_upgrade(upgrade_id: StringName) -> bool:
-	var id: String = str(upgrade_id)
-	if id == "":
-		return false
-
-	var unlocked: Dictionary = get_upgrade_unlocked()
-	if bool(unlocked.get(id, false)):
-		return false
-
-	unlocked[id] = true
-	upgrade_state["unlocked"] = unlocked
-	upgrade_state_changed.emit()
-	return true
+	return upgrade_controller.unlock_upgrade(upgrade_id)
 
 
 func lock_upgrade(upgrade_id: StringName) -> bool:
-	var id: String = str(upgrade_id)
-	if id == "":
-		return false
-
-	var changed: bool = false
-	var unlocked: Dictionary = get_upgrade_unlocked()
-	if unlocked.has(id):
-		unlocked.erase(id)
-		upgrade_state["unlocked"] = unlocked
-		changed = true
-
-	var stat_levels: Dictionary = get_upgrade_stat_levels()
-	if stat_levels.has(id):
-		stat_levels.erase(id)
-		upgrade_state["stat_levels"] = stat_levels
-		changed = true
-
-	if changed:
-		upgrade_state_changed.emit()
-	return changed
+	return upgrade_controller.lock_upgrade(upgrade_id)
 
 
 func set_stat_level(stat_id: StringName, level: int) -> bool:
-	var id: String = str(stat_id)
-	if id == "":
-		return false
-
-	var previous_max_lives: int = get_max_player_lives()
-	var stat_levels: Dictionary = get_upgrade_stat_levels()
-	var clean_level: int = maxi(level, 0)
-	if int(stat_levels.get(id, 0)) == clean_level:
-		return false
-
-	stat_levels[id] = clean_level
-	upgrade_state["stat_levels"] = stat_levels
-	if id == "health":
-		reconcile_player_lives_after_max_change(previous_max_lives, true)
-	upgrade_state_changed.emit()
-	return true
+	return upgrade_controller.set_stat_level(stat_id, level)
 
 
 func get_upgrade_state() -> Dictionary:
-	return upgrade_state.duplicate(true)
+	return upgrade_controller.get_upgrade_state()
 
 
 func set_story_flag(flag_name: String, enabled: bool):
-	if flag_name == "":
-		return
-
-	if enabled:
-		story_flags[flag_name] = true
-	else:
-		story_flags.erase(flag_name)
+	quest_controller.set_story_flag(flag_name, enabled)
 
 
 func get_story_flag(flag_name: String) -> bool:
-	return bool(story_flags.get(flag_name, false))
+	return quest_controller.get_story_flag(flag_name)
 
 
 func get_story_flags() -> Dictionary:
-	return story_flags.duplicate(true)
+	return quest_controller.get_story_flags()
 
 
 func apply_story_flags(data: Variant):
-	story_flags.clear()
-	if not (data is Dictionary):
-		return
-
-	var source: Dictionary = data
-	for flag_name in source.keys():
-		story_flags[str(flag_name)] = bool(source[flag_name])
+	quest_controller.apply_story_flags(data)
 
 
 func get_default_quest_state(stage: String = QUEST_STAGE_NOT_AVAILABLE) -> Dictionary:
-	return {
-		"stage": stage,
-		"flags": {},
-	}
+	return quest_controller.get_default_quest_state(stage)
 
 
 func get_quest_state(quest_id: String) -> Dictionary:
-	var raw_state: Variant = quest_states.get(quest_id, {})
-	if raw_state is Dictionary:
-		var source: Dictionary = raw_state
-		var flags: Dictionary = {}
-		var raw_flags: Variant = source.get("flags", {})
-		if raw_flags is Dictionary:
-			flags = raw_flags.duplicate(true)
-		return {
-			"stage": str(source.get("stage", QUEST_STAGE_NOT_AVAILABLE)),
-			"flags": flags,
-		}
-
-	return get_default_quest_state()
+	return quest_controller.get_quest_state(quest_id)
 
 
 func set_quest_state(quest_id: String, state: Dictionary):
-	if quest_id == "":
-		return
-
-	var flags: Dictionary = {}
-	var raw_flags: Variant = state.get("flags", {})
-	if raw_flags is Dictionary:
-		flags = raw_flags.duplicate(true)
-	quest_states[quest_id] = {
-		"stage": str(state.get("stage", QUEST_STAGE_NOT_AVAILABLE)),
-		"flags": flags,
-	}
+	quest_controller.set_quest_state(quest_id, state)
 
 
 func get_quest_stage(quest_id: String) -> String:
-	return str(get_quest_state(quest_id).get("stage", QUEST_STAGE_NOT_AVAILABLE))
+	return quest_controller.get_quest_stage(quest_id)
 
 
 func set_quest_stage(quest_id: String, stage: String):
-	var state: Dictionary = get_quest_state(quest_id)
-	state["stage"] = stage
-	set_quest_state(quest_id, state)
+	quest_controller.set_quest_stage(quest_id, stage)
 
 
 func get_quest_flag(quest_id: String, flag_name: String) -> bool:
-	var state: Dictionary = get_quest_state(quest_id)
-	var flags: Dictionary = state.get("flags", {})
-	return bool(flags.get(flag_name, false))
+	return quest_controller.get_quest_flag(quest_id, flag_name)
 
 
 func set_quest_flag(quest_id: String, flag_name: String, enabled: bool):
-	if flag_name == "":
-		return
-
-	var state: Dictionary = get_quest_state(quest_id)
-	var flags: Dictionary = state.get("flags", {})
-	if enabled:
-		flags[flag_name] = true
-	else:
-		flags.erase(flag_name)
-	state["flags"] = flags
-	set_quest_state(quest_id, state)
+	quest_controller.set_quest_flag(quest_id, flag_name, enabled)
 
 
 func get_quest_states() -> Dictionary:
-	return quest_states.duplicate(true)
+	return quest_controller.get_quest_states()
 
 
 func apply_quest_states(data: Variant):
-	quest_states.clear()
-	if not (data is Dictionary):
-		return
-
-	var source: Dictionary = data
-	for quest_id in source.keys():
-		var raw_state: Variant = source[quest_id]
-		if raw_state is Dictionary:
-			set_quest_state(str(quest_id), raw_state)
+	quest_controller.apply_quest_states(data)
 
 
 func set_banshee_world_rule(rule_name: String, value: Variant):
-	if rule_name == "":
-		return
-
-	var state: Dictionary = get_quest_state(QUEST_BANSHEE_WORLD)
-	var flags: Dictionary = state.get("flags", {})
-	flags[rule_name] = value
-	state["flags"] = flags
-	set_quest_state(QUEST_BANSHEE_WORLD, state)
+	quest_controller.set_banshee_world_rule(rule_name, value)
 
 
 func get_banshee_world_rules() -> Dictionary:
-	var flags: Dictionary = get_quest_state(QUEST_BANSHEE_WORLD).get("flags", {})
-	var variant: String = str(flags.get("combat_variant", BANSHEE_VARIANT_CORRUPTED_MELEE))
-	if variant != BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED:
-		variant = BANSHEE_VARIANT_CORRUPTED_MELEE
-
-	return {
-		"banshees_hostile_enabled": bool(flags.get("banshees_hostile_enabled", false)),
-		"player_can_damage_banshees": bool(flags.get("player_can_damage_banshees", false)),
-		"wolf_permanent_clear_enabled": bool(flags.get("wolf_permanent_clear_enabled", false)),
-		"combat_variant": variant,
-	}
+	return quest_controller.get_banshee_world_rules()
 
 
 func apply_upgrade_state(data: Variant):
-	var previous_max_lives: int = get_max_player_lives()
-	var default_state: Dictionary = get_default_upgrade_state()
-	if data is Dictionary:
-		var source: Dictionary = data
-		var saved_unlocked: Variant = source.get("unlocked", {})
-		if saved_unlocked is Dictionary:
-			var merged_unlocked: Dictionary = default_state["unlocked"]
-			for upgrade_id in saved_unlocked.keys():
-				merged_unlocked[str(upgrade_id)] = bool(saved_unlocked[upgrade_id])
-			default_state["unlocked"] = merged_unlocked
-		default_state["stat_levels"] = source.get("stat_levels", {})
-		default_state["equipped_weapon_id"] = str(source.get("equipped_weapon_id", "unarmed"))
-
-	upgrade_state = default_state
-	reconcile_player_lives_after_max_change(previous_max_lives, false)
-	upgrade_state_changed.emit()
+	upgrade_controller.apply_upgrade_state(data)
 
 
 func reconcile_player_lives_after_max_change(previous_max_lives: int, grant_new_lives: bool):
-	var current_max_lives: int = get_max_player_lives()
-	if grant_new_lives and current_max_lives > previous_max_lives:
-		player_lives += current_max_lives - previous_max_lives
-
-	player_lives = clamp(player_lives, 0, current_max_lives)
-	player_lives_changed.emit(player_lives, current_max_lives)
+	upgrade_controller.reconcile_player_lives_after_max_change(previous_max_lives, grant_new_lives)
 
 
 func get_upgrade_unlocked() -> Dictionary:
-	var unlocked: Variant = upgrade_state.get("unlocked", {})
-	if unlocked is Dictionary:
-		return unlocked
-
-	return {}
+	return upgrade_controller.get_upgrade_unlocked()
 
 
 func get_upgrade_stat_levels() -> Dictionary:
-	var stat_levels: Variant = upgrade_state.get("stat_levels", {})
-	if stat_levels is Dictionary:
-		return stat_levels
-
-	return {}
+	return upgrade_controller.get_upgrade_stat_levels()
 
 
 func set_save_allowed(allowed: bool):
@@ -581,16 +385,8 @@ func write_save_to_slot(slot: int, reason: String = "manual", level: Node = null
 
 	var save_level: Node = level if level != null else get_current_level()
 	remember_level_state(save_level)
-	var save_path: String = get_save_path(slot)
 	var save_data: Dictionary = build_save_data(reason, save_level, slot)
-	var file: FileAccess = FileAccess.open(save_path, FileAccess.WRITE)
-	if file == null:
-		last_error = "Could not open %s for writing. Error: %s" % [save_path, error_string(FileAccess.get_open_error())]
-		return false
-
-	file.store_string(JSON.stringify(save_data, "\t"))
-	last_error = ""
-	return true
+	return file_controller.write_save_data(slot, save_data)
 
 
 func should_block_player_death_save() -> bool:
@@ -1027,60 +823,15 @@ func spend_life_and_respawn_player_in_place() -> bool:
 
 
 func delete_save(slot: int) -> bool:
-	if not is_valid_slot(slot):
-		last_error = "Save slot %d is outside the supported range." % slot
-		return false
-
-	if not save_exists(slot):
-		last_error = ""
-		return true
-
-	var dir: DirAccess = DirAccess.open("user://")
-	if dir == null:
-		last_error = "Could not open the user save directory."
-		return false
-
-	var error: Error = dir.remove(get_save_file_name(slot))
-	if error != OK:
-		last_error = "Could not delete save slot %d. Error: %s" % [slot, error_string(error)]
-		return false
-
-	last_error = ""
-	return true
+	return file_controller.delete_save(slot)
 
 
 func save_exists(slot: int) -> bool:
-	return is_valid_slot(slot) and FileAccess.file_exists(get_save_path(slot))
+	return file_controller.save_exists(slot)
 
 
 func get_slot_summary(slot: int) -> Dictionary:
-	var summary: Dictionary = {
-		"slot": slot,
-		"exists": false,
-		"saved_at_datetime": "",
-		"timestamp_text": "",
-		"level_path": "",
-		"reason": "",
-		"display_name": "Autosave" if is_autosave_slot(slot) else "Slot %d" % slot,
-	}
-
-	if not save_exists(slot):
-		return summary
-
-	var data: Dictionary = load_game(slot)
-	if data.is_empty():
-		return summary
-
-	summary["exists"] = true
-	var saved_at_datetime: String = str(data.get("saved_at_datetime", ""))
-	var level_path: String = str(data.get("level_path", ""))
-	var level_state: Dictionary = get_level_state_from_save_data(data, level_path)
-	summary["saved_at_datetime"] = saved_at_datetime
-	summary["timestamp_text"] = saved_at_datetime
-	summary["level_path"] = level_path
-	summary["reason"] = str(data.get("reason", ""))
-	summary["display_name"] = get_save_display_name(level_path, level_state, data.get("quest_states", {}))
-	return summary
+	return file_controller.get_slot_summary(slot)
 
 
 func get_level_state_from_save_data(data: Dictionary, level_path: String) -> Dictionary:
@@ -1179,32 +930,7 @@ func should_skip_autosave(reason: String) -> bool:
 
 
 func load_game(slot: int = active_slot) -> Dictionary:
-	if not is_valid_slot(slot):
-		last_error = "Save slot %d is outside the supported range." % slot
-		return {}
-
-	var save_path: String = get_save_path(slot)
-	if not FileAccess.file_exists(save_path):
-		last_error = "No save file exists for slot %d." % slot
-		return {}
-
-	var file: FileAccess = FileAccess.open(save_path, FileAccess.READ)
-	if file == null:
-		last_error = "Could not open %s for reading. Error: %s" % [save_path, error_string(FileAccess.get_open_error())]
-		return {}
-
-	var parsed: Variant = JSON.parse_string(file.get_as_text())
-	if not (parsed is Dictionary):
-		last_error = "Save file %s is not valid JSON save data." % save_path
-		return {}
-
-	var data: Dictionary = parsed
-	if int(data.get("version", 0)) != SAVE_VERSION:
-		last_error = "Save file %s uses an unsupported version." % save_path
-		return {}
-
-	last_error = ""
-	return data
+	return file_controller.load_game(slot)
 
 
 func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool = false) -> bool:
@@ -1260,24 +986,15 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 
 
 func is_saved_player_dead(player_data: Variant) -> bool:
-	if not (player_data is Dictionary):
-		return false
-
-	var data: Dictionary = player_data
-	var raw_health_data: Variant = data.get("health", {})
-	if not (raw_health_data is Dictionary):
-		return false
-
-	var health_data: Dictionary = raw_health_data
-	return bool(health_data.get("dead", false)) or int(health_data.get("current", 1)) <= 0
+	return actor_state_controller.is_saved_player_dead(player_data)
 
 
 func get_save_path(slot: int = active_slot) -> String:
-	return SAVE_PATH_FORMAT % clamp(slot, 1, SAVE_SLOT_COUNT)
+	return file_controller.get_save_path(slot)
 
 
 func get_save_file_name(slot: int) -> String:
-	return "save_slot_%d.json" % clamp(slot, 1, SAVE_SLOT_COUNT)
+	return file_controller.get_save_file_name(slot)
 
 
 func get_current_level() -> Node:
@@ -1332,154 +1049,35 @@ func get_level_path(level: Node) -> String:
 
 
 func collect_player_state(level: Node) -> Dictionary:
-	var player: Node2D = get_tree().get_first_node_in_group("player") as Node2D
-	if player == null:
-		return {}
-
-	var health_node: Node = player.get_node_or_null("Health")
-	var camera: Camera2D = player.get_node_or_null("Camera2D") as Camera2D
-
-	var data: Dictionary = {
-		"node_path": get_relative_node_path(level, player),
-		"position": vector_to_data(player.global_position),
-		"form_id": "human",
-		"health": {},
-		"stamina": {},
-		"camera_zoom": 2.25,
-	}
-
-	if player.has_method("get_save_form_id"):
-		data["form_id"] = str(player.get_save_form_id())
-	elif player.has_method("get_current_form_id"):
-		data["form_id"] = str(player.get_current_form_id())
-
-	if health_node != null:
-		var max_health: int = maxi(int(health_node.get("max_health")), 1)
-		var current_health: int = clamp(int(health_node.get("health")), 1, max_health)
-		var current_stamina: float = float(health_node.get("stamina"))
-		if bool(health_node.get("dead")) or int(health_node.get("health")) <= 0:
-			current_health = max_health
-			current_stamina = float(health_node.get("max_stamina"))
-		data["health"] = {
-			"current": current_health,
-			"max": max_health,
-			"dead": false,
-		}
-		data["stamina"] = {
-			"current": current_stamina,
-			"max": float(health_node.get("max_stamina")),
-		}
-
-	if camera != null:
-		data["camera_zoom"] = camera.zoom.x
-
-	return data
+	return actor_state_controller.collect_player_state(level)
 
 
 func collect_defeated_banshees(level: Node) -> Array:
-	var defeated: Array = []
-	for hostile in get_tree().get_nodes_in_group("hostile_npcs"):
-		if not is_node_in_level(level, hostile):
-			continue
-
-		var is_defeated: bool = bool(hostile.get("dead"))
-		var health_node: Node = hostile.get_node_or_null("Health")
-		if health_node != null:
-			is_defeated = is_defeated or bool(health_node.get("dead"))
-
-		if is_defeated:
-			defeated.append(get_relative_node_path(level, hostile))
-
-	return defeated
+	return actor_state_controller.collect_defeated_banshees(level)
 
 
 func collect_villager_states(level: Node) -> Array:
-	var villagers: Array = []
-	for villager in get_tree().get_nodes_in_group("villagers"):
-		if not is_node_in_level(level, villager):
-			continue
-
-		villagers.append({
-			"node_path": get_relative_node_path(level, villager),
-			"paused_by_external_actor": bool(villager.get("paused_by_external_actor")),
-			"external_pause_completed": bool(villager.get("external_pause_completed")),
-		})
-
-	return villagers
+	return actor_state_controller.collect_villager_states(level)
 
 
 func collect_story_actor_states(level: Node, root: Node, required_group: String = "") -> Array:
-	var states: Array = []
-	if root == null:
-		return states
-
-	collect_story_actor_states_from(level, root, required_group, states)
-	return states
+	return actor_state_controller.collect_story_actor_states(level, root, required_group)
 
 
 func collect_story_actor_states_from(level: Node, root: Node, required_group: String, states: Array):
-	for child in root.get_children():
-		var should_collect: bool = required_group == "" or child.is_in_group(required_group)
-		if should_collect:
-			collect_one_story_actor_state(level, child, states)
-
-		collect_story_actor_states_from(level, child, required_group, states)
+	actor_state_controller.collect_story_actor_states_from(level, root, required_group, states)
 
 
 func collect_one_story_actor_state(level: Node, actor: Node, states: Array):
-	var actor_path: String = get_relative_node_path(level, actor)
-	if actor_path == "":
-		return
-
-	var state: Dictionary = {}
-	if actor.has_method("collect_story_save_state"):
-		var raw_state: Variant = actor.call("collect_story_save_state")
-		if raw_state is Dictionary:
-			state = raw_state
-	elif actor is Node2D:
-		var actor_node: Node2D = actor as Node2D
-		state = {
-			"position": vector_to_data(actor_node.global_position),
-		}
-
-	state["node_path"] = actor_path
-	states.append(state)
+	actor_state_controller.collect_one_story_actor_state(level, actor, states)
 
 
 func parse_actor_snapshot_lookup(raw_states: Variant) -> Dictionary:
-	var parsed_states: Dictionary = {}
-	if not (raw_states is Array):
-		return parsed_states
-
-	for raw_state in raw_states:
-		if not (raw_state is Dictionary):
-			continue
-
-		var state: Dictionary = raw_state
-		var actor_path: String = str(state.get("node_path", ""))
-		if actor_path == "":
-			continue
-
-		parsed_states[actor_path] = state
-
-	return parsed_states
+	return actor_state_controller.parse_actor_snapshot_lookup(raw_states)
 
 
 func apply_story_actor_states(level: Node, actor_states: Dictionary):
-	if level == null:
-		return
-
-	for actor_path in actor_states.keys():
-		var actor: Node = level.get_node_or_null(NodePath(str(actor_path)))
-		if actor == null:
-			continue
-
-		var raw_state: Variant = actor_states[actor_path]
-		if not (raw_state is Dictionary):
-			continue
-
-		if actor.has_method("apply_story_save_state"):
-			actor.call("apply_story_save_state", raw_state)
+	actor_state_controller.apply_story_actor_states(level, actor_states)
 
 
 func collect_level_state(level: Node) -> Dictionary:
@@ -1598,155 +1196,40 @@ func get_provider_save_key(level: Node, provider: Node) -> String:
 
 
 func apply_player_state(level: Node, player_data: Variant):
-	if not (player_data is Dictionary):
-		return
-
-	var data: Dictionary = player_data
-	var player: Node2D = get_node_from_saved_path(level, str(data.get("node_path", ""))) as Node2D
-	if player == null:
-		player = get_tree().get_first_node_in_group("player") as Node2D
-	if player == null:
-		return
-
-	player.global_position = data_to_vector(data.get("position", {}), player.global_position)
-
-	if player.has_method("set_form"):
-		player.set_form(StringName(str(data.get("form_id", "human"))))
-
-	var health_node: Node = player.get_node_or_null("Health")
-	var repaired_dead_player_save: bool = false
-	if health_node != null:
-		var health_data: Dictionary = data.get("health", {})
-		var stamina_data: Dictionary = data.get("stamina", {})
-		var max_health: int = maxi(int(health_node.get("max_health")), 1)
-		var saved_health: int = int(health_data.get("current", health_node.get("health")))
-		var saved_dead: bool = bool(health_data.get("dead", false))
-		repaired_dead_player_save = saved_dead or saved_health <= 0
-		var applied_health: int = max_health if repaired_dead_player_save else clamp(saved_health, 1, max_health)
-		var applied_stamina: float = float(health_node.get("max_stamina")) if repaired_dead_player_save else clamp(float(stamina_data.get("current", health_node.get("stamina"))), 0.0, float(health_node.get("max_stamina")))
-		health_node.set("health", applied_health)
-		health_node.set("dead", false)
-		health_node.set("stamina", applied_stamina)
-		if health_node.has_signal("health_changed"):
-			health_node.emit_signal("health_changed", health_node.get("health"), health_node.get("max_health"))
-		if health_node.has_signal("stamina_changed"):
-			health_node.emit_signal("stamina_changed", health_node.get("stamina"), health_node.get("max_stamina"))
-
-	if repaired_dead_player_save and OS.is_debug_build():
-		print_verbose("Loaded player save had dead/zero-health state; repaired to alive full health.")
-
-	if player.has_method("restore_after_load"):
-		player.restore_after_load()
-
-	var camera: Camera2D = player.get_node_or_null("Camera2D") as Camera2D
-	if camera != null:
-		var zoom_value: float = float(data.get("camera_zoom", camera.zoom.x))
-		if camera.has_method("change_zoom"):
-			camera.change_zoom(zoom_value)
-		else:
-			camera.zoom = Vector2(zoom_value, zoom_value)
+	actor_state_controller.apply_player_state(level, player_data)
 
 
 func apply_defeated_banshees(level: Node, defeated_paths: Variant):
-	if not (defeated_paths is Array):
-		return
-
-	var defeated_lookup: Dictionary = {}
-	for saved_path in defeated_paths:
-		defeated_lookup[str(saved_path)] = true
-
-	for hostile in get_tree().get_nodes_in_group("hostile_npcs"):
-		if not is_node_in_level(level, hostile):
-			continue
-
-		var hostile_path: String = get_relative_node_path(level, hostile)
-		if defeated_lookup.has(hostile_path):
-			apply_defeated_hostile_state(hostile)
-		else:
-			apply_active_hostile_state(hostile)
+	actor_state_controller.apply_defeated_banshees(level, defeated_paths)
 
 
 func apply_defeated_hostile_state(hostile: Node):
-	hostile.set("dead", true)
-	var health_node: Node = hostile.get_node_or_null("Health")
-	if health_node != null:
-		health_node.set("dead", true)
-		health_node.set("health", 0)
-	if hostile.has_method("disable_combat_areas"):
-		hostile.disable_combat_areas()
-	hostile.visible = false
+	actor_state_controller.apply_defeated_hostile_state(hostile)
 
 
 func apply_active_hostile_state(hostile: Node):
-	if hostile.has_method("restore_after_load"):
-		hostile.restore_after_load()
-		return
-
-	hostile.visible = true
-	hostile.set("dead", false)
-	hostile.set_physics_process(true)
+	actor_state_controller.apply_active_hostile_state(hostile)
 
 
 func apply_villager_states(level: Node, villager_states: Variant):
-	if not (villager_states is Array):
-		return
-
-	for raw_state in villager_states:
-		if not (raw_state is Dictionary):
-			continue
-
-		var state: Dictionary = raw_state
-		var villager: Node = get_node_from_saved_path(level, str(state.get("node_path", "")))
-		if villager == null:
-			continue
-
-		var paused_by_external_actor: bool = bool(state.get("paused_by_external_actor", false))
-		var external_pause_completed: bool = bool(state.get("external_pause_completed", false))
-		if villager.has_method("apply_saved_story_pause_state"):
-			villager.apply_saved_story_pause_state(paused_by_external_actor, external_pause_completed)
-		else:
-			villager.set("paused_by_external_actor", paused_by_external_actor)
-			villager.set("external_pause_completed", external_pause_completed)
-		if villager.has_method("play_idle_animation") and bool(state.get("external_pause_completed", false)):
-			villager.play_idle_animation()
+	actor_state_controller.apply_villager_states(level, villager_states)
 
 
 func get_relative_node_path(level: Node, node: Node) -> String:
-	if level != null and is_instance_valid(level) and level != node and level.is_ancestor_of(node):
-		return str(level.get_path_to(node))
-
-	return str(node.get_path())
+	return actor_state_controller.get_relative_node_path(level, node)
 
 
 func get_node_from_saved_path(level: Node, saved_path: String) -> Node:
-	if saved_path == "":
-		return null
-
-	if level != null:
-		var relative_node: Node = level.get_node_or_null(NodePath(saved_path))
-		if relative_node != null:
-			return relative_node
-
-	return get_node_or_null(NodePath(saved_path))
+	return actor_state_controller.get_node_from_saved_path(level, saved_path)
 
 
 func is_node_in_level(level: Node, node: Node) -> bool:
-	if level == null:
-		return true
-
-	return level == node or level.is_ancestor_of(node)
+	return actor_state_controller.is_node_in_level(level, node)
 
 
 func vector_to_data(value: Vector2) -> Dictionary:
-	return {
-		"x": value.x,
-		"y": value.y,
-	}
+	return actor_state_controller.vector_to_data(value)
 
 
 func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
-	if not (value is Dictionary):
-		return fallback
-
-	var data: Dictionary = value
-	return Vector2(float(data.get("x", fallback.x)), float(data.get("y", fallback.y)))
+	return actor_state_controller.data_to_vector(value, fallback)

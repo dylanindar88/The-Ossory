@@ -6,7 +6,6 @@ signal transformation_state_changed(active: bool)
 signal transformation_cooldown_changed(current: float, max: float, active: bool)
 
 const DEFAULT_TUNING: PlayerTuning = preload("res://resources/characters/saorise/player_tuning.tres")
-const TRANSFORMATION_AUTOSAVE_BLOCKER = "player_transforming"
 
 @export var tuning: PlayerTuning = DEFAULT_TUNING
 @export var initial_form_id: StringName = &"human"
@@ -28,6 +27,7 @@ var dead := false
 var current_form: PlayerFormDefinition
 var current_form_id: StringName = &"human"
 var forms_by_id: Dictionary = {}
+var transformation_controller := PlayerTransformationController.new()
 
 var last_facing = "right"
 var last_horizontal_facing = "right"
@@ -68,6 +68,7 @@ var life_respawn_pending: bool = false
 func _ready():
 	cache_form_definitions()
 	activate_form(initial_form_id)
+	transformation_controller.setup(self)
 
 	add_to_group("player")
 	hurt_box.add_to_group("player_hurtboxes")
@@ -286,9 +287,7 @@ func _physics_process(delta):
 	if attack_cooldown_timer > 0:
 		attack_cooldown_timer -= delta
 
-	if transformation_cooldown_timer > 0.0:
-		transformation_cooldown_timer = maxf(transformation_cooldown_timer - delta, 0.0)
-		emit_transformation_cooldown_progress()
+	update_transformation_cooldown(delta)
 
 	if dialogue_input_locked:
 		hold_dialogue_idle()
@@ -403,325 +402,107 @@ func set_dialogue_input_locked(locked: bool):
 
 
 func try_start_wolf_transformation() -> bool:
-	if current_form_id == &"wolf" or is_transforming:
-		return false
-
-	if not has_wolf_transformation_unlocked():
-		return false
-
-	if not has_minimum_transformation_charge():
-		return false
-
-	if dialogue_input_locked or dead:
-		return false
-
-	start_wolf_transformation()
-	return true
+	return transformation_controller.try_start_wolf_transformation()
 
 
 func has_wolf_transformation_unlocked() -> bool:
-	if SaveManager == null or not SaveManager.has_method("get_upgrade_state"):
-		return false
-
-	var state: Dictionary = SaveManager.get_upgrade_state()
-	var unlocked: Variant = state.get("unlocked", {})
-	return unlocked is Dictionary and bool(unlocked.get("wolf_transformation", false))
+	return transformation_controller.has_wolf_transformation_unlocked()
 
 
 func start_wolf_transformation():
-	var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
-	if wolf_form == null:
-		return
-
-	var base_duration := get_wolf_transformation_base_duration(wolf_form)
-	var charge_fraction := get_transformation_charge_fraction()
-	transformation_duration = base_duration * charge_fraction
-	transformation_time_remaining = transformation_duration
-	transformation_generation += 1
-	var generation: int = transformation_generation
-
-	clear_transformation_cooldown()
-	begin_transform_lock()
-	set_form(&"wolf")
-	transformation_state_changed.emit(true)
-	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
-	await play_transformation_animation(false)
-
-	if generation != transformation_generation or dead:
-		return
-
-	is_transforming = false
-	set_transformation_autosave_blocked(false)
-	hold_dialogue_idle()
-	update_effects()
+	await transformation_controller.start_wolf_transformation()
 
 
 func finish_wolf_transformation():
-	if current_form_id != &"wolf" or is_transforming or is_any_wolf_transformation_locked():
-		return
-
-	transformation_generation += 1
-	var generation: int = transformation_generation
-	begin_transform_lock()
-	transformation_time_remaining = 0.0
-	transformation_timer_changed.emit(0.0, transformation_duration, true)
-	await play_transformation_animation(true)
-
-	if generation != transformation_generation or dead:
-		return
-
-	set_form(&"human")
-	is_transforming = false
-	transformation_duration = 0.0
-	transformation_time_remaining = 0.0
-	transformation_state_changed.emit(false)
-	transformation_timer_changed.emit(0.0, 0.0, false)
-	start_transformation_cooldown()
-	set_transformation_autosave_blocked(false)
-	hold_dialogue_idle()
-	update_effects()
+	await transformation_controller.finish_wolf_transformation()
 
 
 func begin_transform_lock():
-	is_transforming = true
-	set_transformation_autosave_blocked(true)
-	velocity = Vector2.ZERO
-	can_attack_from_hold = false
-	if hitbox_manager:
-		hitbox_manager.deactivate_attack_hitbox()
-	health.set_running(false)
-	health.set_blocking(false)
-	health.set_parry_window(false)
-	health.end_parry_bonus()
-	if states.has("move") and current_state != states.get("move"):
-		change_state("move")
+	transformation_controller.begin_transform_lock()
 
 
 func play_transformation_animation(reverse: bool):
-	var anim_name: StringName = get_transformation_animation_name()
-	if sprite == null or sprite.sprite_frames == null or not sprite.sprite_frames.has_animation(anim_name):
-		await get_tree().process_frame
-		return
-
-	sprite.speed_scale = 1.0
-	sprite.flip_h = last_horizontal_facing == "left"
-	if reverse:
-		sprite.play(anim_name, -1.0, true)
-	else:
-		sprite.play(anim_name)
-
-	await sprite.animation_finished
-	sprite.speed_scale = 1.0
+	await transformation_controller.play_transformation_animation(reverse)
 
 
 func get_transformation_animation_name() -> StringName:
-	if current_form != null:
-		return current_form.transformation_animation
-
-	return &"transformation"
+	return transformation_controller.get_transformation_animation_name()
 
 
 func get_wolf_transformation_base_duration(wolf_form: PlayerFormDefinition = null) -> float:
-	if wolf_form == null:
-		wolf_form = forms_by_id.get(&"wolf") as PlayerFormDefinition
-
-	var base_duration := 30.0
-	if wolf_form != null and wolf_form.transformation_duration_seconds > 0.0:
-		base_duration = wolf_form.transformation_duration_seconds
-
-	return base_duration
+	return transformation_controller.get_wolf_transformation_base_duration(wolf_form)
 
 
 func get_transformation_charge_fraction() -> float:
-	if transformation_cooldown_seconds <= 0.0:
-		return 1.0
-
-	var charge_seconds := transformation_cooldown_seconds - transformation_cooldown_timer
-	return clampf(charge_seconds / transformation_cooldown_seconds, 0.0, 1.0)
+	return transformation_controller.get_transformation_charge_fraction()
 
 
 func has_minimum_transformation_charge() -> bool:
-	return get_transformation_charge_fraction() >= minimum_transformation_charge_fraction
+	return transformation_controller.has_minimum_transformation_charge()
 
 
 func update_transformation_timer(delta: float):
-	if current_form_id != &"wolf":
-		return
+	transformation_controller.update_transformation_timer(delta)
 
-	if is_any_wolf_transformation_locked():
-		return
 
-	if transformation_duration <= 0.0:
-		return
-
-	transformation_time_remaining = maxf(transformation_time_remaining - delta, 0.0)
-	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
-	if transformation_time_remaining <= 0.0:
-		finish_wolf_transformation()
+func update_transformation_cooldown(delta: float):
+	transformation_controller.update_transformation_cooldown(delta)
 
 
 func start_transformation_cooldown():
-	transformation_cooldown_timer = transformation_cooldown_seconds
-	emit_transformation_cooldown_progress()
+	transformation_controller.start_transformation_cooldown()
 
 
 func start_story_wolf_transformation_lock():
-	if current_form_id != &"wolf":
-		return
-
-	story_wolf_transformation_locked = true
-	if transformation_duration <= 0.0:
-		var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
-		transformation_duration = wolf_form.transformation_duration_seconds if wolf_form != null else 30.0
-	transformation_time_remaining = maxf(transformation_time_remaining, transformation_duration)
-	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
+	transformation_controller.start_story_wolf_transformation_lock()
 
 
 func toggle_dev_permanent_wolf_transformation():
-	if dev_wolf_transformation_locked:
-		end_dev_permanent_wolf_transformation()
-	else:
-		start_dev_permanent_wolf_transformation()
+	transformation_controller.toggle_dev_permanent_wolf_transformation()
 
 
 func start_dev_permanent_wolf_transformation():
-	var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
-	if wolf_form == null:
-		return
-
-	transformation_generation += 1
-	dev_wolf_transformation_locked = true
-	is_transforming = false
-	transformation_duration = wolf_form.transformation_duration_seconds
-	if transformation_duration <= 0.0:
-		transformation_duration = 30.0
-	transformation_time_remaining = transformation_duration
-	clear_transformation_cooldown()
-	set_transformation_autosave_blocked(false)
-	set_form(&"wolf")
-	transformation_state_changed.emit(true)
-	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
-	hold_dialogue_idle()
-	update_effects()
+	transformation_controller.start_dev_permanent_wolf_transformation()
 
 
 func end_dev_permanent_wolf_transformation():
-	if not dev_wolf_transformation_locked:
-		return
-
-	dev_wolf_transformation_locked = false
-	transformation_generation += 1
-	if story_wolf_transformation_locked:
-		transformation_time_remaining = maxf(transformation_time_remaining, transformation_duration)
-		transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
-		return
-
-	is_transforming = false
-	transformation_duration = 0.0
-	transformation_time_remaining = 0.0
-	set_transformation_autosave_blocked(false)
-	clear_transformation_cooldown()
-	if current_form_id == &"wolf":
-		set_form(&"human")
-	transformation_state_changed.emit(false)
-	transformation_timer_changed.emit(0.0, 0.0, false)
-	hold_dialogue_idle()
-	update_effects()
+	transformation_controller.end_dev_permanent_wolf_transformation()
 
 
 func restore_story_wolf_transformation_lock():
-	var wolf_form: PlayerFormDefinition = forms_by_id.get(&"wolf") as PlayerFormDefinition
-	if wolf_form == null:
-		return
-
-	transformation_generation += 1
-	story_wolf_transformation_locked = true
-	is_transforming = false
-	transformation_duration = wolf_form.transformation_duration_seconds
-	if transformation_duration <= 0.0:
-		transformation_duration = 30.0
-	transformation_time_remaining = transformation_duration
-	clear_transformation_cooldown()
-	set_form(&"wolf")
-	transformation_state_changed.emit(true)
-	transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
-	set_transformation_autosave_blocked(false)
+	transformation_controller.restore_story_wolf_transformation_lock()
 
 
 func end_story_wolf_transformation_lock(start_refill_from_zero: bool = true):
-	if not story_wolf_transformation_locked and current_form_id != &"wolf":
-		return
-
-	story_wolf_transformation_locked = false
-	if dev_wolf_transformation_locked:
-		transformation_time_remaining = maxf(transformation_time_remaining, transformation_duration)
-		transformation_timer_changed.emit(transformation_time_remaining, transformation_duration, true)
-		return
-
-	transformation_generation += 1
-	var generation: int = transformation_generation
-
-	if current_form_id == &"wolf":
-		begin_transform_lock()
-		transformation_time_remaining = 0.0
-		transformation_timer_changed.emit(0.0, transformation_duration, true)
-		await play_transformation_animation(true)
-
-		if generation != transformation_generation or dead:
-			return
-
-		set_form(&"human")
-
-	is_transforming = false
-	transformation_duration = 0.0
-	transformation_time_remaining = 0.0
-	transformation_state_changed.emit(false)
-	transformation_timer_changed.emit(0.0, 0.0, false)
-	if start_refill_from_zero:
-		start_transformation_cooldown()
-	else:
-		clear_transformation_cooldown()
-	set_transformation_autosave_blocked(false)
-	hold_dialogue_idle()
-	update_effects()
+	await transformation_controller.end_story_wolf_transformation_lock(start_refill_from_zero)
 
 
 func is_story_wolf_transformation_locked() -> bool:
-	return story_wolf_transformation_locked
+	return transformation_controller.is_story_wolf_transformation_locked()
 
 
 func is_any_wolf_transformation_locked() -> bool:
-	return story_wolf_transformation_locked or dev_wolf_transformation_locked
+	return transformation_controller.is_any_wolf_transformation_locked()
 
 
 func clear_transformation_cooldown():
-	transformation_cooldown_timer = 0.0
-	transformation_cooldown_changed.emit(0.0, 0.0, false)
-	update_effects()
+	transformation_controller.clear_transformation_cooldown()
 
 
 func set_transformation_autosave_blocked(blocked: bool):
-	if SaveManager != null and SaveManager.has_method("set_autosave_blocked"):
-		SaveManager.set_autosave_blocked(TRANSFORMATION_AUTOSAVE_BLOCKER, blocked)
+	transformation_controller.set_transformation_autosave_blocked(blocked)
 
 
 func emit_transformation_cooldown_progress():
-	if transformation_cooldown_timer <= 0.0 or transformation_cooldown_seconds <= 0.0:
-		transformation_cooldown_changed.emit(0.0, 0.0, false)
-		update_effects()
-		return
-
-	var cooldown_progress := transformation_cooldown_seconds - transformation_cooldown_timer
-	transformation_cooldown_changed.emit(cooldown_progress, transformation_cooldown_seconds, true)
-	update_effects()
+	transformation_controller.emit_transformation_cooldown_progress()
 
 
 func is_wolf_form() -> bool:
-	return current_form_id == &"wolf"
+	return transformation_controller.is_wolf_form()
 
 
 func is_transforming_forms() -> bool:
-	return is_transforming
+	return transformation_controller.is_transforming_forms()
 
 
 func is_life_respawn_pending() -> bool:
@@ -767,25 +548,11 @@ func get_attack_animation_prefix() -> StringName:
 
 
 func get_save_form_id() -> StringName:
-	if current_form_id == &"wolf" or is_transforming:
-		return &"human"
-
-	return current_form_id
+	return transformation_controller.get_save_form_id()
 
 
 func end_transformation_immediately():
-	transformation_generation += 1
-	is_transforming = false
-	story_wolf_transformation_locked = false
-	dev_wolf_transformation_locked = false
-	transformation_duration = 0.0
-	transformation_time_remaining = 0.0
-	set_transformation_autosave_blocked(false)
-	clear_transformation_cooldown()
-	if current_form_id == &"wolf":
-		set_form(&"human")
-	transformation_state_changed.emit(false)
-	transformation_timer_changed.emit(0.0, 0.0, false)
+	transformation_controller.end_transformation_immediately()
 
 
 func is_dialogue_input_locked() -> bool:
@@ -909,15 +676,7 @@ func update_effects():
 
 
 func should_show_transformation_delay_effect() -> bool:
-	return (
-		not dead
-		and not is_transforming
-		and current_form_id != &"wolf"
-		and not is_any_wolf_transformation_locked()
-		and has_wolf_transformation_unlocked()
-		and transformation_cooldown_timer > 0.0
-		and get_transformation_charge_fraction() < minimum_transformation_charge_fraction
-	)
+	return transformation_controller.should_show_transformation_delay_effect()
 
 
 func register_interactable(interactable: Node2D):

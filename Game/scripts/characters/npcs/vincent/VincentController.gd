@@ -4,6 +4,7 @@ signal dialogue_finished(vincent: Node)
 
 const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
 const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
+const FLAG_EFFECTS: Array[String] = ["flag"]
 const VINCENT_HOUSE_DIALOGUE := [
 	"Thanks for helping take care of those banshees, I was just taking a break in here, but im afraid the problem isn't solved. NO I'm not a vampire and this is not my fault, can't you see the mirror? Those banshees were corrupted by a bishop who lives nearby. We need to stop him to fully free the village, otherwise more banshees will keep coming and we'll have to keep purifying them.",
 ]
@@ -100,11 +101,11 @@ func refresh_progress_flag():
 		return
 
 	if level_progress_flag_visible:
-		effects.set_effects(["flag"])
+		effects.set_effects(FLAG_EFFECTS)
 	elif not house_dialogue_enabled or is_vincent_house_dialogue_completed():
 		effects.clear_effects()
 	else:
-		effects.set_effects(["flag"])
+		effects.set_effects(FLAG_EFFECTS)
 
 
 func set_level_dialogue_override(sequence: DialogueSequence, show_progress_flag: bool):
@@ -132,8 +133,8 @@ func set_interaction_enabled(enabled: bool):
 	if proximity_area == null:
 		return
 
-	proximity_area.monitoring = enabled
-	proximity_area.monitorable = enabled
+	proximity_area.set_deferred("monitoring", enabled)
+	proximity_area.set_deferred("monitorable", enabled)
 
 
 func is_vincent_house_dialogue_completed() -> bool:

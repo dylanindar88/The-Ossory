@@ -2,6 +2,7 @@ class_name EffectList
 extends Node2D
 
 const DEFAULT_EFFECT_SPRITE_FRAMES: SpriteFrames = preload("res://resources/icons/effects.tres")
+const NO_EFFECTS: Array[String] = []
 
 @export var effect_sprite_frames: SpriteFrames = DEFAULT_EFFECT_SPRITE_FRAMES
 @export var icon_spacing: float = 18.0
@@ -13,7 +14,7 @@ var effect_sprites: Dictionary = {}
 
 func _ready():
 	apply_always_visible_rendering()
-	set_effects([])
+	set_effects(NO_EFFECTS)
 
 
 func set_effects(active_effects: Array[String], controlled_frames: Dictionary = {}):
@@ -50,7 +51,7 @@ func set_effects(active_effects: Array[String], controlled_frames: Dictionary = 
 
 
 func clear_effects():
-	set_effects([])
+	set_effects(NO_EFFECTS)
 
 
 func set_controlled_effect_frame(effect_sprite: AnimatedSprite2D, anim_name: String, frame_index: int):
