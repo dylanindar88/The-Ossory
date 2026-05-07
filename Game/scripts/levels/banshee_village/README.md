@@ -11,3 +11,5 @@ The scene keeps `BansheeVillageFlowController` as the public coordinator and sav
 - `BansheeVillageEncounterController.gd` owns banshee/villager story presentation, reveal state, clear state, combat variants, and respawn timing.
 
 Future levels can follow the same pattern: one scene-attached coordinator, small internal helpers, and one compatibility-owned save dictionary.
+
+Broader architecture and smoke-test guardrails live in `res://docs/refactor/BansheeVillageFlowRefactor.md` and `res://docs/refactor/MaintainabilityArchitecture.md`.

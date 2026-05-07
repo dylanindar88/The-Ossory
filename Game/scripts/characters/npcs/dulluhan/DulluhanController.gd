@@ -3,20 +3,13 @@ extends CharacterBody2D
 signal transformation_granted_for_story
 signal final_teaser_completed
 
-const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
-const UNLOCK_DIALOGUE := [
-	"The old shape in your blood is awake now.",
-	"When the time comes, wear the wolf and the dead will stay dead.",
-	"Return to the elder. They will know what this shape is for.",
-]
-const REPEAT_DIALOGUE := [
-	"The wolf is yours now. Learn its hunger before you trust it.",
-]
-const FINAL_TEASER_DIALOGUE := [
-	"Good show, perhaps you will be good entertainment after all, have fun with that vampire",
-]
+const DEFAULT_DIALOGUE_PROFILE: DialogueProfile = preload("res://resources/dialogue/npcs/dulluhan/dulluhan_story_profile.tres")
+const DIALOGUE_KEY_UNLOCK := &"unlock"
+const DIALOGUE_KEY_REPEAT := &"repeat"
+const DIALOGUE_KEY_FINAL_TEASER := &"final_teaser"
 
 @export var hidden_alpha: float = 0.35
+@export var dialogue_profile: DialogueProfile = DEFAULT_DIALOGUE_PROFILE
 
 @onready var sprite: AnimatedSprite2D = $Body
 @onready var proximity_area: Area2D = get_node_or_null("PlayerProximityArea") as Area2D
@@ -28,11 +21,11 @@ var transformation_granted: bool = false
 var final_teaser_active: bool = false
 var waiting_for_story_progress: bool = false
 var dialogue_active: bool = false
-var active_dialogue_bubble: DialogueBubble
-var current_dialogue_player: Node2D
+var dialogue_session: DialogueSessionController = DialogueSessionController.new()
 
 
 func _ready():
+	dialogue_session.setup(self)
 	configure_detection_area()
 	play_idle()
 	apply_story_alpha()
@@ -129,54 +122,34 @@ func interact(player: Node2D):
 	if waiting_for_story_progress:
 		return
 
-	if dialogue_active:
-		if active_dialogue_bubble != null:
-			active_dialogue_bubble.advance()
+	if dialogue_session.advance():
 		return
 
-	var raw_dialogue := FINAL_TEASER_DIALOGUE if final_teaser_active else (REPEAT_DIALOGUE if transformation_granted else UNLOCK_DIALOGUE)
-	var sequence := create_dialogue_sequence(raw_dialogue)
+	var sequence: DialogueSequence = get_dialogue_sequence()
 	start_dialogue(player, sequence)
 
 
-func create_dialogue_sequence(raw_pages: Array) -> DialogueSequence:
-	var sequence := DialogueSequence.new()
-	for page in raw_pages:
-		sequence.pages.append(str(page))
+func get_dialogue_sequence() -> DialogueSequence:
+	if dialogue_profile == null:
+		return null
 
-	return sequence
+	if final_teaser_active:
+		return dialogue_profile.get_sequence(DIALOGUE_KEY_FINAL_TEASER)
+	if transformation_granted:
+		return dialogue_profile.get_sequence(DIALOGUE_KEY_REPEAT)
+
+	return dialogue_profile.get_sequence(DIALOGUE_KEY_UNLOCK)
 
 
 func start_dialogue(player: Node2D, sequence: DialogueSequence):
-	if CombatStateManager != null and not CombatStateManager.can_start_dialogue():
-		return
-
-	current_dialogue_player = player
-	dialogue_active = true
-	if CombatStateManager != null:
-		CombatStateManager.set_dialogue_active(true)
-	if current_dialogue_player != null and current_dialogue_player.has_method("set_dialogue_input_locked"):
-		current_dialogue_player.set_dialogue_input_locked(true)
-
-	active_dialogue_bubble = DIALOGUE_BUBBLE_SCENE.instantiate() as DialogueBubble
-	add_child(active_dialogue_bubble)
-	if not active_dialogue_bubble.closed.is_connected(_on_dialogue_bubble_closed):
-		active_dialogue_bubble.closed.connect(_on_dialogue_bubble_closed)
-	active_dialogue_bubble.open(sequence)
+	dialogue_active = dialogue_session.start_dialogue(player, sequence, Callable(self, "_on_dialogue_bubble_closed"))
 
 
 func _on_dialogue_bubble_closed(completed: bool = false):
-	active_dialogue_bubble = null
 	var should_grant_transformation := completed and not transformation_granted
 	var should_complete_final_teaser := completed and final_teaser_active
-	var dialogue_player := current_dialogue_player
+	dialogue_session.finish_dialogue()
 	dialogue_active = false
-	current_dialogue_player = null
-
-	if dialogue_player != null and is_instance_valid(dialogue_player) and dialogue_player.has_method("set_dialogue_input_locked"):
-		dialogue_player.set_dialogue_input_locked(false)
-	if CombatStateManager != null:
-		CombatStateManager.set_dialogue_active(false)
 
 	if should_grant_transformation:
 		grant_transformation_upgrade()

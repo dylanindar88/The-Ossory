@@ -102,11 +102,14 @@ var upgrade_state: Dictionary = {
 	"stat_levels": {},
 	"equipped_weapon_id": "unarmed",
 }
+
+# Internal delegates only. SaveManager remains the public autoload API and save schema owner.
 var settings_controller := SaveSettingsController.new()
 var upgrade_controller := SaveUpgradeController.new()
 var quest_controller := SaveQuestController.new()
 var file_controller := SaveFileController.new()
 var actor_state_controller := SaveActorStateController.new()
+var level_state_controller := SaveLevelStateController.new()
 
 
 func _ready():
@@ -115,6 +118,7 @@ func _ready():
 	quest_controller.setup(self)
 	file_controller.setup(self)
 	actor_state_controller.setup(self)
+	level_state_controller.setup(self)
 	load_settings()
 
 
@@ -553,140 +557,51 @@ func apply_pending_new_game_save():
 
 
 func remember_level_state(level: Node):
-	var level_path: String = get_level_path(level)
-	if level_path == "":
-		return
-
-	level_states_by_path[level_path] = collect_level_state(level)
+	level_state_controller.remember_level_state(level)
 
 
 func prepare_current_level_for_route_exit():
-	for provider in get_level_state_providers(get_current_level()):
-		if provider.has_method("prepare_for_route_exit"):
-			provider.call("prepare_for_route_exit")
+	level_state_controller.prepare_current_level_for_route_exit()
 
 
 func get_saved_level_state_for_path(level_path: String, fallback_state: Dictionary = {}) -> Dictionary:
-	var raw_state: Variant = level_states_by_path.get(level_path, fallback_state)
-	if raw_state is Dictionary:
-		var typed_state: Dictionary = raw_state
-		return typed_state.duplicate(true)
-
-	return fallback_state.duplicate(true)
+	return level_state_controller.get_saved_level_state_for_path(level_path, fallback_state)
 
 
 func apply_level_states_by_path(data: Variant, saved_level_path: String = "", legacy_level_state: Variant = {}):
-	level_states_by_path.clear()
-	if data is Dictionary:
-		var source: Dictionary = data
-		for level_path in source.keys():
-			var raw_state: Variant = source[level_path]
-			if raw_state is Dictionary:
-				var typed_state: Dictionary = raw_state
-				level_states_by_path[str(level_path)] = typed_state.duplicate(true)
-
-	if saved_level_path != "" and legacy_level_state is Dictionary and not level_states_by_path.has(saved_level_path):
-		var typed_legacy_state: Dictionary = legacy_level_state
-		level_states_by_path[saved_level_path] = typed_legacy_state.duplicate(true)
+	level_state_controller.apply_level_states_by_path(data, saved_level_path, legacy_level_state)
 
 
 func get_level_state_for_current_load(current_level_path: String, saved_level_path: String, legacy_level_state: Variant) -> Dictionary:
-	var current_state: Dictionary = get_saved_level_state_for_path(current_level_path)
-	if not current_state.is_empty():
-		return current_state
-
-	var saved_state: Dictionary = get_saved_level_state_for_path(saved_level_path)
-	if not saved_state.is_empty():
-		return saved_state
-
-	if legacy_level_state is Dictionary:
-		var typed_legacy_state: Dictionary = legacy_level_state
-		if not typed_legacy_state.is_empty():
-			return typed_legacy_state.duplicate(true)
-
-	return {}
+	return level_state_controller.get_level_state_for_current_load(current_level_path, saved_level_path, legacy_level_state)
 
 
 func has_saved_scene_local_state(saved_level_path: String, legacy_level_state: Variant) -> bool:
-	if saved_level_path != "" and not get_saved_level_state_for_path(saved_level_path).is_empty():
-		return true
-
-	if legacy_level_state is Dictionary:
-		var typed_legacy_state: Dictionary = legacy_level_state
-		return not typed_legacy_state.is_empty()
-
-	return false
+	return level_state_controller.has_saved_scene_local_state(saved_level_path, legacy_level_state)
 
 
 func warn_level_state_load_mismatch(current_level_path: String, saved_level_path: String):
-	if not OS.is_debug_build() and not Engine.is_editor_hint():
-		return
-
-	var available_paths: Array = level_states_by_path.keys()
-	push_warning("Could not resolve local level state for current scene '%s' while loading save for '%s'. Available saved level paths: %s." % [current_level_path, saved_level_path, available_paths])
+	level_state_controller.warn_level_state_load_mismatch(current_level_path, saved_level_path)
 
 
 func warn_pending_scene_load_failed(slot: int):
-	if not OS.is_debug_build() and not Engine.is_editor_hint():
-		return
-
-	var load_error: String = last_error
-	var data: Dictionary = load_game(slot)
-	var saved_level_path: String = str(data.get("level_path", ""))
-	var current_level_path: String = get_level_path(get_current_level())
-	var saved_quest_stage: String = get_quest_stage_from_state(get_level_state_from_save_data(data, saved_level_path))
-	last_error = load_error
-	push_warning("Pending save load failed for slot %d. Saved scene: '%s'. Current scene: '%s'. Saved quest_stage: '%s'. Error: %s" % [slot, saved_level_path, current_level_path, saved_quest_stage, load_error])
+	level_state_controller.warn_pending_scene_load_failed(slot)
 
 
 func get_level_state_source_for_current_load(current_level_path: String, saved_level_path: String, legacy_level_state: Variant) -> String:
-	if current_level_path != "" and not get_saved_level_state_for_path(current_level_path).is_empty():
-		return "current_scene_path"
-	if saved_level_path != "" and not get_saved_level_state_for_path(saved_level_path).is_empty():
-		return "saved_scene_path"
-	if legacy_level_state is Dictionary:
-		var typed_legacy_state: Dictionary = legacy_level_state
-		if not typed_legacy_state.is_empty():
-			return "legacy_level_state"
-	return "empty"
+	return level_state_controller.get_level_state_source_for_current_load(current_level_path, saved_level_path, legacy_level_state)
 
 
 func get_quest_stage_from_state(state: Dictionary) -> String:
-	if state.has("quest_stage"):
-		return str(state.get("quest_stage", ""))
-
-	var raw_provider_states: Variant = state.get("_providers", {})
-	if state.has("_providers") and raw_provider_states is Dictionary:
-		var provider_states: Dictionary = raw_provider_states
-		for provider_key in provider_states.keys():
-			var raw_provider_state: Variant = provider_states[provider_key]
-			if raw_provider_state is Dictionary and raw_provider_state.has("quest_stage"):
-				return str(raw_provider_state.get("quest_stage", ""))
-
-	return ""
+	return level_state_controller.get_quest_stage_from_state(state)
 
 
 func warn_level_state_restore_source(slot: int, current_level_path: String, saved_level_path: String, source: String, state: Dictionary):
-	if not OS.is_debug_build() and not Engine.is_editor_hint():
-		return
-
-	print_verbose("Applying save slot %d local state from %s. Saved scene: '%s'. Current scene: '%s'. quest_stage: '%s'." % [slot, source, saved_level_path, current_level_path, get_quest_stage_from_state(state)])
+	level_state_controller.warn_level_state_restore_source(slot, current_level_path, saved_level_path, source, state)
 
 
 func verify_level_state_after_apply(level: Node, expected_state: Dictionary, slot: int, source: String) -> bool:
-	var expected_stage: String = get_quest_stage_from_state(expected_state)
-	if expected_stage == "" or expected_stage == "intro":
-		return true
-
-	var applied_state: Dictionary = collect_level_state(level)
-	var applied_stage: String = get_quest_stage_from_state(applied_state)
-	if applied_stage == expected_stage:
-		return true
-
-	if OS.is_debug_build() or Engine.is_editor_hint():
-		push_warning("Save slot %d local state did not stick after apply. Source: %s. Expected quest_stage '%s', got '%s'." % [slot, source, expected_stage, applied_stage])
-	last_error = "Save data did not restore the saved level progression."
-	return false
+	return level_state_controller.verify_level_state_after_apply(level, expected_state, slot, source)
 
 
 func set_pending_dev_start(scene_path: String, preset: String = ""):
@@ -1081,118 +996,35 @@ func apply_story_actor_states(level: Node, actor_states: Dictionary):
 
 
 func collect_level_state(level: Node) -> Dictionary:
-	var providers: Array[Node] = get_level_state_providers(level)
-	if providers.is_empty():
-		return {}
-
-	if providers.size() == 1:
-		var single_raw_state: Variant = providers[0].call("collect_level_state")
-		if single_raw_state is Dictionary:
-			return single_raw_state
-		return {}
-
-	var provider_states: Dictionary = {}
-	for provider in providers:
-		var raw_state: Variant = provider.call("collect_level_state")
-		if raw_state is Dictionary:
-			provider_states[get_provider_save_key(level, provider)] = raw_state
-
-	return {
-		"_providers": provider_states,
-	}
+	return level_state_controller.collect_level_state(level)
 
 
 func uses_level_owned_hostile_state(level: Node) -> bool:
-	for provider in get_level_state_providers(level):
-		if provider.has_method("uses_level_owned_hostile_state") and bool(provider.call("uses_level_owned_hostile_state")):
-			return true
-
-	return false
+	return level_state_controller.uses_level_owned_hostile_state(level)
 
 
 func uses_level_owned_villager_state(level: Node) -> bool:
-	for provider in get_level_state_providers(level):
-		if provider.has_method("uses_level_owned_villager_state") and bool(provider.call("uses_level_owned_villager_state")):
-			return true
-
-	return false
+	return level_state_controller.uses_level_owned_villager_state(level)
 
 
 func apply_level_state(level: Node, state_data: Variant):
-	var providers: Array[Node] = get_level_state_providers(level)
-	if providers.is_empty():
-		return
-
-	var state: Dictionary = {}
-	if state_data is Dictionary:
-		state = state_data
-
-	var raw_provider_states: Variant = state.get("_providers", {})
-	if state.has("_providers") and raw_provider_states is Dictionary:
-		var provider_states: Dictionary = raw_provider_states
-		for provider in providers:
-			var provider_state: Dictionary = {}
-			var raw_provider_state: Variant = provider_states.get(get_provider_save_key(level, provider), {})
-			if raw_provider_state is Dictionary:
-				provider_state = raw_provider_state
-			validate_level_state_if_debug(provider, provider_state)
-			provider.call("apply_level_state", provider_state)
-		return
-
-	for index in range(providers.size()):
-		var provider: Node = providers[index]
-		var provider_state: Dictionary = state if index == 0 else {}
-		validate_level_state_if_debug(provider, provider_state)
-		provider.call("apply_level_state", provider_state)
+	level_state_controller.apply_level_state(level, state_data)
 
 
 func validate_level_state_if_debug(provider: Node, state: Dictionary):
-	if not OS.is_debug_build() and not Engine.is_editor_hint():
-		return
-
-	if provider == null or not provider.has_method("validate_level_state"):
-		return
-
-	var raw_messages: Variant = provider.call("validate_level_state", state)
-	if not (raw_messages is Array):
-		return
-
-	for message in raw_messages:
-		push_warning(str(message))
+	level_state_controller.validate_level_state_if_debug(provider, state)
 
 
 func get_level_state_provider(level: Node) -> Node:
-	var providers: Array[Node] = get_level_state_providers(level)
-	if providers.is_empty():
-		return null
-
-	return providers[0]
+	return level_state_controller.get_level_state_provider(level)
 
 
 func get_level_state_providers(level: Node) -> Array[Node]:
-	var providers: Array[Node] = []
-	if level == null:
-		return providers
-
-	if level.has_method("collect_level_state") and level.has_method("apply_level_state"):
-		providers.append(level)
-
-	for child in level.get_children():
-		if child.has_method("collect_level_state") and child.has_method("apply_level_state"):
-			providers.append(child)
-
-	return providers
+	return level_state_controller.get_level_state_providers(level)
 
 
 func get_provider_save_key(level: Node, provider: Node) -> String:
-	if provider == null:
-		return ""
-	if level != null and level == provider:
-		return "."
-	if level != null and level.is_ancestor_of(provider):
-		return str(level.get_path_to(provider))
-
-	return str(provider.get_path())
+	return level_state_controller.get_provider_save_key(level, provider)
 
 
 func apply_player_state(level: Node, player_data: Variant):

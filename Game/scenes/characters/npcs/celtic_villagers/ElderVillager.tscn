@@ -4,7 +4,7 @@
 [ext_resource type="Script" path="res://scripts/characters/npcs/celtic_villagers/villagerController.gd" id="2_nltpa"]
 [ext_resource type="Script" path="res://scripts/interactions/InteractableProximityArea.gd" id="3_interact"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="4_4u3lr"]
-[ext_resource type="Resource" uid="uid://mx581ub27hfh" path="res://resources/dialogue/villager_elder_default.tres" id="4_dialogue"]
+[ext_resource type="Resource" uid="uid://mx581ub27hfh" path="res://resources/dialogue/npcs/celtic_villagers/villager_elder_default.tres" id="4_dialogue"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_r5oaa"]
 atlas = ExtResource("1_pgo3k")

@@ -1,0 +1,54 @@
+[gd_resource type="Resource" script_class="DialogueProfile" load_steps=14 format=3 uid="uid://cj73dvsnbrlgt"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueProfile.gd" id="1_profile"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueEntry.gd" id="2_entry"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="3_sequence"]
+
+[sub_resource type="Resource" id="DialogueSequence_third_wave_elder"]
+script = ExtResource("3_sequence")
+pages = Array[String](["Sorry to trouble you with this a third time but do you mind? Also be careful, these banshees seem stronger for some reason"])
+
+[sub_resource type="Resource" id="DialogueEntry_third_wave_elder"]
+script = ExtResource("2_entry")
+key = &"third_wave_elder"
+sequence = SubResource("DialogueSequence_third_wave_elder")
+
+[sub_resource type="Resource" id="DialogueSequence_second_hunt_already_cleared"]
+script = ExtResource("3_sequence")
+pages = Array[String](["You already took care of them? I was about to ask for your help again. Thank you. It looks like the village is finally quiet for now."])
+
+[sub_resource type="Resource" id="DialogueEntry_second_hunt_already_cleared"]
+script = ExtResource("2_entry")
+key = &"second_hunt_already_cleared"
+sequence = SubResource("DialogueSequence_second_hunt_already_cleared")
+
+[sub_resource type="Resource" id="DialogueSequence_third_wave_already_cleared"]
+script = ExtResource("3_sequence")
+pages = Array[String](["You already did what I was going to ask? Thank you, and be careful. These banshees seemed stronger for some reason."])
+
+[sub_resource type="Resource" id="DialogueEntry_third_wave_already_cleared"]
+script = ExtResource("2_entry")
+key = &"third_wave_already_cleared"
+sequence = SubResource("DialogueSequence_third_wave_already_cleared")
+
+[sub_resource type="Resource" id="DialogueSequence_bishop_direction"]
+script = ExtResource("3_sequence")
+pages = Array[String](["The bishop is south of here. If you want to stop whoever is corrupting these banshees, follow the southern path and confront him."])
+
+[sub_resource type="Resource" id="DialogueEntry_bishop_direction"]
+script = ExtResource("2_entry")
+key = &"bishop_direction"
+sequence = SubResource("DialogueSequence_bishop_direction")
+
+[sub_resource type="Resource" id="DialogueSequence_third_wave_already_cleared_with_bishop"]
+script = ExtResource("3_sequence")
+pages = Array[String](["You already did what I was going to ask? Thank you, and be careful. These banshees seemed stronger for some reason.", "The bishop is south of here. If you want to stop whoever is corrupting these banshees, follow the southern path and confront him."])
+
+[sub_resource type="Resource" id="DialogueEntry_third_wave_already_cleared_with_bishop"]
+script = ExtResource("2_entry")
+key = &"third_wave_already_cleared_with_bishop"
+sequence = SubResource("DialogueSequence_third_wave_already_cleared_with_bishop")
+
+[resource]
+script = ExtResource("1_profile")
+entries = Array[ExtResource("2_entry")]([SubResource("DialogueEntry_third_wave_elder"), SubResource("DialogueEntry_second_hunt_already_cleared"), SubResource("DialogueEntry_third_wave_already_cleared"), SubResource("DialogueEntry_bishop_direction"), SubResource("DialogueEntry_third_wave_already_cleared_with_bishop")])

@@ -6,7 +6,7 @@ signal player_detected_for_reveal(banshee: Node)
 const COMBAT_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const COMBAT_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
 const DEFAULT_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
-const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/banshee_projectile.tscn")
+const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/hostile_npcs/banshees/banshee_projectile.tscn")
 
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false

@@ -1,0 +1,36 @@
+[gd_resource type="Resource" script_class="DialogueProfile" load_steps=10 format=3 uid="uid://bwd40p7sx1l75"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueProfile.gd" id="1_profile"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueEntry.gd" id="2_entry"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="3_sequence"]
+
+[sub_resource type="Resource" id="DialogueSequence_unlock"]
+script = ExtResource("3_sequence")
+pages = Array[String](["The old shape in your blood is awake now.", "When the time comes, wear the wolf and the dead will stay dead.", "Return to the elder. They will know what this shape is for."])
+
+[sub_resource type="Resource" id="DialogueEntry_unlock"]
+script = ExtResource("2_entry")
+key = &"unlock"
+sequence = SubResource("DialogueSequence_unlock")
+
+[sub_resource type="Resource" id="DialogueSequence_repeat"]
+script = ExtResource("3_sequence")
+pages = Array[String](["The wolf is yours now. Learn its hunger before you trust it."])
+
+[sub_resource type="Resource" id="DialogueEntry_repeat"]
+script = ExtResource("2_entry")
+key = &"repeat"
+sequence = SubResource("DialogueSequence_repeat")
+
+[sub_resource type="Resource" id="DialogueSequence_final_teaser"]
+script = ExtResource("3_sequence")
+pages = Array[String](["Good show, perhaps you will be good entertainment after all, have fun with that vampire"])
+
+[sub_resource type="Resource" id="DialogueEntry_final_teaser"]
+script = ExtResource("2_entry")
+key = &"final_teaser"
+sequence = SubResource("DialogueSequence_final_teaser")
+
+[resource]
+script = ExtResource("1_profile")
+entries = Array[ExtResource("2_entry")]([SubResource("DialogueEntry_unlock"), SubResource("DialogueEntry_repeat"), SubResource("DialogueEntry_final_teaser")])

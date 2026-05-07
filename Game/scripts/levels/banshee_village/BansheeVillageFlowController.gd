@@ -14,13 +14,14 @@ const STAGE_THIRD_WAVE_ELDER_READY = "third_wave_elder_ready"
 const STAGE_THIRD_WAVE_ACTIVE = "third_wave_active"
 const STAGE_THIRD_WAVE_CLEARED = "third_wave_cleared"
 const STAGE_BISHOP_PATH_READY = "bishop_path_ready"
-const DEFAULT_ELDER_POST_TRANSFORMATION_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/banshee_village_elder_post_transformation.tres")
-const DEFAULT_ELDER_WOLF_HUNT_CLEARED_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/banshee_village_elder_village_cleared.tres")
-const DEFAULT_ELDER_FINAL_DULLUHAN_COMPLETE_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/banshee_village_elder_final_dulluhan_complete.tres")
-const THIRD_WAVE_ELDER_DIALOGUE_TEXT = "Sorry to trouble you with this a third time but do you mind? Also be careful, these banshees seem stronger for some reason"
-const SECOND_HUNT_ALREADY_CLEARED_DIALOGUE_TEXT = "You already took care of them? I was about to ask for your help again. Thank you. It looks like the village is finally quiet for now."
-const THIRD_WAVE_ALREADY_CLEARED_DIALOGUE_TEXT = "You already did what I was going to ask? Thank you, and be careful. These banshees seemed stronger for some reason."
-const BISHOP_DIRECTION_DIALOGUE_TEXT = "The bishop is south of here. If you want to stop whoever is corrupting these banshees, follow the southern path and confront him."
+const DEFAULT_STORY_DIALOGUE_PROFILE: DialogueProfile = preload("res://resources/dialogue/levels/banshee_village/banshee_village_story_profile.tres")
+const DEFAULT_ELDER_POST_TRANSFORMATION_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/levels/banshee_village/banshee_village_elder_post_transformation.tres")
+const DEFAULT_ELDER_WOLF_HUNT_CLEARED_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/levels/banshee_village/banshee_village_elder_village_cleared.tres")
+const DEFAULT_ELDER_FINAL_DULLUHAN_COMPLETE_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/levels/banshee_village/banshee_village_elder_final_dulluhan_complete.tres")
+const DIALOGUE_KEY_THIRD_WAVE_ELDER := &"third_wave_elder"
+const DIALOGUE_KEY_SECOND_HUNT_ALREADY_CLEARED := &"second_hunt_already_cleared"
+const DIALOGUE_KEY_BISHOP_DIRECTION := &"bishop_direction"
+const DIALOGUE_KEY_THIRD_WAVE_ALREADY_CLEARED_WITH_BISHOP := &"third_wave_already_cleared_with_bishop"
 const BANSHEE_CLEAR_RESPAWN = "respawn"
 const BANSHEE_CLEAR_TEMPORARY_WOLF = "temporary_wolf_clear"
 const BANSHEE_CLEAR_PERMANENT_WOLF = "permanent_wolf_clear"
@@ -42,13 +43,14 @@ const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
 const WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG = "wolf_transformation_unlocked_by_dulluhan"
 const DIALOGUE_CHOICE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueChoiceBubble.tscn")
-const STAGE_RULES_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
-const DEV_PRESET_BUILDER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageDevPresetBuilder.gd")
-const PROGRESSION_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageProgressionController.gd")
-const INTERIOR_TRAVEL_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageInteriorTravelController.gd")
-const STORY_PROMPT_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageStoryPromptController.gd")
-const PRESENTATION_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillagePresentationController.gd")
-const ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/global/banshee_village/BansheeVillageEncounterController.gd")
+# Internal delegates only. This controller remains the public level-state provider.
+const STAGE_RULES_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
+const DEV_PRESET_BUILDER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageDevPresetBuilder.gd")
+const PROGRESSION_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageProgressionController.gd")
+const INTERIOR_TRAVEL_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageInteriorTravelController.gd")
+const STORY_PROMPT_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageStoryPromptController.gd")
+const PRESENTATION_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillagePresentationController.gd")
+const ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageEncounterController.gd")
 const BISHOP_CHOICE_PROMPT_TEXT = "Confront the bishop?"
 const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
@@ -85,6 +87,7 @@ const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own
 @export var vincent_beside_elder_marker_path: NodePath = NodePath("../PlayableWorld/Markers/StoryPositions/VincentBesideElder")
 @export var final_dulluhan_position: Vector2 = Vector2(1042, 577)
 @export_enum("respawn", "temporary_wolf_clear", "permanent_wolf_clear") var transformed_banshee_clear_policy: String = BANSHEE_CLEAR_PERMANENT_WOLF
+@export var story_dialogue_profile: DialogueProfile = DEFAULT_STORY_DIALOGUE_PROFILE
 @export var elder_reveal_sequence: DialogueSequence
 @export var elder_waiting_sequence: DialogueSequence
 @export var elder_respawning_sequence: DialogueSequence
@@ -608,16 +611,16 @@ func refresh_quest_presentation():
 		set_elder_sequence(elder_reveal_sequence)
 	elif quest_stage == STAGE_THIRD_WAVE_ELDER_READY:
 		if are_all_banshees_permanently_cleared():
-			set_elder_sequence(create_third_wave_already_cleared_with_bishop_sequence())
+			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ALREADY_CLEARED_WITH_BISHOP))
 		else:
-			set_elder_sequence(create_third_wave_elder_sequence())
+			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ELDER))
 	elif quest_stage == STAGE_THIRD_WAVE_ACTIVE:
 		set_elder_sequence(elder_waiting_sequence)
 	elif quest_stage == STAGE_THIRD_WAVE_CLEARED:
 		if is_bishop_confrontation_accepted():
 			set_elder_sequence(elder_waiting_sequence)
 		else:
-			set_elder_sequence(create_bishop_direction_sequence())
+			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_BISHOP_DIRECTION))
 	elif quest_stage == STAGE_BISHOP_PATH_READY:
 		set_elder_sequence(elder_waiting_sequence)
 	elif final_dulluhan_teaser_completed:
@@ -628,7 +631,7 @@ func refresh_quest_presentation():
 		set_elder_sequence(elder_wolf_hunt_cleared_sequence if elder_wolf_hunt_cleared_sequence != null else elder_waiting_sequence)
 	elif quest_stage == STAGE_WOLF_HUNT_READY:
 		if are_all_banshees_permanently_cleared():
-			set_elder_sequence(create_single_page_dialogue_sequence(SECOND_HUNT_ALREADY_CLEARED_DIALOGUE_TEXT))
+			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_SECOND_HUNT_ALREADY_CLEARED))
 		else:
 			set_elder_sequence(elder_post_transformation_sequence if elder_post_transformation_sequence != null else elder_respawning_sequence)
 	elif quest_stage == STAGE_READY_TO_REPORT:
@@ -674,25 +677,19 @@ func sync_global_story_progress():
 			SaveManager.set_quest_stage("banshee_village_bishop", "not_available")
 
 
-func create_third_wave_elder_sequence() -> DialogueSequence:
-	return create_single_page_dialogue_sequence(THIRD_WAVE_ELDER_DIALOGUE_TEXT)
-
-
 func create_bishop_direction_sequence() -> DialogueSequence:
-	return create_single_page_dialogue_sequence(BISHOP_DIRECTION_DIALOGUE_TEXT)
+	return get_story_dialogue_sequence(DIALOGUE_KEY_BISHOP_DIRECTION)
 
 
 func create_third_wave_already_cleared_with_bishop_sequence() -> DialogueSequence:
-	var sequence := DialogueSequence.new()
-	sequence.pages.append(THIRD_WAVE_ALREADY_CLEARED_DIALOGUE_TEXT)
-	sequence.pages.append(BISHOP_DIRECTION_DIALOGUE_TEXT)
-	return sequence
+	return get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ALREADY_CLEARED_WITH_BISHOP)
 
 
-func create_single_page_dialogue_sequence(text: String) -> DialogueSequence:
-	var sequence := DialogueSequence.new()
-	sequence.pages.append(text)
-	return sequence
+func get_story_dialogue_sequence(key: StringName) -> DialogueSequence:
+	if story_dialogue_profile == null:
+		return null
+
+	return story_dialogue_profile.get_sequence(key)
 
 
 func restore_saved_villager_states():

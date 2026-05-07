@@ -7,7 +7,7 @@ const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
 const BANSHEE_CLEAR_RESPAWN = "respawn"
 const BANSHEE_CLEAR_PERMANENT_WOLF = "permanent_wolf_clear"
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
-const STAGE_RULES = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 
 var flow
 

@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="DialogueProfile" load_steps=6 format=3 uid="uid://mh454uj3dpja"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueProfile.gd" id="1_profile"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueEntry.gd" id="2_entry"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="3_sequence"]
+
+[sub_resource type="Resource" id="DialogueSequence_house"]
+script = ExtResource("3_sequence")
+pages = Array[String](["Thanks for helping take care of those banshees, I was just taking a break in here, but im afraid the problem isn't solved. NO I'm not a vampire and this is not my fault, can't you see the mirror? Those banshees were corrupted by a bishop who lives nearby. We need to stop him to fully free the village, otherwise more banshees will keep coming and we'll have to keep purifying them."])
+
+[sub_resource type="Resource" id="DialogueEntry_house"]
+script = ExtResource("2_entry")
+key = &"house"
+sequence = SubResource("DialogueSequence_house")
+
+[resource]
+script = ExtResource("1_profile")
+entries = Array[ExtResource("2_entry")]([SubResource("DialogueEntry_house")])

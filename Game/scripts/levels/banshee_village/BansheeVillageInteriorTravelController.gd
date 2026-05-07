@@ -1,7 +1,7 @@
 extends RefCounted
 class_name BansheeVillageInteriorTravelController
 
-const STAGE_RULES = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 const VINCENT_HOUSE_INTERIOR_ID = "vincent_house"
 
 var flow

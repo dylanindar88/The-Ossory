@@ -1,7 +1,7 @@
 extends RefCounted
 class_name BansheeVillageStoryPromptController
 
-const STAGE_RULES = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
 
 var flow

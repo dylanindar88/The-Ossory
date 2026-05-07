@@ -1,56 +1,10 @@
-[gd_scene load_steps=10 format=3 uid="uid://w7osmdtqr73a"]
+[gd_scene load_steps=8 format=3 uid="uid://w7osmdtqr73a"]
 
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="1_5magt"]
-[ext_resource type="Texture2D" uid="uid://dmn1gl745y81p" path="res://art/characters/npcs/vincent/vincent_sprites.png" id="1_vkl2r"]
 [ext_resource type="Script" path="res://scripts/characters/npcs/vincent/VincentController.gd" id="2_vincent"]
 [ext_resource type="Script" path="res://scripts/interactions/InteractableProximityArea.gd" id="3_interact"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_36vyv"]
-atlas = ExtResource("1_vkl2r")
-region = Rect2(0, 192, 176, 192)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_448ao"]
-atlas = ExtResource("1_vkl2r")
-region = Rect2(176, 192, 176, 192)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_gw7m1"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_36vyv")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_448ao")
-}],
-"loop": true,
-"name": &"idle",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"idle_up",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"mirror_glance",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"walk",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"walk_down",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"walk_up",
-"speed": 5.0
-}]
+[ext_resource type="Resource" path="res://resources/dialogue/npcs/vincent/vincent_story_profile.tres" id="4_dialogue_profile"]
+[ext_resource type="SpriteFrames" path="res://resources/characters/npcs/vincent/vincent.tres" id="5_vincent_frames"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_6fom8"]
 height = 58.7369
@@ -64,11 +18,12 @@ texture_filter = 1
 collision_layer = 8
 collision_mask = 15
 script = ExtResource("2_vincent")
+dialogue_profile = ExtResource("4_dialogue_profile")
 
 [node name="Body" type="AnimatedSprite2D" parent="."]
 y_sort_enabled = true
 scale = Vector2(0.3, 0.3)
-sprite_frames = SubResource("SpriteFrames_gw7m1")
+sprite_frames = ExtResource("5_vincent_frames")
 animation = &"idle"
 offset = Vector2(0, -100)
 

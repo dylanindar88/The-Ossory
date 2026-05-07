@@ -1,8 +1,8 @@
 [gd_scene load_steps=11 format=3 uid="uid://gd1nn4prmspg"]
 
 [ext_resource type="Texture2D" uid="uid://nqh7bf66ggxr" path="res://art/terrain/terrain.aseprite" id="1_f7kwp"]
-[ext_resource type="PackedScene" uid="uid://w7osmdtqr73a" path="res://scenes/characters/Vincent.tscn" id="3_ymw6f"]
-[ext_resource type="Script" path="res://scripts/global/VincentHouseInteriorController.gd" id="4_interior"]
+[ext_resource type="PackedScene" uid="uid://w7osmdtqr73a" path="res://scenes/characters/npcs/vincent/Vincent.tscn" id="3_ymw6f"]
+[ext_resource type="Script" path="res://scripts/levels/banshee_village/interiors/VincentHouseInteriorController.gd" id="4_interior"]
 
 [sub_resource type="TileSetAtlasSource" id="TileSetAtlasSource_cp85d"]
 texture = ExtResource("1_f7kwp")

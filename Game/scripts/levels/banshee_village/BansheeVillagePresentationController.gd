@@ -1,7 +1,7 @@
 extends RefCounted
 class_name BansheeVillagePresentationController
 
-const STAGE_RULES = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 const FLAG_EFFECTS: Array[String] = ["flag"]
 
 var flow

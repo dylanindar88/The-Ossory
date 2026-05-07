@@ -1,7 +1,7 @@
 extends RefCounted
 class_name BansheeVillageEncounterController
 
-const STAGE_RULES = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 const BANSHEE_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
 

@@ -15,7 +15,7 @@ const WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG = "wolf_transformation_unlocked_b
 const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
 const LEVEL_STATE_VERSION = 5
-const STAGE_RULES = preload("res://scripts/global/banshee_village/BansheeVillageStageRules.gd")
+const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 
 var flow
 

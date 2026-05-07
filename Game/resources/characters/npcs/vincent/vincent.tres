@@ -1,0 +1,50 @@
+[gd_resource type="SpriteFrames" load_steps=4 format=3 uid="uid://d28lovi8yb47g"]
+
+[ext_resource type="Texture2D" uid="uid://dmn1gl745y81p" path="res://art/characters/npcs/vincent/vincent_sprites.png" id="1_vincent_sprites"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_36vyv"]
+atlas = ExtResource("1_vincent_sprites")
+region = Rect2(0, 192, 176, 192)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_448ao"]
+atlas = ExtResource("1_vincent_sprites")
+region = Rect2(176, 192, 176, 192)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_36vyv")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_448ao")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"idle_up",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"mirror_glance",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"walk",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"walk_down",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"walk_up",
+"speed": 5.0
+}]
