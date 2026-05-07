@@ -1,46 +1,10 @@
-[gd_scene load_steps=13 format=3 uid="uid://b8egi4524xjg"]
+[gd_scene load_steps=9 format=3 uid="uid://b8egi4524xjg"]
 
-[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://art/characters/npcs/celtic_villagers/celtic_villagers.png" id="1_pgo3k"]
 [ext_resource type="Script" path="res://scripts/characters/npcs/celtic_villagers/villagerController.gd" id="2_nltpa"]
 [ext_resource type="Script" path="res://scripts/interactions/InteractableProximityArea.gd" id="3_interact"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="4_4u3lr"]
 [ext_resource type="Resource" uid="uid://mx581ub27hfh" path="res://resources/dialogue/npcs/celtic_villagers/villager_elder_default.tres" id="4_dialogue"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_r5oaa"]
-atlas = ExtResource("1_pgo3k")
-region = Rect2(0, 3040, 272, 304)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_pav7c"]
-atlas = ExtResource("1_pgo3k")
-region = Rect2(272, 3040, 272, 304)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_mcr7u"]
-atlas = ExtResource("1_pgo3k")
-region = Rect2(544, 3040, 272, 304)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_eamlg"]
-atlas = ExtResource("1_pgo3k")
-region = Rect2(816, 3040, 272, 304)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_vy51q"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_r5oaa")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_pav7c")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_mcr7u")
-}, {
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_eamlg")
-}],
-"loop": true,
-"name": &"idle",
-"speed": 5.0
-}]
+[ext_resource type="SpriteFrames" path="res://resources/characters/npcs/celtic_villagers/elder_villager.tres" id="5_elder_frames"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_7ldok"]
 radius = 3.0
@@ -58,7 +22,7 @@ dialogue_bank = ExtResource("4_dialogue")
 
 [node name="Body" type="AnimatedSprite2D" parent="."]
 scale = Vector2(0.3, 0.3)
-sprite_frames = SubResource("SpriteFrames_vy51q")
+sprite_frames = ExtResource("5_elder_frames")
 animation = &"idle"
 frame_progress = 0.890568
 offset = Vector2(0, -153)

@@ -1,0 +1,39 @@
+[gd_resource type="SpriteFrames" load_steps=6 format=3 uid="uid://wx00jtckooqn"]
+
+[ext_resource type="Texture2D" uid="uid://bb7r27d1vao4h" path="res://art/characters/npcs/celtic_villagers/celtic_villagers.png" id="1_elder_sprites"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_r5oaa"]
+atlas = ExtResource("1_elder_sprites")
+region = Rect2(0, 3040, 272, 304)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_pav7c"]
+atlas = ExtResource("1_elder_sprites")
+region = Rect2(272, 3040, 272, 304)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mcr7u"]
+atlas = ExtResource("1_elder_sprites")
+region = Rect2(544, 3040, 272, 304)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_eamlg"]
+atlas = ExtResource("1_elder_sprites")
+region = Rect2(816, 3040, 272, 304)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_r5oaa")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_pav7c")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mcr7u")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_eamlg")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 5.0
+}]

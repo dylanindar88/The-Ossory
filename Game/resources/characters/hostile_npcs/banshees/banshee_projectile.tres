@@ -1,0 +1,39 @@
+[gd_resource type="SpriteFrames" load_steps=6 format=3 uid="uid://d2twgmupsweni"]
+
+[ext_resource type="Texture2D" uid="uid://bcp01vd51xpgi" path="res://art/characters/hostile_npcs/banshees/banshee_projectile.png" id="1_projectile_sprites"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gryjg"]
+atlas = ExtResource("1_projectile_sprites")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hibdp"]
+atlas = ExtResource("1_projectile_sprites")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ccmu8"]
+atlas = ExtResource("1_projectile_sprites")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_clukw"]
+atlas = ExtResource("1_projectile_sprites")
+region = Rect2(96, 0, 32, 32)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gryjg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hibdp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ccmu8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_clukw")
+}],
+"loop": true,
+"name": &"projectile",
+"speed": 5.0
+}]
