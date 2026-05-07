@@ -6,7 +6,10 @@ extends Camera2D
 @export var default_zoom := 2.25
 
 func _ready():
-	zoom = Vector2(default_zoom, default_zoom)
+	var initial_zoom: float = default_zoom
+	if SaveManager != null and SaveManager.has_method("get_default_camera_zoom"):
+		initial_zoom = SaveManager.get_default_camera_zoom()
+	change_zoom(initial_zoom)
 
 func _process(_delta):
 	var ctrl_pressed = Input.is_action_pressed("zoom_modifier")

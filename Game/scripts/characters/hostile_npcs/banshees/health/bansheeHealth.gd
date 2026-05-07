@@ -42,6 +42,15 @@ func apply_tuning():
 	invulnerability_time = tuning.invulnerability_time
 
 
+func set_effective_max_health(value: int):
+	var new_max_health: int = maxi(value, 1)
+	var was_at_full_health := health >= max_health
+	max_health = new_max_health
+	health = max_health if was_at_full_health else clamp(health, 0, max_health)
+	regeneration_progress = clamp(regeneration_progress, 0.0, float(max_health))
+	health_changed.emit(health, max_health)
+
+
 func _process(delta):
 	if regenerating:
 		regenerate(delta)

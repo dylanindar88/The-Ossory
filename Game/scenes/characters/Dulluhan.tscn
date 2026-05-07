@@ -29,7 +29,7 @@ frame_progress = 0.662954
 offset = Vector2(0, -53)
 
 [node name="Effects" parent="." instance=ExtResource("2_yk1fj")]
-position = Vector2(0, -60)
+position = Vector2(0, -72)
 scale = Vector2(1.5, 1.5)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]

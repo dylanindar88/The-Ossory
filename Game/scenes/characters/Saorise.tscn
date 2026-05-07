@@ -56,7 +56,7 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"idle_down"
+animation = &"dash_up"
 offset = Vector2(0, -90)
 
 [node name="WolfForm" type="Node2D" parent="Forms"]
@@ -67,9 +67,7 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.4, 0.4)
 sprite_frames = ExtResource("5_db6kb")
-animation = &"transformation"
-frame = 21
-frame_progress = 1.0
+animation = &"idle_down"
 offset = Vector2(0, -61.545)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]

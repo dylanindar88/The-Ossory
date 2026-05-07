@@ -1,0 +1,687 @@
+[gd_scene load_steps=5 format=3 uid="uid://bf0jhipn3iixd"]
+
+[ext_resource type="Texture2D" uid="uid://djj47bo0iw1gk" path="res://art/ui/MainMenuBackground.png" id="1_i3t85"]
+[ext_resource type="Script" path="res://scripts/ui/TitleScreen.gd" id="2_title"]
+[ext_resource type="Texture2D" uid="uid://4cflmlbk2g2t" path="res://art/ui/MenuOptionBackground.aseprite" id="3_option"]
+
+[sub_resource type="LabelSettings" id="LabelSettings_k582p"]
+font_size = 81
+
+[node name="TitleScreen" type="CanvasLayer"]
+process_mode = 3
+script = ExtResource("2_title")
+
+[node name="Control" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="BackgroundFill" type="ColorRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.0235294, 0.0196078, 0.0196078, 1)
+
+[node name="Panel" type="TextureRect" parent="Control"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("1_i3t85")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="RightContent" type="VBoxContainer" parent="Control/Panel"]
+layout_mode = 1
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = -720.0
+offset_top = -430.0
+offset_right = -110.0
+offset_bottom = 430.0
+grow_horizontal = 0
+grow_vertical = 2
+theme_override_constants/separation = 24
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Control/Panel/RightContent"]
+custom_minimum_size = Vector2(610, 96)
+layout_mode = 2
+text = "The Ossory"
+label_settings = SubResource("LabelSettings_k582p")
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="ViewContainer" type="Control" parent="Control/Panel/RightContent"]
+custom_minimum_size = Vector2(610, 620)
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="MainView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = -195.0
+offset_right = 190.0
+offset_bottom = 195.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="ContinueOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/MainView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/MainView/ContinueOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/MainView/ContinueOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Continue"
+flat = true
+
+[node name="LoadOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/MainView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/MainView/LoadOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/MainView/LoadOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Load"
+flat = true
+
+[node name="NewGameOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/MainView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/MainView/NewGameOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/MainView/NewGameOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "New Game"
+flat = true
+
+[node name="OptionsOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/MainView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/MainView/OptionsOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/MainView/OptionsOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Options"
+flat = true
+
+[node name="ExitOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/MainView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/MainView/ExitOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/MainView/ExitOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Exit"
+flat = true
+
+[node name="MainStatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/MainView"]
+custom_minimum_size = Vector2(380, 28)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="NewGameSlotsView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -215.0
+offset_right = 230.0
+offset_bottom = 215.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView"]
+custom_minimum_size = Vector2(460, 44)
+layout_mode = 2
+text = "New Game"
+horizontal_alignment = 1
+
+[node name="SlotList" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Slot1" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList"]
+custom_minimum_size = Vector2(460, 56)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList/Slot1"]
+custom_minimum_size = Vector2(300, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList/Slot1"]
+custom_minimum_size = Vector2(140, 44)
+layout_mode = 2
+text = "Start"
+
+[node name="Slot2" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList"]
+custom_minimum_size = Vector2(460, 56)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList/Slot2"]
+custom_minimum_size = Vector2(300, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList/Slot2"]
+custom_minimum_size = Vector2(140, 44)
+layout_mode = 2
+text = "Start"
+
+[node name="Slot3" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList"]
+custom_minimum_size = Vector2(460, 56)
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList/Slot3"]
+custom_minimum_size = Vector2(300, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/SlotList/Slot3"]
+custom_minimum_size = Vector2(140, 44)
+layout_mode = 2
+text = "Start"
+
+[node name="NewGameStatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView"]
+custom_minimum_size = Vector2(460, 28)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="BackOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/NewGameSlotsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Back"
+flat = true
+
+[node name="LoadSlotsView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -250.0
+offset_top = -255.0
+offset_right = 250.0
+offset_bottom = 255.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView"]
+custom_minimum_size = Vector2(500, 44)
+layout_mode = 2
+text = "Load"
+horizontal_alignment = 1
+
+[node name="SlotList" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Slot1" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList"]
+custom_minimum_size = Vector2(560, 52)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot1"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Slot 1"
+vertical_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot1"]
+custom_minimum_size = Vector2(210, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot1"]
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot1"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Delete"
+
+[node name="Slot2" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList"]
+custom_minimum_size = Vector2(560, 52)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot2"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Slot 2"
+vertical_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot2"]
+custom_minimum_size = Vector2(210, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot2"]
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot2"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Delete"
+
+[node name="Slot3" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList"]
+custom_minimum_size = Vector2(560, 52)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot3"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Slot 3"
+vertical_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot3"]
+custom_minimum_size = Vector2(210, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot3"]
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot3"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Delete"
+
+[node name="Slot4" type="HBoxContainer" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList"]
+custom_minimum_size = Vector2(560, 52)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SlotLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot4"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Autosave"
+vertical_alignment = 1
+
+[node name="StatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot4"]
+custom_minimum_size = Vector2(210, 44)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Empty"
+vertical_alignment = 1
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot4"]
+custom_minimum_size = Vector2(100, 44)
+layout_mode = 2
+text = "Load"
+
+[node name="DeleteButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/SlotList/Slot4"]
+custom_minimum_size = Vector2(110, 44)
+layout_mode = 2
+text = "Delete"
+
+[node name="LoadSlotsStatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView"]
+custom_minimum_size = Vector2(500, 28)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="BackOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/LoadSlotsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Back"
+flat = true
+
+[node name="OptionsView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -205.0
+offset_right = 230.0
+offset_bottom = 205.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/OptionsView"]
+custom_minimum_size = Vector2(460, 44)
+layout_mode = 2
+text = "Options"
+horizontal_alignment = 1
+
+[node name="ZoomLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/OptionsView"]
+layout_mode = 2
+text = "Default Zoom"
+
+[node name="ZoomSlider" type="HSlider" parent="Control/Panel/RightContent/ViewContainer/OptionsView"]
+custom_minimum_size = Vector2(460, 36)
+layout_mode = 2
+min_value = 1.75
+max_value = 3.0
+step = 0.05
+value = 2.25
+
+[node name="GaugeLocationLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/OptionsView"]
+layout_mode = 2
+text = "Gauge Location"
+
+[node name="GaugeLocationOptions" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer/OptionsView"]
+custom_minimum_size = Vector2(460, 78)
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="HudGaugeOption" type="CheckBox" parent="Control/Panel/RightContent/ViewContainer/OptionsView/GaugeLocationOptions"]
+layout_mode = 2
+button_pressed = true
+text = "Under Health Bar"
+
+[node name="PlayerGaugeOption" type="CheckBox" parent="Control/Panel/RightContent/ViewContainer/OptionsView/GaugeLocationOptions"]
+layout_mode = 2
+button_pressed = true
+text = "Under Player"
+
+[node name="BackOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/OptionsView"]
+custom_minimum_size = Vector2(380, 58)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Control/Panel/RightContent/ViewContainer/OptionsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_option")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/OptionsView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Back"
+flat = true
+
+[node name="DevMenuView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -230.0
+offset_top = -255.0
+offset_right = 230.0
+offset_bottom = 255.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(460, 36)
+layout_mode = 2
+text = "Dev Start"
+horizontal_alignment = 1
+
+[node name="BansheeStartOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(420, 44)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeStartOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "BansheeVillage - Start"
+
+[node name="BansheeFirstReportOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(420, 44)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeFirstReportOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "BansheeVillage - First Report"
+
+[node name="BansheeSecondReportOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(420, 44)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeSecondReportOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "BansheeVillage - Second Report"
+
+[node name="BansheeThirdReportOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(420, 44)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeThirdReportOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "BansheeVillage - Third Report"
+
+[node name="InitialSpawnOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(420, 44)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/InitialSpawnOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "InitialSpawn"
+
+[node name="DevStatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(460, 24)
+layout_mode = 2
+horizontal_alignment = 1
+
+[node name="BackOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(380, 48)
+layout_mode = 2
+
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BackOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Back"

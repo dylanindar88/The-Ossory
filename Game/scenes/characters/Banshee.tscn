@@ -48,8 +48,8 @@ villager_reversal_front_buffer = 0.0
 y_sort_enabled = true
 scale = Vector2(0.45, 0.45)
 sprite_frames = ExtResource("2_wpb6y")
-animation = &"scream"
-frame_progress = 0.739362
+animation = &"ranged1"
+frame_progress = 0.394021
 offset = Vector2(0, -48.21)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]
@@ -119,9 +119,9 @@ shape = SubResource("CapsuleShape2D_qh50h")
 debug_color = Color(0.360784, 0.00392157, 0, 0.419608)
 
 [node name="TrackingRange" type="Area2D" parent="."]
+visible = false
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TrackingRange"]
-visible = false
 position = Vector2(0, -19.07)
 shape = SubResource("CircleShape2D_6bfd2")
 debug_color = Color(0, 0.627451, 0.501961, 0.419608)

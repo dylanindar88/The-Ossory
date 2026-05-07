@@ -1,0 +1,63 @@
+[gd_scene load_steps=9 format=3 uid="uid://bv1js1y7gerc1"]
+
+[ext_resource type="Texture2D" uid="uid://bcp01vd51xpgi" path="res://art/characters/hostile_npcs/banshees/banshee_projectile.png" id="1_lkkya"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/combat/BansheeProjectile.gd" id="2_mvrqv"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_1kxeq"]
+size = Vector2(20, 25.4558)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gryjg"]
+atlas = ExtResource("1_lkkya")
+region = Rect2(0, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_hibdp"]
+atlas = ExtResource("1_lkkya")
+region = Rect2(32, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ccmu8"]
+atlas = ExtResource("1_lkkya")
+region = Rect2(64, 0, 32, 32)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_clukw"]
+atlas = ExtResource("1_lkkya")
+region = Rect2(96, 0, 32, 32)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_61w3c"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gryjg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_hibdp")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ccmu8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_clukw")
+}],
+"loop": true,
+"name": &"projectile",
+"speed": 5.0
+}]
+
+[node name="BansheeProjectile" type="CharacterBody2D"]
+collision_layer = 0
+collision_mask = 0
+script = ExtResource("2_mvrqv")
+
+[node name="HitBox" type="Area2D" parent="."]
+collision_mask = 2
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HitBox"]
+position = Vector2(0, -0.57)
+scale = Vector2(0.487, 0.237)
+shape = SubResource("RectangleShape2D_1kxeq")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+scale = Vector2(0.45, 0.45)
+sprite_frames = SubResource("SpriteFrames_61w3c")
+animation = &"projectile"
+frame_progress = 0.89552
+offset = Vector2(-0.655, -1.21)

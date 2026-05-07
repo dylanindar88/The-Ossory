@@ -22,10 +22,16 @@ func physics_update(banshee, _delta):
 
 		if banshee.can_attack():
 			banshee.change_state("attack")
+		elif banshee.should_choose_ranged_attack():
+			banshee.change_state("ranged_attack")
 		else:
 			banshee.sprite.play("run")
 			banshee.move_toward_player(banshee.attack_move_speed_modifier)
 
+		return
+
+	if banshee.should_choose_ranged_attack():
+		banshee.change_state("ranged_attack")
 		return
 
 	banshee.sprite.play("run")

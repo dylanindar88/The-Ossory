@@ -38,4 +38,4 @@ extends Resource
 
 @export_group("Parry")
 @export var parry_bonus_time: float = 2.25
-@export var parry_damage_multiplier: float = 1.5
+@export var parry_damage_multiplier: float = 2.0

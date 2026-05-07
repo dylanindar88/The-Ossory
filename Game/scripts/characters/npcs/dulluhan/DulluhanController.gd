@@ -33,10 +33,46 @@ var current_dialogue_player: Node2D
 
 
 func _ready():
-	transformation_granted = has_transformation_upgrade()
 	configure_detection_area()
 	play_idle()
 	apply_story_alpha()
+
+
+func collect_story_save_state() -> Dictionary:
+	var position_data: Dictionary = {"x": global_position.x, "y": global_position.y}
+	if SaveManager != null:
+		position_data = SaveManager.vector_to_data(global_position)
+	return {
+		"position": position_data,
+		"story_visible": story_visible,
+		"visible": visible,
+		"revealed": revealed,
+		"transformation_granted": transformation_granted,
+		"final_teaser_active": final_teaser_active,
+		"waiting_for_story_progress": waiting_for_story_progress,
+		"alpha": modulate.a,
+	}
+
+
+func apply_story_save_state(state: Dictionary):
+	if SaveManager != null:
+		global_position = SaveManager.data_to_vector(state.get("position", {}), global_position)
+	story_visible = bool(state.get("story_visible", story_visible))
+	visible = bool(state.get("visible", story_visible))
+	revealed = bool(state.get("revealed", revealed))
+	transformation_granted = bool(state.get("transformation_granted", transformation_granted))
+	final_teaser_active = bool(state.get("final_teaser_active", final_teaser_active))
+	waiting_for_story_progress = bool(state.get("waiting_for_story_progress", waiting_for_story_progress))
+	play_idle()
+	if story_visible:
+		apply_story_alpha()
+		if state.has("alpha"):
+			modulate.a = float(state.get("alpha", modulate.a))
+	set_collision_enabled(story_visible and not waiting_for_story_progress)
+
+
+func set_transformation_granted_for_story_save(granted: bool):
+	transformation_granted = granted
 
 
 func set_story_visible(should_show: bool):
@@ -157,6 +193,8 @@ func grant_transformation_upgrade():
 	if SaveManager != null:
 		SaveManager.unlock_upgrade(&"wolf_transformation")
 		SaveManager.set_stat_level(&"wolf_transformation", 0)
+		if SaveManager.has_method("set_story_flag"):
+			SaveManager.set_story_flag("wolf_transformation_unlocked_by_dulluhan", true)
 		SaveManager.save_game("wolf_transformation_unlock", get_tree().current_scene)
 	transformation_granted_for_story.emit()
 
@@ -165,7 +203,7 @@ func has_transformation_upgrade() -> bool:
 	if SaveManager == null:
 		return false
 
-	var state := SaveManager.get_upgrade_state()
+	var state: Dictionary = SaveManager.get_upgrade_state()
 	var unlocked: Variant = state.get("unlocked", {})
 	return unlocked is Dictionary and bool(unlocked.get("wolf_transformation", false))
 

@@ -3,6 +3,11 @@ extends CharacterBody2D
 signal defeated(banshee: Node)
 signal player_detected_for_reveal(banshee: Node)
 
+const COMBAT_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
+const COMBAT_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
+const DEFAULT_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
+const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/banshee_projectile.tscn")
+
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false
 @export var assigned_villager_path: NodePath
@@ -10,9 +15,8 @@ signal player_detected_for_reveal(banshee: Node)
 @export var villager_follow_distance_tolerance: float = 24.0
 @export var villager_follow_speed_modifier: float = 0.35
 @export var villager_reversal_front_buffer: float = 4.0
-const DEFAULT_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
-
 @export var tuning: BansheeTuning = DEFAULT_TUNING
+@export_enum("corrupted_melee", "corrupted_strong_ranged") var combat_variant: String = COMBAT_VARIANT_CORRUPTED_MELEE
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health = $Health
@@ -21,6 +25,7 @@ const DEFAULT_TUNING: BansheeTuning = preload("res://resources/characters/hostil
 @onready var player_detection_area: Area2D = $PlayerDetectionArea
 @onready var attack_range: Area2D = $AttackRange
 @onready var tracking_range: Area2D = $TrackingRange
+@onready var tracking_range_shape_node: CollisionShape2D = $TrackingRange/CollisionShape2D
 
 var current_state
 var current_state_name: String = ""
@@ -35,6 +40,7 @@ var player_in_attack_range: bool = false
 var player_in_tracking: bool = false
 var facing_left: bool = false
 var attack_cooldown_timer: float = 0.0
+var ranged_cooldown_timer: float = 0.0
 var dead: bool = false
 var hurt_duration_override: float = -1.0
 var hurt_speed_modifier_override: float = -1.0
@@ -44,16 +50,34 @@ var return_patrol_point_index: int = 0
 var returning_to_static_position: bool = false
 var patrol_speed: float
 var patrol_arrival_distance: float
+var base_run_speed: float
 var run_speed: float
+var strong_ranged_run_speed_multiplier: float
+var strong_ranged_tracking_radius_multiplier: float
+var strong_ranged_max_health_multiplier: float
+var base_tracking_radius: float = 0.0
+var tracking_range_circle: CircleShape2D
 var attack_cooldown: float
 var attack_damage_start_frame: int
 var attack_move_speed_modifier: float
+var ranged_attack_cooldown: float
+var ranged_min_distance: float
+var ranged_preferred_distance: float
+var ranged_max_distance: float
+var ranged_launch_frame: int
+var ranged_projectile_speed: float
+var ranged_projectile_lifetime: float
+var ranged_projectile_spawn_offset: Vector2
+var ranged_choice_far_weight: float
+var ranged_choice_retreating_bonus: float
+var ranged_choice_close_penalty: float
 var hurt_move_speed_modifier: float
 var block_stun_duration: float
 var block_stun_move_speed_modifier: float
 var player_stop_distance: float
 var facing_deadzone: float
 var combat_enabled: bool = true
+var damage_enabled: bool = true
 var story_revealed: bool = false
 var story_spawn_position: Vector2
 var story_spawn_facing_left: bool = false
@@ -84,6 +108,7 @@ func _ready():
 	states["scream"] = preload("res://scripts/characters/hostile_npcs/banshees/state_machine/screamState.gd").new()
 	states["chase"] = preload("res://scripts/characters/hostile_npcs/banshees/state_machine/chaseState.gd").new()
 	states["attack"] = preload("res://scripts/characters/hostile_npcs/banshees/state_machine/attackState.gd").new()
+	states["ranged_attack"] = preload("res://scripts/characters/hostile_npcs/banshees/state_machine/rangedAttackState.gd").new()
 	states["hurt"] = preload("res://scripts/characters/hostile_npcs/banshees/state_machine/hurtState.gd").new()
 	states["death"] = preload("res://scripts/characters/hostile_npcs/banshees/state_machine/deathState.gd").new()
 
@@ -104,20 +129,39 @@ func apply_tuning():
 
 	patrol_speed = tuning.patrol_speed
 	patrol_arrival_distance = tuning.patrol_arrival_distance
-	run_speed = tuning.run_speed
+	base_run_speed = tuning.run_speed
+	run_speed = base_run_speed
+	strong_ranged_run_speed_multiplier = tuning.strong_ranged_run_speed_multiplier
+	strong_ranged_tracking_radius_multiplier = tuning.strong_ranged_tracking_radius_multiplier
+	strong_ranged_max_health_multiplier = tuning.strong_ranged_max_health_multiplier
 	attack_cooldown = tuning.attack_cooldown
 	attack_damage_start_frame = tuning.attack_damage_start_frame
 	attack_move_speed_modifier = tuning.attack_move_speed_modifier
+	ranged_attack_cooldown = tuning.ranged_attack_cooldown
+	ranged_min_distance = tuning.ranged_min_distance
+	ranged_preferred_distance = tuning.ranged_preferred_distance
+	ranged_max_distance = tuning.ranged_max_distance
+	ranged_launch_frame = tuning.ranged_launch_frame
+	ranged_projectile_speed = tuning.ranged_projectile_speed
+	ranged_projectile_lifetime = tuning.ranged_projectile_lifetime
+	ranged_projectile_spawn_offset = tuning.ranged_projectile_spawn_offset
+	ranged_choice_far_weight = tuning.ranged_choice_far_weight
+	ranged_choice_retreating_bonus = tuning.ranged_choice_retreating_bonus
+	ranged_choice_close_penalty = tuning.ranged_choice_close_penalty
 	hurt_move_speed_modifier = tuning.hurt_move_speed_modifier
 	block_stun_duration = tuning.block_stun_duration
 	block_stun_move_speed_modifier = tuning.block_stun_move_speed_modifier
 	player_stop_distance = tuning.player_stop_distance
 	facing_deadzone = tuning.facing_deadzone
+	cache_tracking_range_shape()
+	apply_variant_tuning()
 
 
 func _physics_process(delta):
 	if attack_cooldown_timer > 0:
 		attack_cooldown_timer -= delta
+	if ranged_cooldown_timer > 0:
+		ranged_cooldown_timer -= delta
 
 	if current_state:
 		current_state.physics_update(self, delta)
@@ -192,7 +236,7 @@ func get_default_state() -> String:
 
 
 func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null):
-	if dead or not combat_enabled:
+	if dead or not combat_enabled or not damage_enabled:
 		return
 
 	stop_health_regeneration()
@@ -404,6 +448,133 @@ func can_attack() -> bool:
 	return attack_cooldown_timer <= 0
 
 
+func cache_tracking_range_shape():
+	if tracking_range_shape_node == null:
+		return
+
+	if tracking_range_shape_node.shape is CircleShape2D:
+		tracking_range_shape_node.shape = tracking_range_shape_node.shape.duplicate()
+		tracking_range_circle = tracking_range_shape_node.shape as CircleShape2D
+		if base_tracking_radius <= 0.0:
+			base_tracking_radius = tracking_range_circle.radius
+
+
+func apply_variant_tuning():
+	run_speed = base_run_speed
+	if tracking_range_circle != null and base_tracking_radius > 0.0:
+		tracking_range_circle.radius = base_tracking_radius
+	apply_effective_max_health(tuning.max_health)
+
+	if not is_strong_ranged_variant():
+		return
+
+	run_speed = base_run_speed * strong_ranged_run_speed_multiplier
+	if tracking_range_circle != null and base_tracking_radius > 0.0:
+		tracking_range_circle.radius = base_tracking_radius * strong_ranged_tracking_radius_multiplier
+	apply_effective_max_health(int(round(float(tuning.max_health) * strong_ranged_max_health_multiplier)))
+
+
+func apply_effective_max_health(value: int):
+	if health != null and health.has_method("set_effective_max_health"):
+		health.set_effective_max_health(value)
+
+
+func is_strong_ranged_variant() -> bool:
+	return combat_variant == COMBAT_VARIANT_CORRUPTED_STRONG_RANGED
+
+
+func can_ranged_attack() -> bool:
+	return is_strong_ranged_variant() and ranged_cooldown_timer <= 0.0 and has_player_target() and is_player_in_ranged_range() and has_ranged_animations()
+
+
+func has_ranged_animations() -> bool:
+	var sprite_frames: SpriteFrames = sprite.sprite_frames
+	return sprite_frames != null and sprite_frames.has_animation("ranged1") and sprite_frames.has_animation("ranged2")
+
+
+func is_player_in_ranged_range() -> bool:
+	var distance: float = get_player_distance()
+	return distance >= ranged_min_distance and distance <= ranged_max_distance
+
+
+func is_player_within_ranged_max_distance() -> bool:
+	return get_player_distance() <= ranged_max_distance
+
+
+func get_player_distance() -> float:
+	if not has_player_target():
+		return INF
+
+	return global_position.distance_to(player.global_position)
+
+
+func should_choose_ranged_attack() -> bool:
+	if not can_ranged_attack():
+		return false
+
+	var distance: float = get_player_distance()
+	if player_in_attack_range and distance < ranged_min_distance:
+		return false
+
+	var score: float = 0.0
+	var range_span: float = maxf(ranged_preferred_distance - ranged_min_distance, 1.0)
+	var distance_score: float = clampf((distance - ranged_min_distance) / range_span, 0.0, 1.0)
+	score += distance_score * ranged_choice_far_weight
+
+	if is_player_moving_away():
+		score += ranged_choice_retreating_bonus
+	if player_in_attack_range:
+		score -= ranged_choice_close_penalty
+
+	score = clampf(score, 0.0, 1.0)
+	return score >= 0.55
+
+
+func is_player_moving_away() -> bool:
+	if not has_player_target():
+		return false
+
+	var player_velocity: Vector2 = Vector2.ZERO
+	var raw_velocity: Variant = player.get("velocity")
+	if raw_velocity is Vector2:
+		player_velocity = raw_velocity
+
+	if player_velocity.length() <= 1.0:
+		return false
+
+	var away_from_banshee: Vector2 = (player.global_position - global_position).normalized()
+	return player_velocity.normalized().dot(away_from_banshee) > 0.55
+
+
+func launch_ranged_projectile(combo_part: int, launch_direction: Vector2):
+	var projectile := BANSHEE_PROJECTILE_SCENE.instantiate()
+	if projectile == null:
+		return
+
+	var projectile_parent: Node = get_parent()
+	if projectile_parent == null:
+		projectile_parent = get_tree().current_scene
+	if projectile_parent == null:
+		return
+
+	projectile_parent.add_child(projectile)
+	if projectile is Node2D:
+		var projectile_node := projectile as Node2D
+		projectile_node.global_position = get_ranged_projectile_spawn_position(launch_direction)
+
+	if projectile.has_method("launch"):
+		projectile.launch(self, launch_direction, ranged_projectile_speed, ranged_projectile_lifetime, combo_part)
+
+
+func get_ranged_projectile_spawn_position(launch_direction: Vector2) -> Vector2:
+	var horizontal_sign: float = -1.0 if facing_left else 1.0
+	if abs(launch_direction.x) > facing_deadzone:
+		horizontal_sign = sign(launch_direction.x)
+
+	var offset := Vector2(abs(ranged_projectile_spawn_offset.x) * horizontal_sign, ranged_projectile_spawn_offset.y)
+	return global_position + offset
+
+
 func has_assigned_villager() -> bool:
 	return villager_stalk_behavior != null and villager_stalk_behavior.is_active()
 
@@ -556,6 +727,10 @@ func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
 		disable_combat_areas()
 
 
+func set_damage_enabled(enabled: bool):
+	damage_enabled = enabled
+
+
 func enable_story_combat(visible_alpha: float = 1.0):
 	set_story_combat_enabled(true, visible_alpha)
 
@@ -610,10 +785,30 @@ func collect_story_save_state() -> Dictionary:
 		"dead": dead or health_is_dead,
 		"revealed": story_revealed,
 		"combat_enabled": combat_enabled,
+		"damage_enabled": damage_enabled,
+		"combat_variant": combat_variant,
 		"facing_left": facing_left,
 		"patrol_route": patrol_route.to_save_data(),
 		"villager_stalk": villager_stalk_behavior.to_save_data(),
 	}
+
+
+func set_combat_variant(variant: String):
+	if variant == COMBAT_VARIANT_CORRUPTED_STRONG_RANGED:
+		combat_variant = variant
+		apply_variant_tuning()
+		return
+
+	combat_variant = COMBAT_VARIANT_CORRUPTED_MELEE
+	apply_variant_tuning()
+
+
+func get_combat_variant() -> String:
+	return combat_variant
+
+
+func apply_saved_combat_variant(state: Dictionary):
+	set_combat_variant(str(state.get("combat_variant", combat_variant)))
 
 
 func reveal_for_story_detection():
@@ -640,12 +835,14 @@ func end_story_detection_suppression_after_physics():
 func restore_after_load():
 	last_damage_source = null
 	last_killer_form_id = &""
+	damage_enabled = true
 	dead = false
 	visible = true
 	velocity = Vector2.ZERO
 	returning_to_static_position = false
 	clear_combat_engagement()
 	attack_cooldown_timer = 0.0
+	ranged_cooldown_timer = 0.0
 	player_in_detection = false
 	player_in_attack_range = false
 	player_in_tracking = false
@@ -671,6 +868,7 @@ func restore_after_load():
 	enable_combat_areas()
 	setup_villager_stalk_behavior()
 	refresh_patrol_points()
+	apply_variant_tuning()
 
 	change_state(get_default_state())
 
@@ -703,12 +901,14 @@ func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool,
 		visible_alpha = 1.0
 
 	set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
+	set_damage_enabled(combat_should_be_enabled)
 	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
 	stop_health_regeneration()
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
 	begin_story_detection_suppression()
+	apply_saved_combat_variant(state)
 	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
 	var saved_health: int = int(state.get("health", health.get("max_health")))
 	var saved_facing_left: bool = bool(state.get("facing_left", facing_left))
@@ -725,6 +925,7 @@ func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_shou
 
 	var health_node: Node = health
 	if health_node != null:
+		apply_variant_tuning()
 		var max_health_value: int = int(health_node.get("max_health"))
 		var restored_health: int = int(clamp(saved_health, 1, max_health_value))
 		health_node.set("health", restored_health)
@@ -739,11 +940,13 @@ func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_shou
 		visible_alpha = 1.0
 
 	set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
+	set_damage_enabled(bool(state.get("damage_enabled", combat_should_be_enabled)))
 	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
 	stop_health_regeneration()
 
 
 func restore_dead_from_story_save(state: Dictionary, hidden_alpha: float):
+	apply_saved_combat_variant(state)
 	var saved_position: Vector2 = data_to_vector(state.get("position", {}), global_position)
 	global_position = saved_position
 	facing_left = bool(state.get("facing_left", facing_left))
@@ -862,6 +1065,9 @@ func _on_tracking_range_body_entered(body: Node2D):
 		return
 
 	player = body
+	if not can_tracking_range_maintain_aggro(is_currently_engaging_player()):
+		return
+
 	player_in_tracking = true
 	stop_health_regeneration()
 	update_combat_engagement()
@@ -899,6 +1105,18 @@ func should_defer_player_range_change(body: Node2D) -> bool:
 	return body.has_method("is_life_respawn_pending") and bool(body.call("is_life_respawn_pending"))
 
 
+func can_range_overlap_start_aggro() -> bool:
+	return player_in_detection or player_in_attack_range
+
+
+func can_tracking_range_maintain_aggro(was_already_engaged: bool = false) -> bool:
+	return was_already_engaged or can_range_overlap_start_aggro()
+
+
+func is_passive_aggro_state() -> bool:
+	return current_state_name == "idle" or current_state_name == "patrol" or current_state_name == "return_to_patrol"
+
+
 func refresh_player_ranges_after_transform():
 	if refreshing_player_ranges_after_transform:
 		return
@@ -909,6 +1127,14 @@ func refresh_player_ranges_after_transform():
 
 func refresh_player_ranges_after_transform_deferred():
 	await get_tree().physics_frame
+
+	if should_ignore_player_aggro():
+		refreshing_player_ranges_after_transform = false
+		player_in_detection = false
+		player_in_attack_range = false
+		player_in_tracking = false
+		update_combat_engagement()
+		return
 
 	if player == null or not is_instance_valid(player):
 		refreshing_player_ranges_after_transform = false
@@ -922,14 +1148,19 @@ func refresh_player_ranges_after_transform_deferred():
 		call_deferred("refresh_player_ranges_after_transform_deferred")
 		return
 
-	refreshing_player_ranges_after_transform = false
-	player_in_detection = is_player_overlapping_area(player_detection_area)
-	player_in_attack_range = is_player_overlapping_area(attack_range)
-	player_in_tracking = is_player_overlapping_area(tracking_range) or player_in_detection or player_in_attack_range
+	var was_already_engaged: bool = is_currently_engaging_player()
+	var overlapping_detection: bool = is_player_overlapping_area(player_detection_area)
+	var overlapping_attack: bool = is_player_overlapping_area(attack_range)
+	var overlapping_tracking: bool = is_player_overlapping_area(tracking_range)
 
-	if player_in_tracking:
+	refreshing_player_ranges_after_transform = false
+	player_in_detection = overlapping_detection
+	player_in_attack_range = overlapping_attack
+	player_in_tracking = overlapping_tracking and can_tracking_range_maintain_aggro(was_already_engaged)
+
+	if can_range_overlap_start_aggro():
 		stop_health_regeneration()
-		if current_state_name == "idle" or current_state_name == "patrol" or current_state_name == "return_to_patrol":
+		if is_passive_aggro_state():
 			change_state("scream")
 		else:
 			update_combat_engagement()
@@ -965,6 +1196,8 @@ func refresh_player_detection_after_dialogue():
 func get_overlapping_player(area: Area2D) -> Node2D:
 	if area == null:
 		return null
+	if not area.monitoring:
+		return null
 
 	for body in area.get_overlapping_bodies():
 		if body is Node2D and body.is_in_group("player"):
@@ -989,7 +1222,7 @@ func is_currently_engaging_player() -> bool:
 	if dead or not combat_enabled or CombatStateManager.is_dialogue_active():
 		return false
 
-	if current_state_name == "scream" or current_state_name == "chase" or current_state_name == "attack":
+	if current_state_name == "scream" or current_state_name == "chase" or current_state_name == "attack" or current_state_name == "ranged_attack":
 		return has_player_target() and player_in_tracking
 
 	if current_state_name == "hurt":
