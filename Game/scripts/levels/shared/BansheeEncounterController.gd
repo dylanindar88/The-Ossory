@@ -1,5 +1,5 @@
 extends Node
-class_name BansheeRouteEncounterController
+class_name BansheeEncounterController
 
 const BANSHEE_VARIANT_CORRUPTED_MELEE: String = "corrupted_melee"
 

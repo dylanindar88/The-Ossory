@@ -11,6 +11,16 @@ const DEV_PRESET_SECOND_BANSHEE_REPORT_READY = "second_banshee_report_ready"
 const DEV_PRESET_THIRD_BANSHEE_REPORT_READY = "third_banshee_report_ready"
 const DEV_PRESET_AUTOSAVE_BLOCKER = "banshee_village_dev_preset"
 const DEV_PRESET_SAVE_WRITE_BLOCKER = "banshee_village_dev_preset"
+const VALID_DEV_PRESETS: Array[String] = [
+	DEV_PRESET_NONE,
+	DEV_PRESET_START,
+	DEV_PRESET_ELDER_QUEST_ACCEPTED,
+	DEV_PRESET_FIRST_BANSHEE_REPORT_READY,
+	DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE,
+	DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED,
+	DEV_PRESET_SECOND_BANSHEE_REPORT_READY,
+	DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
+]
 const WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG = "wolf_transformation_unlocked_by_dulluhan"
 const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
@@ -47,11 +57,7 @@ func apply_dev_start_preset() -> bool:
 
 	apply_dev_story_flags(preset)
 	flow.apply_level_state(build_dev_level_state(preset))
-	if (
-		preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED
-		or preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY
-		or preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY
-	):
+	if does_preset_unlock_wolf_transformation(preset):
 		apply_dev_transformation_unlock()
 	call_deferred("clear_dev_preset_combat_state")
 
@@ -59,22 +65,16 @@ func apply_dev_start_preset() -> bool:
 
 
 func get_valid_dev_start_preset(preset: String) -> String:
-	if preset == DEV_PRESET_START:
-		return preset
-	if preset == DEV_PRESET_ELDER_QUEST_ACCEPTED:
-		return preset
-	if preset == DEV_PRESET_FIRST_BANSHEE_REPORT_READY:
-		return preset
-	if preset == DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE:
-		return preset
-	if preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED:
-		return preset
-	if preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY:
-		return preset
-	if preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
+	if VALID_DEV_PRESETS.has(preset):
 		return preset
 
 	return DEV_PRESET_NONE
+
+
+func get_dev_preset_options() -> Array[String]:
+	var options: Array[String] = VALID_DEV_PRESETS.duplicate()
+	options.erase(DEV_PRESET_NONE)
+	return options
 
 
 func build_dev_level_state(preset: String) -> Dictionary:
@@ -100,7 +100,7 @@ func build_dev_level_state(preset: String) -> Dictionary:
 		stage = STAGE_RULES.STAGE_THIRD_WAVE_CLEARED
 		kill_count = int(flow.get("report_kill_threshold")) + get_banshees().size()
 		permanent_paths = get_all_banshee_paths()
-	var dev_dulluhan_transformation_granted: bool = is_dev_preset_after_dulluhan_unlock(preset)
+	var dev_dulluhan_transformation_granted: bool = does_preset_unlock_wolf_transformation(preset)
 
 	return {
 		"state_version": LEVEL_STATE_VERSION,
@@ -108,14 +108,14 @@ func build_dev_level_state(preset: String) -> Dictionary:
 		"banshee_kill_count": kill_count,
 		"revealed_banshee_paths": [],
 		"permanently_cleared_banshee_paths": permanent_paths,
-		"final_dulluhan_teaser_completed": preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
+		"final_dulluhan_teaser_completed": does_preset_start_after_final_dulluhan_teaser(preset),
 		"story_transform_prompt_consumed": preset != DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED,
 		"story_wolf_lock_active": false,
 		"final_wolf_instruction_shown": false,
 		"active_interior_id": "",
-		"third_wave_spawned": preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
+		"third_wave_spawned": does_preset_start_after_third_wave(preset),
 		"dulluhan_transformation_granted_for_level": dev_dulluhan_transformation_granted,
-		"vincent_house_dialogue_completed_for_level": preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY,
+		"vincent_house_dialogue_completed_for_level": does_preset_complete_vincent_house_dialogue(preset),
 		"bishop_confrontation_accepted_for_level": false,
 		"dulluhan": {},
 		"banshees": [],
@@ -124,11 +124,27 @@ func build_dev_level_state(preset: String) -> Dictionary:
 
 
 func is_dev_preset_after_dulluhan_unlock(preset: String) -> bool:
+	return does_preset_unlock_wolf_transformation(preset)
+
+
+func does_preset_unlock_wolf_transformation(preset: String) -> bool:
 	return (
 		preset == DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED
 		or preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY
 		or preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY
 	)
+
+
+func does_preset_start_after_final_dulluhan_teaser(preset: String) -> bool:
+	return preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY
+
+
+func does_preset_start_after_third_wave(preset: String) -> bool:
+	return preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY
+
+
+func does_preset_complete_vincent_house_dialogue(preset: String) -> bool:
+	return preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY
 
 
 func get_all_banshee_paths() -> Array:
@@ -145,10 +161,10 @@ func apply_dev_story_flags(preset: String):
 	if SaveManager == null or not SaveManager.has_method("set_story_flag"):
 		return
 
-	if preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
+	if does_preset_complete_vincent_house_dialogue(preset):
 		SaveManager.set_story_flag(VINCENT_HOUSE_DIALOGUE_FLAG, true)
 		SaveManager.set_story_flag(BISHOP_CONFRONTATION_ACCEPTED_FLAG, false)
-	SaveManager.set_story_flag(WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG, is_dev_preset_after_dulluhan_unlock(preset))
+	SaveManager.set_story_flag(WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG, does_preset_unlock_wolf_transformation(preset))
 
 
 func apply_dev_transformation_unlock():

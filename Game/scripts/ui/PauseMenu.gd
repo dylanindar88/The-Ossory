@@ -216,7 +216,31 @@ func _on_load_slot_pressed(slot: int):
 	clear_pending_confirmation()
 	var load_succeeded: bool = SaveManager.load_save_slot_from_any_level(slot)
 	save_slots_status_label.text = ("Slot %d Loaded" % slot) if load_succeeded else (SaveManager.last_error if SaveManager.last_error != "" else "Load Failed")
+	if load_succeeded:
+		close_after_successful_load()
+		return
 	refresh_save_slots()
+
+
+func close_after_successful_load():
+	respawn_view_open = false
+	pause_open = false
+	overlay.visible = false
+	menu_view.visible = false
+	options_view.visible = false
+	save_slots_view.visible = false
+	respawn_view.visible = false
+	clear_pending_confirmation()
+	set_tree_paused_safely(false)
+
+
+func set_tree_paused_safely(paused: bool):
+	if not is_inside_tree():
+		return
+
+	var tree: SceneTree = get_tree()
+	if tree != null:
+		tree.paused = paused
 
 
 func open_respawn_view():

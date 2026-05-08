@@ -1,4 +1,4 @@
-[gd_scene load_steps=47 format=3 uid="uid://tm3ttab50kd3"]
+[gd_scene load_steps=46 format=3 uid="uid://tm3ttab50kd3"]
 
 [ext_resource type="Texture2D" uid="uid://brkmctvq1u5iw" path="res://art/terrain/graves/grave1.aseprite" id="2_v2wya"]
 [ext_resource type="Texture2D" uid="uid://cbuinl7rlsyqa" path="res://art/terrain/graves/grave2.aseprite" id="3_l450g"]
@@ -14,7 +14,6 @@
 [ext_resource type="PackedScene" uid="uid://cd8kyptum0qfo" path="res://scenes/ui/HUD.tscn" id="24_jku5t"]
 [ext_resource type="PackedScene" uid="uid://bc1lkm8egp0u3" path="res://scenes/ui/PauseMenu.tscn" id="25_2fapq"]
 [ext_resource type="PackedScene" uid="uid://c2qsd6w62r8xh" path="res://scenes/ui/SkillEquipmentMenu.tscn" id="25_skill_menu"]
-[ext_resource type="TileSet" uid="uid://c7owttvmnh0h2" path="res://resources/terrain/WaterTileSet.tres" id="25_vfn6k"]
 [ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://resources/terrain/GroundTileSet.tres" id="26_nqd4b"]
 [ext_resource type="TileSet" uid="uid://bm2nceghxgf55" path="res://resources/terrain/LogsTileSet.tres" id="27_uivry"]
 [ext_resource type="TileSet" uid="uid://d36pruf4qbb75" path="res://resources/terrain/FenceTileSet.tres" id="28_vyx4k"]
@@ -86,16 +85,11 @@ _data = {
 point_count = 6
 
 [node name="Level-BansheeVillage" type="Node2D"]
+texture_filter = 1
 
 [node name="Background" type="Node2D" parent="."]
 texture_filter = 1
 position = Vector2(2628, -1364)
-
-[node name="Water" type="TileMap" parent="Background"]
-texture_filter = 1
-scale = Vector2(0.5, 0.5)
-tile_set = ExtResource("25_vfn6k")
-format = 2
 
 [node name="Ground" type="TileMap" parent="Background"]
 texture_filter = 1
@@ -336,14 +330,12 @@ position = Vector2(448.467, 1425.13)
 scale = Vector2(0.9, 0.9)
 
 [node name="Characters" type="Node2D" parent="PlayableWorld/Environment"]
-z_as_relative = false
 y_sort_enabled = true
 
 [node name="Saorise" parent="PlayableWorld/Environment/Characters" instance=ExtResource("23_yc8ub")]
 position = Vector2(-1212, 419)
 
 [node name="HostileNPCs" type="Node2D" parent="PlayableWorld/Environment/Characters"]
-z_as_relative = false
 y_sort_enabled = true
 
 [node name="Banshee" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("22_t6xdm")]
@@ -485,6 +477,15 @@ shape = SubResource("RectangleShape2D_east_route_exit")
 
 [node name="Entrances" type="Node2D" parent="PlayableWorld/Markers"]
 
+[node name="WestEntrance" type="Marker2D" parent="PlayableWorld/Markers/Entrances"]
+position = Vector2(-1212, 419)
+
+[node name="SouthEntrance" type="Marker2D" parent="PlayableWorld/Markers/Entrances"]
+position = Vector2(0, 970)
+
+[node name="EastEntrance" type="Marker2D" parent="PlayableWorld/Markers/Entrances"]
+position = Vector2(1350, 554)
+
 [node name="VincentHouseFront" type="Marker2D" parent="PlayableWorld/Markers/Entrances"]
 position = Vector2(1042, 577)
 
@@ -492,6 +493,9 @@ position = Vector2(1042, 577)
 
 [node name="VincentBesideElder" type="Marker2D" parent="PlayableWorld/Markers/StoryPositions"]
 position = Vector2(137, 10)
+
+[node name="DulluhanVincentHouseFront" type="Marker2D" parent="PlayableWorld/Markers/StoryPositions"]
+position = Vector2(1042, 577)
 
 [node name="PatrolPaths" type="Node2D" parent="PlayableWorld/Markers"]
 

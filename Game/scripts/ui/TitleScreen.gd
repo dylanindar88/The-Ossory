@@ -1,8 +1,8 @@
 extends CanvasLayer
 
-const NEW_GAME_START_SCENE: String = "res://scenes/levels/BansheeVillage.tscn"
 const BANSHEE_VILLAGE_SCENE: String = "res://scenes/levels/BansheeVillage.tscn"
-const INITIAL_SPAWN_SCENE: String = "res://scenes/levels/InitialSpawn.tscn"
+const STARTING_WILDERNESS_SCENE: String = "res://scenes/levels/StartingWilderness.tscn"
+const NEW_GAME_START_SCENE: String = STARTING_WILDERNESS_SCENE
 
 @onready var main_view: VBoxContainer = $Control/Panel/RightContent/ViewContainer/MainView
 @onready var new_game_slots_view: VBoxContainer = $Control/Panel/RightContent/ViewContainer/NewGameSlotsView
@@ -112,8 +112,8 @@ func build_dev_menu_from_registry():
 				],
 			},
 			{
-				"scene_path": INITIAL_SPAWN_SCENE,
-				"display_name": "Initial Spawn",
+				"scene_path": STARTING_WILDERNESS_SCENE,
+				"display_name": "Starting Wilderness",
 				"dev_presets": [{"label": "Start", "preset": ""}],
 			},
 		]
@@ -126,7 +126,7 @@ func build_dev_menu_from_registry():
 
 
 func hide_static_dev_buttons():
-	for node_name in ["BansheeStartOption", "BansheeFirstReportOption", "BansheeSecondReportOption", "BansheeThirdReportOption", "InitialSpawnOption"]:
+	for node_name in ["BansheeStartOption", "BansheeFirstReportOption", "BansheeSecondReportOption", "BansheeThirdReportOption", "StartingWildernessOption"]:
 		var node: Node = dev_menu_view.get_node_or_null(node_name)
 		if node is CanvasItem:
 			(node as CanvasItem).visible = false

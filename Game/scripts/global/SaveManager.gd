@@ -30,7 +30,7 @@ const QUEST_STAGE_REWARD_CLAIMED := "reward_claimed"
 const BANSHEE_VARIANT_CORRUPTED_MELEE := "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED := "corrupted_strong_ranged"
 const BANSHEE_VILLAGE_SCENE := "res://scenes/levels/BansheeVillage.tscn"
-const INITIAL_SPAWN_SCENE := "res://scenes/levels/InitialSpawn.tscn"
+const STARTING_WILDERNESS_SCENE := "res://scenes/levels/StartingWilderness.tscn"
 const LEVEL_DISPLAY_REGISTRY := {
 	BANSHEE_VILLAGE_SCENE: {
 		"display_name": "Banshee Village",
@@ -57,8 +57,8 @@ const LEVEL_DISPLAY_REGISTRY := {
 			{"label": "Third Report", "preset": "third_banshee_report_ready"},
 		],
 	},
-	INITIAL_SPAWN_SCENE: {
-		"display_name": "Initial Spawn",
+	STARTING_WILDERNESS_SCENE: {
+		"display_name": "Starting Wilderness",
 		"progression_state_key": "",
 		"progression_names": {},
 		"dev_presets": [
@@ -424,6 +424,7 @@ func change_scene_to_file_and_load(scene_path: String, slot: int = AUTOSAVE_SLOT
 	pending_scene_load_save_reason = save_after_load_reason
 	pending_scene_load_entry_marker_path = entry_marker_path
 	set_autosave_blocked(PENDING_SCENE_LOAD_AUTOSAVE_BLOCKER, true)
+	set_tree_paused_safely(false)
 
 	var error: Error = get_tree().change_scene_to_file(scene_path)
 	if error != OK:
@@ -463,6 +464,7 @@ func apply_pending_scene_load():
 		warn_pending_scene_load_failed(load_slot)
 		clear_pending_scene_load()
 		respawn_load_pending = false
+		set_tree_paused_safely(false)
 		return
 	if pending_scene_load_preserve_story_flags:
 		for flag_name in preserved_story_flags.keys():
@@ -473,6 +475,7 @@ func apply_pending_scene_load():
 			if raw_state is Dictionary:
 				set_quest_state(str(quest_id), raw_state)
 	apply_pending_scene_entry_marker(get_current_level())
+	set_tree_paused_safely(false)
 
 	var save_reason: String = pending_scene_load_save_reason
 	clear_pending_scene_load()
@@ -528,7 +531,7 @@ func start_new_game(slot: int, start_scene_path: String) -> bool:
 		CombatStateManager.clear_all()
 
 	set_autosave_blocked(NEW_GAME_AUTOSAVE_BLOCKER, true)
-	get_tree().paused = false
+	set_tree_paused_safely(false)
 	var error: Error = get_tree().change_scene_to_file(start_scene_path)
 	if error != OK:
 		pending_new_game_slot = -1
@@ -629,7 +632,7 @@ func start_dev_scene(scene_path: String, preset: String = "") -> bool:
 		return false
 
 	set_pending_dev_start(scene_path, preset)
-	get_tree().paused = false
+	set_tree_paused_safely(false)
 	var error: Error = get_tree().change_scene_to_file(scene_path)
 	if error != OK:
 		set_pending_dev_start("", "")
@@ -820,7 +823,7 @@ func reset_current_level_for_dev() -> bool:
 		return false
 
 	autosave_suppressed = true
-	get_tree().paused = false
+	set_tree_paused_safely(false)
 	var error: Error = get_tree().reload_current_scene()
 	if error != OK:
 		autosave_suppressed = false
@@ -896,8 +899,18 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 	apply_level_state(level, current_level_state)
 	if not verify_level_state_after_apply(level, current_level_state, int(data.get("slot", 0)), current_level_state_source):
 		return false
+	set_tree_paused_safely(false)
 	last_error = ""
 	return true
+
+
+func set_tree_paused_safely(paused: bool):
+	if not is_inside_tree():
+		return
+
+	var tree: SceneTree = get_tree()
+	if tree != null:
+		tree.paused = paused
 
 
 func is_saved_player_dead(player_data: Variant) -> bool:

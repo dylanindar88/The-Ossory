@@ -62,7 +62,11 @@ func clear_hostile(hostile: Node):
 
 
 func clear_all():
+	var was_dialogue_active: bool = dialogue_active
+	dialogue_active = false
 	engaged_hostiles.clear()
+	if was_dialogue_active:
+		dialogue_active_changed.emit(dialogue_active)
 	update_combat_state()
 
 

@@ -1,19 +1,5 @@
 extends Node
 
-const STAGE_INTRO = "intro"
-const STAGE_COMBAT_ACTIVE = "combat_active"
-const STAGE_READY_TO_REPORT = "ready_to_report"
-const STAGE_DULLUHAN_AVAILABLE = "dulluhan_available"
-const STAGE_REPORT_COMPLETE = "report_complete"
-const STAGE_WOLF_HUNT_READY = "wolf_hunt_ready"
-const STAGE_WOLF_HUNT_CLEARED = "wolf_hunt_cleared"
-const STAGE_VILLAGE_CLEARED_LEGACY = "village_cleared"
-const STAGE_FINAL_DULLUHAN_READY = "final_dulluhan_ready"
-const STAGE_VINCENT_HOUSE_AVAILABLE = "vincent_house_available"
-const STAGE_THIRD_WAVE_ELDER_READY = "third_wave_elder_ready"
-const STAGE_THIRD_WAVE_ACTIVE = "third_wave_active"
-const STAGE_THIRD_WAVE_CLEARED = "third_wave_cleared"
-const STAGE_BISHOP_PATH_READY = "bishop_path_ready"
 const DEFAULT_STORY_DIALOGUE_PROFILE: DialogueProfile = preload("res://resources/dialogue/levels/banshee_village/banshee_village_story_profile.tres")
 const DEFAULT_ELDER_POST_TRANSFORMATION_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/levels/banshee_village/banshee_village_elder_post_transformation.tres")
 const DEFAULT_ELDER_WOLF_HUNT_CLEARED_SEQUENCE: DialogueSequence = preload("res://resources/dialogue/levels/banshee_village/banshee_village_elder_village_cleared.tres")
@@ -27,16 +13,6 @@ const BANSHEE_CLEAR_TEMPORARY_WOLF = "temporary_wolf_clear"
 const BANSHEE_CLEAR_PERMANENT_WOLF = "permanent_wolf_clear"
 const BANSHEE_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
-const DEV_PRESET_NONE = "none"
-const DEV_PRESET_START = "start"
-const DEV_PRESET_ELDER_QUEST_ACCEPTED = "elder_quest_accepted"
-const DEV_PRESET_FIRST_BANSHEE_REPORT_READY = "first_banshee_report_ready"
-const DEV_PRESET_ELDER_REPORT_COMPLETE_DULLUHAN_VISIBLE = "elder_report_complete_dulluhan_visible"
-const DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED = "dulluhan_transformation_unlocked"
-const DEV_PRESET_SECOND_BANSHEE_REPORT_READY = "second_banshee_report_ready"
-const DEV_PRESET_THIRD_BANSHEE_REPORT_READY = "third_banshee_report_ready"
-const DEV_PRESET_AUTOSAVE_BLOCKER = "banshee_village_dev_preset"
-const DEV_PRESET_SAVE_WRITE_BLOCKER = "banshee_village_dev_preset"
 const LEVEL_STATE_VERSION = 5
 const VINCENT_HOUSE_INTERIOR_ID = "vincent_house"
 const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
@@ -55,6 +31,7 @@ const BISHOP_CHOICE_PROMPT_TEXT = "Confront the bishop?"
 const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
 
+# Dev preset validation and behavior are owned by BansheeVillageDevPresetBuilder.
 @export_enum(
 	"none",
 	"start",
@@ -64,7 +41,7 @@ const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own
 	"dulluhan_transformation_unlocked",
 	"second_banshee_report_ready",
 	"third_banshee_report_ready"
-) var dev_start_preset: String = DEV_PRESET_NONE
+) var dev_start_preset: String = DEV_PRESET_BUILDER_SCRIPT.DEV_PRESET_NONE
 @export var player_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/Saorise")
 @export var npc_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs")
 @export var hostile_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/HostileNPCs")
@@ -83,7 +60,7 @@ const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own
 @export var hidden_banshee_alpha: float = 0.2
 @export var respawn_delay_seconds: float = 10.0
 @export var report_kill_threshold: int = 10
-@export var final_dulluhan_marker_path: NodePath = NodePath("../PlayableWorld/Markers/Entrances/VincentHouseFront")
+@export var final_dulluhan_marker_path: NodePath = NodePath("../PlayableWorld/Markers/StoryPositions/DulluhanVincentHouseFront")
 @export var vincent_beside_elder_marker_path: NodePath = NodePath("../PlayableWorld/Markers/StoryPositions/VincentBesideElder")
 @export var final_dulluhan_position: Vector2 = Vector2(1042, 577)
 @export_enum("respawn", "temporary_wolf_clear", "permanent_wolf_clear") var transformed_banshee_clear_policy: String = BANSHEE_CLEAR_PERMANENT_WOLF
@@ -99,7 +76,7 @@ const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own
 @export var male_clear_sequence: DialogueSequence
 @export var female_clear_sequence: DialogueSequence
 
-var quest_stage: String = STAGE_INTRO
+var quest_stage: String = STAGE_RULES_SCRIPT.STAGE_INTRO
 var banshee_kill_count: int = 0
 var cleared_villager_paths: Dictionary = {}
 var revealed_banshee_paths: Dictionary = {}
@@ -230,7 +207,7 @@ func validate_level_state(state: Dictionary) -> Array:
 	if state_version > LEVEL_STATE_VERSION:
 		messages.append("BansheeVillage save state version %d is newer than supported version %d." % [state_version, LEVEL_STATE_VERSION])
 
-	var saved_stage: String = str(state.get("quest_stage", STAGE_INTRO))
+	var saved_stage: String = str(state.get("quest_stage", STAGE_RULES_SCRIPT.STAGE_INTRO))
 	if saved_stage != get_valid_stage(saved_stage):
 		messages.append("BansheeVillage save has invalid quest_stage '%s'." % saved_stage)
 
@@ -305,7 +282,7 @@ func append_missing_assigned_villager_warnings(messages: Array):
 func apply_level_state(state: Dictionary):
 	state_generation += 1
 	var normalized_state: Dictionary = normalize_level_state(state)
-	quest_stage = get_valid_stage(str(normalized_state.get("quest_stage", STAGE_INTRO)))
+	quest_stage = get_valid_stage(str(normalized_state.get("quest_stage", STAGE_RULES_SCRIPT.STAGE_INTRO)))
 	banshee_kill_count = maxi(int(normalized_state.get("banshee_kill_count", 0)), 0)
 	final_dulluhan_teaser_completed = bool(normalized_state.get("final_dulluhan_teaser_completed", false))
 	story_transform_prompt_consumed = bool(normalized_state.get("story_transform_prompt_consumed", false))
@@ -336,7 +313,7 @@ func apply_level_state(state: Dictionary):
 	apply_dulluhan_level_state(normalized_state.get("dulluhan", {}))
 	sync_local_progression_flags_to_globals()
 	reconcile_wolf_transformation_unlock_with_local_story()
-	if quest_stage == STAGE_WOLF_HUNT_CLEARED or quest_stage == STAGE_FINAL_DULLUHAN_READY:
+	if quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_CLEARED or quest_stage == STAGE_RULES_SCRIPT.STAGE_FINAL_DULLUHAN_READY:
 		story_wolf_lock_active = false
 		story_transform_prompt_consumed = true
 	if is_third_wave_stage():
@@ -567,7 +544,7 @@ func parse_saved_banshee_states(raw_states: Variant) -> Dictionary:
 
 func apply_intro_defaults():
 	state_generation += 1
-	quest_stage = STAGE_INTRO
+	quest_stage = STAGE_RULES_SCRIPT.STAGE_INTRO
 	banshee_kill_count = 0
 	final_dulluhan_teaser_completed = false
 	story_transform_prompt_consumed = false
@@ -597,7 +574,7 @@ func restore_stage_world_state():
 	# Mid-quest UI/dialogue updates should call refresh_quest_presentation() instead.
 	refresh_quest_presentation()
 
-	if quest_stage == STAGE_INTRO:
+	if quest_stage == STAGE_RULES_SCRIPT.STAGE_INTRO:
 		apply_banshee_villager_presentation(false)
 		return
 
@@ -607,36 +584,36 @@ func restore_stage_world_state():
 func refresh_quest_presentation():
 	# Presentation refresh must not reset actor position, health, death, or patrol state.
 	sync_global_story_progress()
-	if quest_stage == STAGE_INTRO:
+	if quest_stage == STAGE_RULES_SCRIPT.STAGE_INTRO:
 		set_elder_sequence(elder_reveal_sequence)
-	elif quest_stage == STAGE_THIRD_WAVE_ELDER_READY:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY:
 		if are_all_banshees_permanently_cleared():
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ALREADY_CLEARED_WITH_BISHOP))
 		else:
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ELDER))
-	elif quest_stage == STAGE_THIRD_WAVE_ACTIVE:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ACTIVE:
 		set_elder_sequence(elder_waiting_sequence)
-	elif quest_stage == STAGE_THIRD_WAVE_CLEARED:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED:
 		if is_bishop_confrontation_accepted():
 			set_elder_sequence(elder_waiting_sequence)
 		else:
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_BISHOP_DIRECTION))
-	elif quest_stage == STAGE_BISHOP_PATH_READY:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_BISHOP_PATH_READY:
 		set_elder_sequence(elder_waiting_sequence)
 	elif final_dulluhan_teaser_completed:
 		set_elder_sequence(elder_final_dulluhan_complete_sequence if elder_final_dulluhan_complete_sequence != null else elder_wolf_hunt_cleared_sequence)
-	elif quest_stage == STAGE_WOLF_HUNT_CLEARED:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_CLEARED:
 		set_elder_sequence(elder_wolf_hunt_cleared_sequence if elder_wolf_hunt_cleared_sequence != null else elder_waiting_sequence)
-	elif quest_stage == STAGE_FINAL_DULLUHAN_READY:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_FINAL_DULLUHAN_READY:
 		set_elder_sequence(elder_wolf_hunt_cleared_sequence if elder_wolf_hunt_cleared_sequence != null else elder_waiting_sequence)
-	elif quest_stage == STAGE_WOLF_HUNT_READY:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_READY:
 		if are_all_banshees_permanently_cleared():
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_SECOND_HUNT_ALREADY_CLEARED))
 		else:
 			set_elder_sequence(elder_post_transformation_sequence if elder_post_transformation_sequence != null else elder_respawning_sequence)
-	elif quest_stage == STAGE_READY_TO_REPORT:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_READY_TO_REPORT:
 		set_elder_sequence(elder_respawning_sequence)
-	elif quest_stage == STAGE_DULLUHAN_AVAILABLE:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_DULLUHAN_AVAILABLE:
 		set_elder_sequence(elder_respawning_sequence)
 	else:
 		set_elder_sequence(elder_waiting_sequence)
@@ -655,7 +632,7 @@ func sync_global_story_progress():
 	if SaveManager == null:
 		return
 
-	var banshee_hostile_enabled: bool = quest_stage != STAGE_INTRO
+	var banshee_hostile_enabled: bool = quest_stage != STAGE_RULES_SCRIPT.STAGE_INTRO
 	var strong_banshees_enabled: bool = third_wave_spawned or is_third_wave_stage()
 	if SaveManager.has_method("set_banshee_world_rule"):
 		SaveManager.set_banshee_world_rule("banshees_hostile_enabled", banshee_hostile_enabled)
@@ -669,9 +646,9 @@ func sync_global_story_progress():
 			current_bishop_quest_stage = str(SaveManager.get_quest_stage("banshee_village_bishop"))
 		if current_bishop_quest_stage == "bishop_defeated" or current_bishop_quest_stage == "ready_to_report" or current_bishop_quest_stage == "reported" or current_bishop_quest_stage == "reward_claimed":
 			return
-		if is_bishop_confrontation_accepted() or quest_stage == STAGE_BISHOP_PATH_READY:
+		if is_bishop_confrontation_accepted() or quest_stage == STAGE_RULES_SCRIPT.STAGE_BISHOP_PATH_READY:
 			SaveManager.set_quest_stage("banshee_village_bishop", "accepted")
-		elif quest_stage == STAGE_THIRD_WAVE_CLEARED or (quest_stage == STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared()):
+		elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED or (quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared()):
 			SaveManager.set_quest_stage("banshee_village_bishop", "request_available")
 		else:
 			SaveManager.set_quest_stage("banshee_village_bishop", "not_available")
@@ -878,33 +855,33 @@ func is_route_exit_interactable(interactable: Node) -> bool:
 
 
 func _on_elder_dialogue_finished(_villager: Node):
-	if quest_stage == STAGE_INTRO:
+	if quest_stage == STAGE_RULES_SCRIPT.STAGE_INTRO:
 		begin_combat_stage()
 		if SaveManager != null and SaveManager.has_method("save_game"):
 			SaveManager.save_game("banshee_required_intro_started", get_parent())
-	elif quest_stage == STAGE_READY_TO_REPORT:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_READY_TO_REPORT:
 		complete_report_stage()
-	elif quest_stage == STAGE_WOLF_HUNT_READY:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_READY:
 		begin_wolf_hunt_stage()
-	elif quest_stage == STAGE_WOLF_HUNT_CLEARED:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_CLEARED:
 		begin_final_dulluhan_stage()
-	elif quest_stage == STAGE_THIRD_WAVE_ELDER_READY:
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY:
 		if are_all_banshees_permanently_cleared():
-			quest_stage = STAGE_THIRD_WAVE_CLEARED
+			quest_stage = STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED
 			refresh_quest_presentation()
 			save_third_wave_progress("banshee_bishop_request_available")
 			open_bishop_choice_prompt()
 		else:
 			begin_third_wave_active_stage()
-	elif quest_stage == STAGE_THIRD_WAVE_CLEARED and not is_bishop_confrontation_accepted():
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED and not is_bishop_confrontation_accepted():
 		open_bishop_choice_prompt()
 
 
 func _on_exterior_vincent_dialogue_finished(_vincent: Node):
-	if quest_stage == STAGE_THIRD_WAVE_CLEARED and not is_bishop_confrontation_accepted():
+	if quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED and not is_bishop_confrontation_accepted():
 		open_bishop_choice_prompt()
-	elif quest_stage == STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared():
-		quest_stage = STAGE_THIRD_WAVE_CLEARED
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared():
+		quest_stage = STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED
 		refresh_quest_presentation()
 		save_third_wave_progress("banshee_bishop_request_available")
 		open_bishop_choice_prompt()
@@ -967,7 +944,7 @@ func _on_elder_choice_closed(_accepted: bool):
 
 
 func _on_dulluhan_transformation_granted_for_story():
-	if quest_stage == STAGE_DULLUHAN_AVAILABLE or quest_stage == STAGE_REPORT_COMPLETE:
+	if quest_stage == STAGE_RULES_SCRIPT.STAGE_DULLUHAN_AVAILABLE or quest_stage == STAGE_RULES_SCRIPT.STAGE_REPORT_COMPLETE:
 		dulluhan_transformation_granted_for_level = true
 		begin_wolf_hunt_ready_stage()
 
@@ -975,7 +952,7 @@ func _on_dulluhan_transformation_granted_for_story():
 func _on_dulluhan_final_teaser_completed():
 	dulluhan_transformation_granted_for_level = true
 	final_dulluhan_teaser_completed = true
-	quest_stage = STAGE_VINCENT_HOUSE_AVAILABLE
+	quest_stage = STAGE_RULES_SCRIPT.STAGE_VINCENT_HOUSE_AVAILABLE
 	refresh_quest_presentation()
 	save_wolf_clear_progress()
 

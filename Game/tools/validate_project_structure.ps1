@@ -29,7 +29,17 @@ function Get-ProjectFiles([string[]]$extensions) {
         }
 }
 
+function Convert-ResPathToFullPath([string]$resPath) {
+    if (-not $resPath.StartsWith("res://")) {
+        return ""
+    }
+
+    $relativePath = $resPath.Substring(6).Replace("/", "\")
+    return Join-Path $projectRoot $relativePath
+}
+
 $textFiles = Get-ProjectFiles @(".gd", ".tscn", ".tres", ".md", ".godot")
+$sceneFiles = Get-ProjectFiles @(".tscn")
 $characterScenesRoot = Join-Path $projectRoot "scenes\characters"
 $characterScenes = @()
 if (Test-Path -LiteralPath $characterScenesRoot) {
@@ -55,12 +65,21 @@ $stalePatterns = @(
     'res://resources/dialogue/(villager_|dulluhan_story_profile|vincent_story_profile|banshee_village_)',
     'res://scripts/global/BansheeVillageFlowController\.gd',
     'res://scripts/global/VincentHouseInteriorController\.gd',
-    'res://scripts/global/banshee_village/'
+    'res://scripts/global/BansheeRouteEncounterController\.gd',
+    'res://scripts/levels/shared/BansheeRouteEncounterController\.gd',
+    'BansheeRouteEncounterController',
+    'res://scripts/global/banshee_village/',
+    'res://scenes/levels/InitialSpawn\.tscn',
+    'Level-InitialSpawn',
+    'InitialSpawnOption'
 )
 
 foreach ($file in $textFiles) {
     $content = Get-Content -LiteralPath $file.FullName -Raw
     $relative = Get-RelativePath $file.FullName
+    if ($relative -eq "tools/validate_project_structure.ps1") {
+        continue
+    }
     foreach ($pattern in $stalePatterns) {
         if ($content -match $pattern) {
             Add-ValidationError "$relative contains stale path pattern: $pattern"
@@ -83,6 +102,106 @@ if (Test-Path -LiteralPath $globalRoot) {
         $relative = Get-RelativePath $file.FullName
         if ($relative -match 'scripts/global/banshee_village' -or $file.Name -eq "BansheeVillageFlowController.gd" -or $file.Name -eq "VincentHouseInteriorController.gd") {
             Add-ValidationError "$relative is level-specific but lives under scripts/global."
+        }
+    }
+}
+
+foreach ($scene in $sceneFiles) {
+    $content = Get-Content -LiteralPath $scene.FullName -Raw
+    $relative = Get-RelativePath $scene.FullName
+    $routeExitScriptIds = New-Object System.Collections.Generic.List[string]
+    $resourceMatches = [regex]::Matches($content, '\[ext_resource[^\]]*path="res://scripts/interactions/RouteExitArea\.gd"[^\]]*id="([^"]+)"[^\]]*\]')
+    foreach ($match in $resourceMatches) {
+        $routeExitScriptIds.Add([regex]::Escape($match.Groups[1].Value))
+    }
+
+    $routeIds = @{}
+    $nodeBlocks = [regex]::Matches($content, '(?ms)\[node[^\]]+\].*?(?=\r?\n\[node|\z)')
+    foreach ($nodeBlockMatch in $nodeBlocks) {
+        $block = $nodeBlockMatch.Value
+        $nodeName = "<unknown>"
+        $nodeNameMatch = [regex]::Match($block, '\[node name="([^"]+)"')
+        if ($nodeNameMatch.Success) {
+            $nodeName = $nodeNameMatch.Groups[1].Value
+        }
+
+        $nodeParent = ""
+        $nodeParentMatch = [regex]::Match($block, '\[node[^\]]*parent="([^"]+)"')
+        if ($nodeParentMatch.Success) {
+            $nodeParent = $nodeParentMatch.Groups[1].Value
+        }
+
+        $isRouteExit = $false
+        foreach ($resourceId in $routeExitScriptIds) {
+            if ($block -match "script = ExtResource\(`"$resourceId`"\)") {
+                $isRouteExit = $true
+                break
+            }
+        }
+
+        $looksLikeRouteExit = $nodeName -match 'Exit$' -and $nodeParent -eq 'PlayableWorld/Environment/Interactables/RouteExits'
+        if ($looksLikeRouteExit -and -not $isRouteExit) {
+            Add-ValidationError "$relative route exit '$nodeName' is under PlayableWorld/Environment/Interactables/RouteExits but does not use RouteExitArea.gd."
+            continue
+        }
+
+        if (-not $isRouteExit) {
+            continue
+        }
+
+        $routeId = ""
+        $routeIdMatch = [regex]::Match($block, '(?m)^route_id = "([^"]*)"')
+        if ($routeIdMatch.Success) {
+            $routeId = $routeIdMatch.Groups[1].Value
+        }
+        if ($routeId -eq "") {
+            Add-ValidationError "$relative route exit '$nodeName' has an empty route_id."
+        } elseif ($routeIds.ContainsKey($routeId)) {
+            Add-ValidationError "$relative has duplicate route_id '$routeId' on '$nodeName' and '$($routeIds[$routeId])'."
+        } else {
+            $routeIds[$routeId] = $nodeName
+        }
+
+        $destinationScenePath = ""
+        $destinationSceneMatch = [regex]::Match($block, '(?m)^destination_scene_path = "([^"]*)"')
+        if ($destinationSceneMatch.Success) {
+            $destinationScenePath = $destinationSceneMatch.Groups[1].Value
+        }
+
+        $entryMarkerPath = ""
+        $entryMarkerMatch = [regex]::Match($block, '(?m)^destination_entry_marker_path = NodePath\("([^"]*)"\)')
+        if ($entryMarkerMatch.Success) {
+            $entryMarkerPath = $entryMarkerMatch.Groups[1].Value
+        }
+
+        if ($destinationScenePath -ne "") {
+            if (-not $destinationScenePath.EndsWith(".tscn")) {
+                Add-ValidationError "$relative route exit '$nodeName' destination_scene_path is not a .tscn: $destinationScenePath"
+            } else {
+                $destinationFullPath = Convert-ResPathToFullPath $destinationScenePath
+                if ($destinationFullPath -eq "" -or -not (Test-Path -LiteralPath $destinationFullPath)) {
+                    Add-ValidationError "$relative route exit '$nodeName' points to missing destination scene: $destinationScenePath"
+                }
+            }
+
+            if ($entryMarkerPath -eq "") {
+                Add-ValidationError "$relative route exit '$nodeName' has a destination scene but no destination_entry_marker_path."
+            } elseif ($entryMarkerPath -notmatch '^PlayableWorld/Markers/Entrances/') {
+                Add-ValidationWarning "$relative route exit '$nodeName' destination_entry_marker_path should use PlayableWorld/Markers/Entrances/..."
+            }
+        }
+    }
+}
+
+$bansheeVillageFlowPath = Join-Path $projectRoot "scripts\levels\banshee_village\BansheeVillageFlowController.gd"
+if (Test-Path -LiteralPath $bansheeVillageFlowPath) {
+    $flowContent = Get-Content -LiteralPath $bansheeVillageFlowPath -Raw
+    $storyMarkerExports = [regex]::Matches($flowContent, '(?m)^@export var ((?:final_[A-Za-z0-9_]*|[A-Za-z0-9_]*story[A-Za-z0-9_]*)marker_path): NodePath = NodePath\("([^"]*)"\)')
+    foreach ($match in $storyMarkerExports) {
+        $exportName = $match.Groups[1].Value
+        $markerPath = $match.Groups[2].Value
+        if ($markerPath -match 'PlayableWorld/Markers/Entrances/') {
+            Add-ValidationWarning "BansheeVillageFlowController.$exportName points to an entrance marker. Story staging markers should use PlayableWorld/Markers/StoryPositions/..."
         }
     }
 }

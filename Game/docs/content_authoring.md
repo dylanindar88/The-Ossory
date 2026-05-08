@@ -19,6 +19,7 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 - Dialogue resources: `res://resources/dialogue/npcs/<npc_name>/` or `res://resources/dialogue/levels/<level_name>/`
 - Level scenes: `res://scenes/levels/`
 - Level scripts/helpers: `res://scripts/levels/<level_name>/`
+- Shared level helpers: `res://scripts/levels/shared/`
 - Global scripts only: autoloads, shared managers, or truly cross-level systems.
 
 ## Adding A Level
@@ -28,6 +29,22 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 3. Put level-specific helpers under `res://scripts/levels/<level_name>/`.
 4. Keep one public level-state provider unless there is an explicit save migration plan.
 5. Keep save keys, quest stage strings, and route IDs stable once saves can reference them.
+
+## Marker Ownership
+
+- `PlayableWorld/Markers/Entrances`: player arrival, route entry, and interior return markers.
+- `PlayableWorld/Markers/StoryPositions`: NPC and story staging markers.
+- `PlayableWorld/Markers/PatrolPaths`: AI patrol movement, stops, and house stop markers.
+- Duplicate coordinates are fine when two systems need the same physical spot for different reasons.
+
+## Adding A Route Level
+
+1. Use `res://templates/route_level/README.md` as the checklist.
+2. Put directional arrival markers under `PlayableWorld/Markers/Entrances`.
+3. Name route entry markers by where the player appears in the destination, such as `WestEntrance`, `EastEntrance`, or `SouthEntrance`.
+4. Set each `RouteExitArea.destination_entry_marker_path` to the destination scene marker path, not to the current scene exit.
+5. Keep `route_id` values stable because route saves use them in save reasons.
+6. Future route exits may be placed before their destination scene exists. They should still use `RouteExitArea.gd`, a stable `route_id`, and a clear missing-destination message while leaving destination fields empty.
 
 ## Adding An NPC
 

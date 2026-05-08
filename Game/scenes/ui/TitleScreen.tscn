@@ -655,18 +655,18 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "BansheeVillage - Third Report"
 
-[node name="InitialSpawnOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+[node name="StartingWildernessOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
 custom_minimum_size = Vector2(420, 44)
 layout_mode = 2
 
-[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/InitialSpawnOption"]
+[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/StartingWildernessOption"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-text = "InitialSpawn"
+text = "Starting Wilderness"
 
 [node name="DevStatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
 custom_minimum_size = Vector2(460, 24)
