@@ -18,6 +18,7 @@ Helpers are internal delegates. External callers should continue using the coord
 - Banshee actor helpers own story/save lifecycle, combat-area toggling, and aggro/detection sensor handling.
 - Saorise's transformation helper owns wolf timing, cooldown, story/dev locks, and autosave blocking while the state machine keeps form application and movement/combat coordination.
 - SaveManager helpers own settings IO, upgrade/lives state, quest/story flags, file IO, actor adapters, and level-state provider orchestration.
+- Level metadata helpers own level display names, save-slot labels, location labels, and title-screen dev level entries while `SaveManager.LEVEL_DISPLAY_REGISTRY` remains the source of truth.
 
 ## Compatibility Rules
 
@@ -31,3 +32,5 @@ Helpers are internal delegates. External callers should continue using the coord
 For future story-heavy levels, use one scene-attached coordinator with focused internal helpers for progression, presentation, encounters, travel, and prompts. The coordinator should own save compatibility and expose a single stable level-state dictionary unless the migration plan explicitly defines otherwise.
 
 For future actors or bosses, keep scene-facing methods on the actor coordinator/state machine and move only private lifecycle, sensor, combat-area, or save details into helpers. This keeps existing callers stable while allowing behavior to grow in smaller files.
+
+For metroidvania-style progression, keep cross-level unlock facts in global story flags or quest stages, and keep temporary encounter state in level-local save data. Route exits and gates should depend on stable global facts once the route can be revisited from another level.

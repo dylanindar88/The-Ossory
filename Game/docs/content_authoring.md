@@ -31,6 +31,30 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 5. Keep one public level-state provider unless there is an explicit save migration plan.
 6. Keep save keys, quest stage strings, and route IDs stable once saves can reference them.
 
+## Story Progression State
+
+- Use global story flags for facts that other levels need to ask as simple yes/no questions, such as a character reveal, a power unlock, or a metroidvania gate being opened.
+- Use quest stages for ordered cross-level progression where more than one level, boss, route, or UI surface needs to know the current step.
+- Use level-local state for scene-owned details such as active interiors, local encounter waves, local NPC positions, temporary clears, local prompts, and save restoration snapshots.
+- Keep local level state behind the level coordinator's `collect_level_state`, `apply_level_state`, and `validate_level_state` methods.
+- Do not promote a level-local field into a global flag until another level or global UI actually needs it.
+
+## Story-Heavy Level Pattern
+
+- Coordinator: one scene-attached public API that owns exported node paths, save-provider methods, signal wiring, and helper dispatch.
+- Stage rules: constants and pure predicates for valid stages, compatibility aliases, and stage-derived defaults.
+- Progression helper: quest transitions, story reactions, and save triggers.
+- Presentation helper: route gates, flags, visibility, counters, and other level feedback.
+- Encounter or boss helper: wave state, actor reveal/clear behavior, boss phase handoff, and level-owned actor state.
+- Save adapter: local save collection, normalization, validation, and apply-time restoration.
+
+## Boss And Gate Pattern
+
+- A boss level owns arena locks, boss phase state, local actor snapshots, and reward handoff timing.
+- Global quest state or story flags own cross-level unlocks, opened routes, defeated-boss facts, and ability gates.
+- Route exits should check stable quest stages or story flags, not temporary encounter state.
+- Boss actors keep scene-facing methods on their controller/state machine while private phase, arena, sensor, combat-area, and save behavior may live in helpers.
+
 ## Level Categories
 
 - `town_city`: towns, cities, and settlements such as Banshee Village.

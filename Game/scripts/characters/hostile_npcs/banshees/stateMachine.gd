@@ -93,6 +93,7 @@ var last_damage_source: Node = null
 var last_killer_form_id: StringName = &""
 
 
+# Scene setup and state-machine entrypoints.
 func _ready():
 	apply_tuning()
 	story_spawn_position = global_position
@@ -272,6 +273,7 @@ func clear_hurt_state_overrides():
 	hurt_speed_modifier_override = -1.0
 
 
+# Patrol, return, and assigned-villager movement.
 func refresh_patrol_points():
 	patrol_route.refresh(self, patrol_path)
 
@@ -449,6 +451,7 @@ func get_nearest_patrol_position(world_position: Vector2) -> Vector2:
 	return get_current_patrol_point()
 
 
+# Combat tuning, ranged decisions, and projectile launch.
 func can_attack() -> bool:
 	return attack_cooldown_timer <= 0
 
@@ -580,6 +583,7 @@ func get_ranged_projectile_spawn_position(launch_direction: Vector2) -> Vector2:
 	return global_position + offset
 
 
+# Targeting, facing, movement, and animation timing.
 func has_assigned_villager() -> bool:
 	return villager_stalk_behavior != null and villager_stalk_behavior.is_active()
 
@@ -696,6 +700,7 @@ func get_animation_time_until_frame(anim_name: String, frame_number: int, fallba
 	return time
 
 
+# Story visibility, save/load state, and combat-area ownership.
 func disable_combat_areas():
 	combat_area_controller.disable_combat_areas()
 
@@ -831,6 +836,7 @@ func _on_died():
 	defeated.emit(self)
 
 
+# Aggro sensor callbacks and combat engagement.
 func _on_player_detection_body_entered(body: Node2D):
 	aggro_sensor.on_player_detection_body_entered(body)
 
@@ -928,6 +934,7 @@ func is_currently_engaging_player() -> bool:
 	return false
 
 
+# Health regeneration controls.
 func start_health_regeneration():
 	if health != null and health.has_method("start_regeneration"):
 		health.start_regeneration()

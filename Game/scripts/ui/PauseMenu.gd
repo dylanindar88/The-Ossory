@@ -345,7 +345,7 @@ func refresh_save_slots():
 		var load_button: Button = get_slot_button(slot, "LoadButton")
 		var delete_button: Button = get_slot_button(slot, "DeleteButton")
 
-		slot_label.text = str(summary.get("display_name", "Autosave" if is_autosave_slot else "Slot %d" % slot)) if exists else ("Autosave" if is_autosave_slot else "Slot %d" % slot)
+		slot_label.text = get_save_slot_label_text(slot, summary, exists, is_autosave_slot)
 		if exists:
 			status_label.text = str(summary.get("timestamp_text", ""))
 		else:
@@ -493,6 +493,16 @@ func confirm_slot_action(slot: int, action: String, message: String) -> bool:
 func clear_pending_confirmation():
 	pending_confirmation_slot = 0
 	pending_confirmation_action = ""
+
+
+func get_save_slot_label_text(slot: int, summary: Dictionary, exists: bool, is_autosave_slot: bool) -> String:
+	if is_autosave_slot:
+		return "Autosave (AUTO)"
+
+	if exists:
+		return str(summary.get("display_name", "Slot %d" % slot))
+
+	return "Slot %d" % slot
 
 
 func get_slot_label(slot: int) -> Label:

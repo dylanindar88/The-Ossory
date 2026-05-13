@@ -93,28 +93,28 @@ patrol_path = NodePath("../../../../Markers/PatrolPaths/VillagerPath")
 assigned_villager_path = NodePath("../../NPCs/MaleVillager")
 
 [node name="Banshee2" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(1998, -1349)
+position = Vector2(1875, -1320)
 
 [node name="Banshee3" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(2768, -1410)
+position = Vector2(2727, -1239)
 
 [node name="Banshee4" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(1439, -1510)
+position = Vector2(1445, -1637)
 
 [node name="Banshee5" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(1554, -735)
+position = Vector2(2192, -993)
 
 [node name="Banshee6" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(3614, -615)
+position = Vector2(3396, -837)
 
 [node name="Banshee7" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(3842, -1591)
+position = Vector2(1849, -767)
 
 [node name="Banshee8" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
 position = Vector2(2426, -1157)
 
 [node name="Banshee9" parent="PlayableWorld/Environment/Characters/HostileNPCs" instance=ExtResource("5_ilqwd")]
-position = Vector2(3462, -1079)
+position = Vector2(3168, -1489)
 
 [node name="Saorise" parent="PlayableWorld/Environment/Characters" instance=ExtResource("3_m6gn6")]
 position = Vector2(1193, -1161)

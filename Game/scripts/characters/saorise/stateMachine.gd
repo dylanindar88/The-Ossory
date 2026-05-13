@@ -65,6 +65,7 @@ var dev_wolf_transformation_locked: bool = false
 var life_respawn_pending: bool = false
 
 
+# Scene setup and public form state.
 func _ready():
 	cache_form_definitions()
 	activate_form(initial_form_id)
@@ -261,6 +262,7 @@ func can_current_form_talk() -> bool:
 	return current_form == null or current_form.can_talk
 
 
+# Frame update and input dispatch.
 func _physics_process(delta):
 	if dead:
 		velocity = Vector2.ZERO
@@ -353,6 +355,7 @@ func is_dev_permanent_wolf_toggle_event(event: InputEvent) -> bool:
 	)
 
 
+# Combat, damage, and dialogue locks.
 func change_state(state_name):
 	if current_state:
 		current_state.exit(self)
@@ -401,6 +404,7 @@ func set_dialogue_input_locked(locked: bool):
 	update_effects()
 
 
+# Transformation lifecycle and travel persistence.
 func try_start_wolf_transformation() -> bool:
 	return transformation_controller.try_start_wolf_transformation()
 
@@ -567,6 +571,7 @@ func end_transformation_immediately():
 	transformation_controller.end_transformation_immediately()
 
 
+# Movement, facing, and animation helpers.
 func is_dialogue_input_locked() -> bool:
 	return dialogue_input_locked
 
@@ -671,6 +676,7 @@ func is_motion_toward_node(node: Node2D, motion: Vector2) -> bool:
 	return next_distance < current_distance
 
 
+# Effects and nearby interaction targeting.
 func update_effects():
 	if effects == null:
 		return
@@ -763,6 +769,7 @@ func try_interact_with(interactable: Node2D):
 	interaction_requested.emit(interactable)
 
 
+# Death, respawn, save/load restore, and visual feedback.
 func get_current_form_id() -> StringName:
 	return current_form_id
 

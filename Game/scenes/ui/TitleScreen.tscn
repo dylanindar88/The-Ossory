@@ -71,6 +71,7 @@ layout_mode = 2
 size_flags_vertical = 3
 
 [node name="MainView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -331,7 +332,6 @@ text = "Back"
 flat = true
 
 [node name="LoadSlotsView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
-visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5

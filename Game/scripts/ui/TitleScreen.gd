@@ -297,7 +297,7 @@ func refresh_load_slots():
 		var status_label: Label = get_load_slot_status_label(slot)
 		var button: Button = get_load_slot_button(slot)
 		var delete_button: Button = get_load_slot_delete_button(slot)
-		slot_label.text = str(summary.get("display_name", "Autosave" if SaveManager.is_autosave_slot(slot) else "Slot %d" % slot)) if exists else ("Autosave" if SaveManager.is_autosave_slot(slot) else "Slot %d" % slot)
+		slot_label.text = get_load_slot_label_text(slot, summary, exists)
 		status_label.text = str(summary.get("timestamp_text", "")) if exists else "Empty"
 		button.disabled = not exists
 		delete_button.disabled = not exists
@@ -321,6 +321,16 @@ func get_slot_display_text(summary: Dictionary) -> String:
 		return display_name
 
 	return "%s - %s" % [display_name, timestamp_text]
+
+
+func get_load_slot_label_text(slot: int, summary: Dictionary, exists: bool) -> String:
+	if SaveManager.is_autosave_slot(slot):
+		return "Autosave (AUTO)"
+
+	if exists:
+		return str(summary.get("display_name", "Slot %d" % slot))
+
+	return "Slot %d" % slot
 
 
 func get_new_game_slot_status_label(slot: int) -> Label:

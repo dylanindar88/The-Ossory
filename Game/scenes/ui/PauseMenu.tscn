@@ -47,6 +47,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="MenuView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -307,7 +308,6 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="SaveSlotsView" type="VBoxContainer" parent="Overlay/Panel"]
-visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5

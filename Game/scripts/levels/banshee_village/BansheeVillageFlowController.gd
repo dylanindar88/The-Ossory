@@ -26,6 +26,7 @@ const INTERIOR_TRAVEL_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_
 const STORY_PROMPT_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageStoryPromptController.gd")
 const PRESENTATION_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillagePresentationController.gd")
 const ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageEncounterController.gd")
+const SAVE_ADAPTER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageSaveAdapter.gd")
 const BISHOP_CHOICE_PROMPT_TEXT = "Confront the bishop?"
 const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
@@ -117,6 +118,7 @@ var interior_travel_controller
 var story_prompt_controller
 var presentation_controller
 var encounter_controller
+var save_adapter
 var location_exit_save_pending: bool = false
 
 
@@ -154,6 +156,8 @@ func _ready():
 	presentation_controller.setup(self)
 	encounter_controller = ENCOUNTER_CONTROLLER_SCRIPT.new()
 	encounter_controller.setup(self)
+	save_adapter = SAVE_ADAPTER_SCRIPT.new()
+	save_adapter.setup(self)
 
 	connect_player_story_signals()
 	connect_elder_dialogue()
@@ -169,26 +173,7 @@ func _ready():
 
 
 func collect_level_state() -> Dictionary:
-	return {
-		"state_version": LEVEL_STATE_VERSION,
-		"quest_stage": quest_stage,
-		"banshee_kill_count": banshee_kill_count,
-		"revealed_banshee_paths": revealed_banshee_paths.keys(),
-		"temporarily_cleared_banshee_paths": temporarily_cleared_banshee_paths.keys(),
-		"permanently_cleared_banshee_paths": permanently_cleared_banshee_paths.keys(),
-		"final_dulluhan_teaser_completed": final_dulluhan_teaser_completed,
-		"story_transform_prompt_consumed": story_transform_prompt_consumed,
-		"story_wolf_lock_active": story_wolf_lock_active,
-		"final_wolf_instruction_shown": final_wolf_instruction_shown,
-		"active_interior_id": active_interior_id,
-		"third_wave_spawned": third_wave_spawned,
-		"dulluhan_transformation_granted_for_level": dulluhan_transformation_granted_for_level,
-		"vincent_house_dialogue_completed_for_level": vincent_house_dialogue_completed_for_level,
-		"bishop_confrontation_accepted_for_level": bishop_confrontation_accepted_for_level,
-		"dulluhan": collect_dulluhan_state(),
-		"banshees": collect_banshee_states(),
-		"villagers": collect_villager_states(),
-	}
+	return save_adapter.collect_level_state()
 
 
 func is_save_load_pending_for_this_level() -> bool:
@@ -204,155 +189,27 @@ func uses_level_owned_villager_state() -> bool:
 
 
 func validate_level_state(state: Dictionary) -> Array:
-	var messages: Array = []
-	var state_version: int = int(state.get("state_version", 0))
-	if state_version > LEVEL_STATE_VERSION:
-		messages.append("BansheeVillage save state version %d is newer than supported version %d." % [state_version, LEVEL_STATE_VERSION])
-
-	var saved_stage: String = str(state.get("quest_stage", STAGE_RULES_SCRIPT.STAGE_INTRO))
-	if saved_stage != get_valid_stage(saved_stage):
-		messages.append("BansheeVillage save has invalid quest_stage '%s'." % saved_stage)
-
-	if not (state.get("banshees", []) is Array):
-		messages.append("BansheeVillage save has malformed banshees snapshot data.")
-	if not (state.get("villagers", []) is Array):
-		messages.append("BansheeVillage save has malformed villagers snapshot data.")
-	if not (state.get("temporarily_cleared_banshee_paths", []) is Array):
-		messages.append("BansheeVillage save has malformed temporarily_cleared_banshee_paths.")
-
-	if elder == null:
-		messages.append("BansheeVillageFlowController could not find elder at %s." % elder_path)
-	if kill_counter == null:
-		messages.append("BansheeVillageFlowController could not find kill counter at %s." % kill_counter_path)
-	if dulluhan == null:
-		messages.append("BansheeVillageFlowController could not find Dulluhan at %s." % dulluhan_path)
-	if exterior_vincent == null:
-		messages.append("BansheeVillageFlowController could not find exterior Vincent at %s." % exterior_vincent_path)
-	if vincent_house == null:
-		messages.append("BansheeVillageFlowController could not find VincentHouse at %s." % vincent_house_path)
-	if vincent_house_interior == null:
-		messages.append("BansheeVillageFlowController could not find VincentHouseInterior at %s." % vincent_house_interior_path)
-	if west_route_exit == null:
-		messages.append("BansheeVillageFlowController could not find west route exit at %s." % west_route_exit_path)
-	if south_route_exit == null:
-		messages.append("BansheeVillageFlowController could not find south route exit at %s." % south_route_exit_path)
-	if east_route_exit == null:
-		messages.append("BansheeVillageFlowController could not find east route exit at %s." % east_route_exit_path)
-	if get_node_or_null(exterior_player_parent_path) == null:
-		messages.append("BansheeVillageFlowController could not find exterior player parent at %s." % exterior_player_parent_path)
-	if get_node_or_null(vincent_house_interior_player_parent_path) == null:
-		messages.append("BansheeVillageFlowController could not find VincentHouse interior player parent at %s." % vincent_house_interior_player_parent_path)
-	if get_node_or_null(vincent_house_return_marker_path) == null:
-		messages.append("BansheeVillageFlowController could not find VincentHouse return marker at %s." % vincent_house_return_marker_path)
-	if get_node_or_null(vincent_beside_elder_marker_path) == null:
-		messages.append("BansheeVillageFlowController could not find Vincent beside elder marker at %s." % vincent_beside_elder_marker_path)
-
-	append_missing_actor_path_warnings(messages, state.get("banshees", []), "banshee")
-	append_missing_actor_path_warnings(messages, state.get("villagers", []), "villager")
-	append_missing_assigned_villager_warnings(messages)
-	return messages
+	return save_adapter.validate_level_state(state)
 
 
 func append_missing_actor_path_warnings(messages: Array, raw_states: Variant, actor_label: String):
-	if not (raw_states is Array):
-		return
-
-	var level: Node = get_parent()
-	if level == null:
-		return
-
-	for raw_state in raw_states:
-		if not (raw_state is Dictionary):
-			messages.append("BansheeVillage save has malformed %s snapshot entry." % actor_label)
-			continue
-
-		var state: Dictionary = raw_state
-		var actor_path: String = str(state.get("node_path", ""))
-		if actor_path == "":
-			messages.append("BansheeVillage save has %s snapshot with no node_path." % actor_label)
-		elif level.get_node_or_null(NodePath(actor_path)) == null:
-			messages.append("BansheeVillage save references missing %s '%s'." % [actor_label, actor_path])
+	save_adapter.append_missing_actor_path_warnings(messages, raw_states, actor_label)
 
 
 func append_missing_assigned_villager_warnings(messages: Array):
-	for banshee in banshees:
-		if banshee == null or not banshee.has_method("has_assigned_villager"):
-			continue
-
-		if str(banshee.get("assigned_villager_path")) != "" and not bool(banshee.call("has_assigned_villager")):
-			messages.append("%s has assigned_villager_path '%s' but no resolved villager." % [banshee.name, banshee.get("assigned_villager_path")])
+	save_adapter.append_missing_assigned_villager_warnings(messages)
 
 
 func apply_level_state(state: Dictionary):
-	location_exit_save_pending = false
-	state_generation += 1
-	var normalized_state: Dictionary = normalize_level_state(state)
-	quest_stage = get_valid_stage(str(normalized_state.get("quest_stage", STAGE_RULES_SCRIPT.STAGE_INTRO)))
-	banshee_kill_count = maxi(int(normalized_state.get("banshee_kill_count", 0)), 0)
-	final_dulluhan_teaser_completed = bool(normalized_state.get("final_dulluhan_teaser_completed", false))
-	story_transform_prompt_consumed = bool(normalized_state.get("story_transform_prompt_consumed", false))
-	story_wolf_lock_active = bool(normalized_state.get("story_wolf_lock_active", false))
-	final_wolf_instruction_shown = bool(normalized_state.get("final_wolf_instruction_shown", false))
-	active_interior_id = str(normalized_state.get("active_interior_id", ""))
-	third_wave_spawned = bool(normalized_state.get("third_wave_spawned", false))
-	dulluhan_transformation_granted_for_level = get_saved_bool(normalized_state, "dulluhan_transformation_granted_for_level", infer_dulluhan_transformation_granted_from_stage(quest_stage))
-	vincent_house_dialogue_completed_for_level = get_saved_bool(normalized_state, "vincent_house_dialogue_completed_for_level", infer_vincent_house_dialogue_completed_from_stage(quest_stage))
-	bishop_confrontation_accepted_for_level = get_saved_bool(normalized_state, "bishop_confrontation_accepted_for_level", infer_bishop_confrontation_accepted_from_stage(quest_stage))
-	cleared_villager_paths = {}
-	defeated_banshees.clear()
-	temporarily_cleared_banshee_paths = {}
-	permanently_cleared_banshee_paths = {}
-	saved_banshee_states = parse_saved_banshee_states(normalized_state.get("banshees", []))
-	saved_villager_states = SaveManager.parse_actor_snapshot_lookup(normalized_state.get("villagers", []))
-
-	revealed_banshee_paths = {}
-	var saved_revealed_paths: Variant = normalized_state.get("revealed_banshee_paths", [])
-	if saved_revealed_paths is Array:
-		for path in saved_revealed_paths:
-			revealed_banshee_paths[str(path)] = true
-
-	var saved_temporary_paths: Variant = normalized_state.get("temporarily_cleared_banshee_paths", [])
-	if saved_temporary_paths is Array:
-		for path in saved_temporary_paths:
-			temporarily_cleared_banshee_paths[str(path)] = true
-
-	var saved_permanent_paths: Variant = normalized_state.get("permanently_cleared_banshee_paths", [])
-	if saved_permanent_paths is Array:
-		for path in saved_permanent_paths:
-			permanently_cleared_banshee_paths[str(path)] = true
-
-	apply_dulluhan_level_state(normalized_state.get("dulluhan", {}))
-	sync_local_progression_flags_to_globals()
-	reconcile_wolf_transformation_unlock_with_local_story()
-	if quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_CLEARED or quest_stage == STAGE_RULES_SCRIPT.STAGE_FINAL_DULLUHAN_READY:
-		story_wolf_lock_active = false
-		story_transform_prompt_consumed = true
-	if is_third_wave_stage():
-		third_wave_spawned = true
-		story_wolf_lock_active = false
-		story_transform_prompt_consumed = true
-
-	restore_saved_villager_states()
-	restore_stage_world_state()
-	restore_story_transformation_state()
-	sync_story_wolf_transformation_lock()
-	restore_active_interior_state()
-	saved_banshee_states.clear()
-	saved_villager_states.clear()
+	save_adapter.apply_level_state(state)
 
 
 func normalize_level_state(state: Dictionary) -> Dictionary:
-	var normalized_state: Dictionary = state.duplicate(true)
-	var state_version: int = int(normalized_state.get("state_version", 0))
-	normalized_state["state_version"] = clamp(state_version, 0, LEVEL_STATE_VERSION)
-	return normalized_state
+	return save_adapter.normalize_level_state(state)
 
 
 func get_saved_bool(state: Dictionary, key: String, default_value: bool) -> bool:
-	if state.has(key):
-		return bool(state.get(key))
-
-	return default_value
+	return save_adapter.get_saved_bool(state, key, default_value)
 
 
 func infer_dulluhan_transformation_granted_from_stage(stage: String) -> bool:
@@ -509,49 +366,23 @@ func get_banshees() -> Array[Node]:
 
 
 func collect_banshee_states() -> Array:
-	if location_exit_save_pending:
-		return []
-
-	var hostile_root: Node = get_node_or_null(hostile_root_path)
-	return SaveManager.collect_story_actor_states(get_parent(), hostile_root, "hostile_npcs")
+	return save_adapter.collect_banshee_states()
 
 
 func collect_villager_states() -> Array:
-	if location_exit_save_pending:
-		return []
-
-	var npc_root: Node = get_node_or_null(npc_root_path)
-	return SaveManager.collect_story_actor_states(get_parent(), npc_root, "villagers")
+	return save_adapter.collect_villager_states()
 
 
 func collect_dulluhan_state() -> Dictionary:
-	if dulluhan == null or not dulluhan.has_method("collect_story_save_state"):
-		return {}
-
-	var raw_state: Variant = dulluhan.call("collect_story_save_state")
-	if raw_state is Dictionary:
-		return raw_state
-
-	return {}
+	return save_adapter.collect_dulluhan_state()
 
 
 func apply_dulluhan_level_state(raw_state: Variant):
-	if dulluhan == null:
-		return
-
-	if raw_state is Dictionary:
-		var dulluhan_state: Dictionary = raw_state
-		if not dulluhan_state.is_empty() and dulluhan.has_method("apply_story_save_state"):
-			dulluhan.call("apply_story_save_state", dulluhan_state)
-
-	if dulluhan.has_method("set_transformation_granted_for_story_save"):
-		dulluhan.call("set_transformation_granted_for_story_save", dulluhan_transformation_granted_for_level)
-	else:
-		dulluhan.set("transformation_granted", dulluhan_transformation_granted_for_level)
+	save_adapter.apply_dulluhan_level_state(raw_state)
 
 
 func parse_saved_banshee_states(raw_states: Variant) -> Dictionary:
-	return SaveManager.parse_actor_snapshot_lookup(raw_states)
+	return save_adapter.parse_saved_banshee_states(raw_states)
 
 
 func apply_intro_defaults():
