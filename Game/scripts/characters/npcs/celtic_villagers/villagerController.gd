@@ -4,11 +4,17 @@ signal dialogue_finished(villager: Node)
 signal player_left_proximity(villager: Node)
 
 const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
+const ASSIGNED_BANSHEE_DEFEAT_COMPLETE_PAUSE: String = "complete_pause"
+const ASSIGNED_BANSHEE_DEFEAT_RESUME_PATROL: String = "resume_patrol"
+const BANSHEE_AGGRO_PAUSE_PAUSE: String = "pause"
+const BANSHEE_AGGRO_PAUSE_IGNORE: String = "ignore"
 
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false
 @export var walk_speed: float = 45.0
 @export var arrival_distance: float = 6.0
+@export_enum("complete_pause", "resume_patrol") var assigned_banshee_defeat_behavior: String = ASSIGNED_BANSHEE_DEFEAT_COMPLETE_PAUSE
+@export_enum("pause", "ignore") var banshee_aggro_pause_behavior: String = BANSHEE_AGGRO_PAUSE_PAUSE
 @export_group("Ambient Patrol")
 @export var ambient_enabled: bool = false
 @export_range(0.1, 10.0, 0.1) var ambient_check_interval_seconds: float = 1.25
@@ -178,14 +184,25 @@ func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
 
 
 func pause_for_banshee():
+	if banshee_aggro_pause_behavior == BANSHEE_AGGRO_PAUSE_IGNORE:
+		return
+
 	pause_for_story()
 
 
 func resume_from_banshee():
+	if banshee_aggro_pause_behavior == BANSHEE_AGGRO_PAUSE_IGNORE:
+		reset_banshee_stalk_state()
+		return
+
 	resume_from_story()
 
 
 func on_assigned_banshee_defeated():
+	if assigned_banshee_defeat_behavior == ASSIGNED_BANSHEE_DEFEAT_RESUME_PATROL:
+		reset_banshee_stalk_state()
+		return
+
 	complete_story_pause()
 
 

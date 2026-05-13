@@ -58,6 +58,23 @@ func set_tuning(new_tuning: PlayerTuning):
 	health_changed.emit(health, max_health)
 	stamina_changed.emit(stamina, max_stamina)
 
+
+func set_form_tuning(new_tuning: PlayerTuning):
+	var preserved_max_health: int = max_health
+	var preserved_hits_to_die: int = hits_to_die
+	var preserved_health: int = health
+	var was_at_full_stamina := stamina >= max_stamina
+
+	tuning = new_tuning
+	apply_tuning()
+	max_health = preserved_max_health
+	hits_to_die = preserved_hits_to_die
+	health = clamp(preserved_health, 0, max_health)
+	stamina = max_stamina if was_at_full_stamina else clamp(stamina, 0.0, max_stamina)
+	health_changed.emit(health, max_health)
+	stamina_changed.emit(stamina, max_stamina)
+
+
 func apply_tuning():
 	if tuning == null:
 		tuning = DEFAULT_TUNING

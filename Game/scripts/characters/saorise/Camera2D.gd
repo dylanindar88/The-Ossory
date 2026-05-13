@@ -3,7 +3,7 @@ extends Camera2D
 @export var zoom_step := 0.001
 @export var min_zoom := 1.75
 @export var max_zoom := 3
-@export var default_zoom := 2.25
+@export var default_zoom := 2
 
 func _ready():
 	var initial_zoom: float = default_zoom

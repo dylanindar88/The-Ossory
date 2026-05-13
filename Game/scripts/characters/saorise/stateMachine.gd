@@ -168,8 +168,8 @@ func set_form(form_id: StringName) -> bool:
 	if not form_changed:
 		return false
 
-	if health.has_method("set_tuning"):
-		health.set_tuning(tuning)
+	if health.has_method("set_form_tuning"):
+		health.set_form_tuning(tuning)
 
 	if states.has("move"):
 		change_state("move")
@@ -549,6 +549,18 @@ func get_attack_animation_prefix() -> StringName:
 
 func get_save_form_id() -> StringName:
 	return transformation_controller.get_save_form_id()
+
+
+func collect_transformation_travel_state() -> Dictionary:
+	return transformation_controller.collect_transformation_travel_state()
+
+
+func apply_transformation_travel_state(state: Dictionary):
+	transformation_controller.apply_transformation_travel_state(state)
+
+
+func convert_story_wolf_lock_to_timed_wolf():
+	transformation_controller.convert_story_wolf_lock_to_timed_wolf()
 
 
 func end_transformation_immediately():

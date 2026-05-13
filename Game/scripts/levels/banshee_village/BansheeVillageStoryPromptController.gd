@@ -81,6 +81,17 @@ func handle_player_transformation_state_changed(active: bool):
 		sync_story_wolf_transformation_lock()
 		return
 
+	if flow.story_wolf_lock_active:
+		flow.story_transform_prompt_consumed = true
+		hide_story_prompt()
+		if flow.player != null and flow.player.has_method("start_story_wolf_transformation_lock"):
+			flow.player.start_story_wolf_transformation_lock()
+		return
+
+	if flow.story_transform_prompt_consumed:
+		sync_story_wolf_transformation_lock()
+		return
+
 	flow.story_transform_prompt_consumed = true
 	flow.story_wolf_lock_active = true
 	hide_story_prompt()

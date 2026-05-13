@@ -5,7 +5,6 @@ const BANSHEE_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
 const BANSHEE_CLEAR_RESPAWN = "respawn"
-const BANSHEE_CLEAR_PERMANENT_WOLF = "permanent_wolf_clear"
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
 const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 
@@ -24,6 +23,7 @@ func begin_combat_stage():
 	flow.third_wave_spawned = false
 	flow.cleared_villager_paths.clear()
 	flow.revealed_banshee_paths.clear()
+	flow.temporarily_cleared_banshee_paths.clear()
 	flow.permanently_cleared_banshee_paths.clear()
 	flow.defeated_banshees.clear()
 	flow.set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_MELEE)
@@ -45,7 +45,7 @@ func begin_wolf_hunt_ready_stage():
 	if flow.quest_stage == STAGE_RULES.STAGE_WOLF_HUNT_CLEARED:
 		return
 
-	if flow.are_all_banshees_permanently_cleared():
+	if flow.are_all_banshees_cleared_for_current_visit():
 		begin_wolf_hunt_cleared_stage()
 		save_wolf_clear_progress()
 		return
@@ -59,7 +59,7 @@ func begin_wolf_hunt_ready_stage():
 
 
 func begin_wolf_hunt_stage():
-	if flow.are_all_banshees_permanently_cleared():
+	if flow.are_all_banshees_cleared_for_current_visit():
 		begin_wolf_hunt_cleared_stage()
 		save_wolf_clear_progress()
 		return
@@ -84,6 +84,7 @@ func begin_third_wave_elder_ready_stage():
 	flow.story_transform_prompt_consumed = true
 	flow.cleared_villager_paths.clear()
 	flow.revealed_banshee_paths.clear()
+	flow.temporarily_cleared_banshee_paths.clear()
 	flow.permanently_cleared_banshee_paths.clear()
 	flow.defeated_banshees.clear()
 	flow.set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED)
@@ -93,7 +94,7 @@ func begin_third_wave_elder_ready_stage():
 
 
 func begin_third_wave_active_stage():
-	if flow.are_all_banshees_permanently_cleared():
+	if flow.are_all_banshees_cleared_for_current_visit():
 		begin_third_wave_cleared_stage()
 		save_third_wave_progress("banshee_third_wave_cleared")
 		return
@@ -158,19 +159,30 @@ func handle_banshee_defeated(banshee: Node):
 		flow.cleared_villager_paths[villager_path] = true
 	flow.set_villager_clear_sequence(villager)
 
-	if killed_by_wolf and flow.transformed_banshee_clear_policy != BANSHEE_CLEAR_RESPAWN:
-		if flow.transformed_banshee_clear_policy == BANSHEE_CLEAR_PERMANENT_WOLF and banshee_path != "":
+	if flow.should_make_banshee_clears_permanent():
+		if banshee_path != "":
 			flow.permanently_cleared_banshee_paths[banshee_path] = true
 		flow.apply_cleared_banshee_state(banshee)
 		flow.update_kill_counter()
-		if flow.quest_stage == STAGE_RULES.STAGE_REPORT_COMPLETE and flow.are_all_banshees_permanently_cleared():
+		if flow.is_third_wave_stage():
+			save_third_wave_progress("banshee_third_wave_progress")
+		else:
+			save_wolf_clear_progress()
+		return
+
+	if killed_by_wolf and flow.transformed_banshee_clear_policy != BANSHEE_CLEAR_RESPAWN:
+		if banshee_path != "":
+			flow.temporarily_cleared_banshee_paths[banshee_path] = true
+		flow.apply_cleared_banshee_state(banshee)
+		flow.update_kill_counter()
+		if flow.quest_stage == STAGE_RULES.STAGE_REPORT_COMPLETE and flow.are_all_banshees_cleared_for_current_visit():
 			begin_wolf_hunt_cleared_stage(true)
-		elif flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_ACTIVE and flow.are_all_banshees_permanently_cleared():
+		elif flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_ACTIVE and flow.are_all_banshees_cleared_for_current_visit():
 			begin_third_wave_cleared_stage()
 		elif (
 			flow.quest_stage == STAGE_RULES.STAGE_WOLF_HUNT_READY
 			or flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_ELDER_READY
-		) and flow.are_all_banshees_permanently_cleared():
+		) and flow.are_all_banshees_cleared_for_current_visit():
 			flow.refresh_quest_presentation()
 		if flow.is_third_wave_stage():
 			save_third_wave_progress("banshee_third_wave_progress")

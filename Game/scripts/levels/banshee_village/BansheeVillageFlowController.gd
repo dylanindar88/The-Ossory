@@ -10,10 +10,9 @@ const DIALOGUE_KEY_BISHOP_DIRECTION := &"bishop_direction"
 const DIALOGUE_KEY_THIRD_WAVE_ALREADY_CLEARED_WITH_BISHOP := &"third_wave_already_cleared_with_bishop"
 const BANSHEE_CLEAR_RESPAWN = "respawn"
 const BANSHEE_CLEAR_TEMPORARY_WOLF = "temporary_wolf_clear"
-const BANSHEE_CLEAR_PERMANENT_WOLF = "permanent_wolf_clear"
 const BANSHEE_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
-const LEVEL_STATE_VERSION = 5
+const LEVEL_STATE_VERSION = 6
 const VINCENT_HOUSE_INTERIOR_ID = "vincent_house"
 const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
@@ -63,7 +62,7 @@ const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own
 @export var final_dulluhan_marker_path: NodePath = NodePath("../PlayableWorld/Markers/StoryPositions/DulluhanVincentHouseFront")
 @export var vincent_beside_elder_marker_path: NodePath = NodePath("../PlayableWorld/Markers/StoryPositions/VincentBesideElder")
 @export var final_dulluhan_position: Vector2 = Vector2(1042, 577)
-@export_enum("respawn", "temporary_wolf_clear", "permanent_wolf_clear") var transformed_banshee_clear_policy: String = BANSHEE_CLEAR_PERMANENT_WOLF
+@export_enum("respawn", "temporary_wolf_clear") var transformed_banshee_clear_policy: String = BANSHEE_CLEAR_TEMPORARY_WOLF
 @export var story_dialogue_profile: DialogueProfile = DEFAULT_STORY_DIALOGUE_PROFILE
 @export var elder_reveal_sequence: DialogueSequence
 @export var elder_waiting_sequence: DialogueSequence
@@ -80,6 +79,7 @@ var quest_stage: String = STAGE_RULES_SCRIPT.STAGE_INTRO
 var banshee_kill_count: int = 0
 var cleared_villager_paths: Dictionary = {}
 var revealed_banshee_paths: Dictionary = {}
+var temporarily_cleared_banshee_paths: Dictionary = {}
 var permanently_cleared_banshee_paths: Dictionary = {}
 var defeated_banshees: Dictionary = {}
 var saved_banshee_states: Dictionary = {}
@@ -117,6 +117,7 @@ var interior_travel_controller
 var story_prompt_controller
 var presentation_controller
 var encounter_controller
+var location_exit_save_pending: bool = false
 
 
 func _ready():
@@ -154,7 +155,7 @@ func _ready():
 	encounter_controller = ENCOUNTER_CONTROLLER_SCRIPT.new()
 	encounter_controller.setup(self)
 
-	connect_player_interactions()
+	connect_player_story_signals()
 	connect_elder_dialogue()
 	connect_dulluhan_story()
 	connect_exterior_vincent_dialogue()
@@ -173,6 +174,7 @@ func collect_level_state() -> Dictionary:
 		"quest_stage": quest_stage,
 		"banshee_kill_count": banshee_kill_count,
 		"revealed_banshee_paths": revealed_banshee_paths.keys(),
+		"temporarily_cleared_banshee_paths": temporarily_cleared_banshee_paths.keys(),
 		"permanently_cleared_banshee_paths": permanently_cleared_banshee_paths.keys(),
 		"final_dulluhan_teaser_completed": final_dulluhan_teaser_completed,
 		"story_transform_prompt_consumed": story_transform_prompt_consumed,
@@ -215,6 +217,8 @@ func validate_level_state(state: Dictionary) -> Array:
 		messages.append("BansheeVillage save has malformed banshees snapshot data.")
 	if not (state.get("villagers", []) is Array):
 		messages.append("BansheeVillage save has malformed villagers snapshot data.")
+	if not (state.get("temporarily_cleared_banshee_paths", []) is Array):
+		messages.append("BansheeVillage save has malformed temporarily_cleared_banshee_paths.")
 
 	if elder == null:
 		messages.append("BansheeVillageFlowController could not find elder at %s." % elder_path)
@@ -280,6 +284,7 @@ func append_missing_assigned_villager_warnings(messages: Array):
 
 
 func apply_level_state(state: Dictionary):
+	location_exit_save_pending = false
 	state_generation += 1
 	var normalized_state: Dictionary = normalize_level_state(state)
 	quest_stage = get_valid_stage(str(normalized_state.get("quest_stage", STAGE_RULES_SCRIPT.STAGE_INTRO)))
@@ -295,6 +300,7 @@ func apply_level_state(state: Dictionary):
 	bishop_confrontation_accepted_for_level = get_saved_bool(normalized_state, "bishop_confrontation_accepted_for_level", infer_bishop_confrontation_accepted_from_stage(quest_stage))
 	cleared_villager_paths = {}
 	defeated_banshees.clear()
+	temporarily_cleared_banshee_paths = {}
 	permanently_cleared_banshee_paths = {}
 	saved_banshee_states = parse_saved_banshee_states(normalized_state.get("banshees", []))
 	saved_villager_states = SaveManager.parse_actor_snapshot_lookup(normalized_state.get("villagers", []))
@@ -304,6 +310,11 @@ func apply_level_state(state: Dictionary):
 	if saved_revealed_paths is Array:
 		for path in saved_revealed_paths:
 			revealed_banshee_paths[str(path)] = true
+
+	var saved_temporary_paths: Variant = normalized_state.get("temporarily_cleared_banshee_paths", [])
+	if saved_temporary_paths is Array:
+		for path in saved_temporary_paths:
+			temporarily_cleared_banshee_paths[str(path)] = true
 
 	var saved_permanent_paths: Variant = normalized_state.get("permanently_cleared_banshee_paths", [])
 	if saved_permanent_paths is Array:
@@ -395,14 +406,9 @@ func apply_dev_start_preset() -> bool:
 	return dev_preset_builder != null and dev_preset_builder.apply_dev_start_preset()
 
 
-func connect_player_interactions():
+func connect_player_story_signals():
 	if player == null:
 		return
-
-	if player.has_signal("interaction_requested"):
-		var callback: Callable = Callable(self, "_on_player_interaction_requested")
-		if not player.is_connected("interaction_requested", callback):
-			player.connect("interaction_requested", callback)
 
 	if player.has_signal("transformation_state_changed"):
 		var transform_callback: Callable = Callable(self, "_on_player_transformation_state_changed")
@@ -503,11 +509,17 @@ func get_banshees() -> Array[Node]:
 
 
 func collect_banshee_states() -> Array:
+	if location_exit_save_pending:
+		return []
+
 	var hostile_root: Node = get_node_or_null(hostile_root_path)
 	return SaveManager.collect_story_actor_states(get_parent(), hostile_root, "hostile_npcs")
 
 
 func collect_villager_states() -> Array:
+	if location_exit_save_pending:
+		return []
+
 	var npc_root: Node = get_node_or_null(npc_root_path)
 	return SaveManager.collect_story_actor_states(get_parent(), npc_root, "villagers")
 
@@ -560,6 +572,7 @@ func apply_intro_defaults():
 	hide_story_prompt()
 	cleared_villager_paths.clear()
 	revealed_banshee_paths.clear()
+	temporarily_cleared_banshee_paths.clear()
 	permanently_cleared_banshee_paths.clear()
 	defeated_banshees.clear()
 	saved_banshee_states.clear()
@@ -587,7 +600,7 @@ func refresh_quest_presentation():
 	if quest_stage == STAGE_RULES_SCRIPT.STAGE_INTRO:
 		set_elder_sequence(elder_reveal_sequence)
 	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY:
-		if are_all_banshees_permanently_cleared():
+		if are_all_banshees_cleared_for_current_visit():
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ALREADY_CLEARED_WITH_BISHOP))
 		else:
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_THIRD_WAVE_ELDER))
@@ -607,7 +620,7 @@ func refresh_quest_presentation():
 	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_FINAL_DULLUHAN_READY:
 		set_elder_sequence(elder_wolf_hunt_cleared_sequence if elder_wolf_hunt_cleared_sequence != null else elder_waiting_sequence)
 	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_READY:
-		if are_all_banshees_permanently_cleared():
+		if are_all_banshees_cleared_for_current_visit():
 			set_elder_sequence(get_story_dialogue_sequence(DIALOGUE_KEY_SECOND_HUNT_ALREADY_CLEARED))
 		else:
 			set_elder_sequence(elder_post_transformation_sequence if elder_post_transformation_sequence != null else elder_respawning_sequence)
@@ -639,6 +652,7 @@ func sync_global_story_progress():
 		SaveManager.set_banshee_world_rule("player_can_damage_banshees", banshee_hostile_enabled)
 		SaveManager.set_banshee_world_rule("wolf_permanent_clear_enabled", has_wolf_transformation_upgrade())
 		SaveManager.set_banshee_world_rule("combat_variant", BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED if strong_banshees_enabled else BANSHEE_VARIANT_CORRUPTED_MELEE)
+		SaveManager.set_banshee_world_rule("vincent_upgrades_enabled", strong_banshees_enabled)
 
 	if SaveManager.has_method("set_quest_stage"):
 		var current_bishop_quest_stage: String = "not_available"
@@ -648,7 +662,7 @@ func sync_global_story_progress():
 			return
 		if is_bishop_confrontation_accepted() or quest_stage == STAGE_RULES_SCRIPT.STAGE_BISHOP_PATH_READY:
 			SaveManager.set_quest_stage("banshee_village_bishop", "accepted")
-		elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED or (quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared()):
+		elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED or (quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_cleared_for_current_visit()):
 			SaveManager.set_quest_stage("banshee_village_bishop", "request_available")
 		else:
 			SaveManager.set_quest_stage("banshee_village_bishop", "not_available")
@@ -829,25 +843,33 @@ func begin_third_wave_active_stage():
 
 
 func _on_player_interaction_requested(interactable: Node2D):
+	handle_level_interaction(interactable, player)
+
+
+func handle_level_interaction(interactable: Node2D, interaction_player: Node2D) -> bool:
+	if interaction_player != null:
+		player = interaction_player
+
 	if interactable == vincent_house and can_enter_vincent_house():
 		enter_vincent_house()
-		return
+		return true
 
 	if interactable == null or not interactable.has_method("interact"):
-		return
+		return false
 
 	if is_route_exit_interactable(interactable):
 		interactable.interact(player)
-		return
+		return true
 
 	if player != null and player.has_method("can_current_form_talk") and not player.can_current_form_talk():
-		return
+		return true
 
 	if interactable == elder and elder_choice_bubble != null and is_instance_valid(elder_choice_bubble):
 		elder_choice_bubble.confirm_selection()
-		return
+		return true
 
 	interactable.interact(player)
+	return true
 
 
 func is_route_exit_interactable(interactable: Node) -> bool:
@@ -866,7 +888,7 @@ func _on_elder_dialogue_finished(_villager: Node):
 	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_WOLF_HUNT_CLEARED:
 		begin_final_dulluhan_stage()
 	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY:
-		if are_all_banshees_permanently_cleared():
+		if are_all_banshees_cleared_for_current_visit():
 			quest_stage = STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED
 			refresh_quest_presentation()
 			save_third_wave_progress("banshee_bishop_request_available")
@@ -880,7 +902,7 @@ func _on_elder_dialogue_finished(_villager: Node):
 func _on_exterior_vincent_dialogue_finished(_vincent: Node):
 	if quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED and not is_bishop_confrontation_accepted():
 		open_bishop_choice_prompt()
-	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_permanently_cleared():
+	elif quest_stage == STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_ELDER_READY and are_all_banshees_cleared_for_current_visit():
 		quest_stage = STAGE_RULES_SCRIPT.STAGE_THIRD_WAVE_CLEARED
 		refresh_quest_presentation()
 		save_third_wave_progress("banshee_bishop_request_available")
@@ -1042,6 +1064,62 @@ func are_all_banshees_permanently_cleared() -> bool:
 			return false
 
 	return true
+
+
+func are_all_banshees_cleared_for_current_visit() -> bool:
+	if banshees.is_empty():
+		return false
+
+	for banshee in banshees:
+		var banshee_path: String = get_relative_node_path(banshee)
+		if banshee_path == "":
+			return false
+		if not permanently_cleared_banshee_paths.has(banshee_path) and not temporarily_cleared_banshee_paths.has(banshee_path):
+			return false
+
+	return true
+
+
+func get_current_visit_banshee_clear_count() -> int:
+	var count: int = 0
+	for banshee in banshees:
+		var banshee_path: String = get_relative_node_path(banshee)
+		if banshee_path != "" and (permanently_cleared_banshee_paths.has(banshee_path) or temporarily_cleared_banshee_paths.has(banshee_path)):
+			count += 1
+	return count
+
+
+func should_make_banshee_clears_permanent() -> bool:
+	if SaveManager == null or not SaveManager.has_method("get_quest_stage"):
+		return false
+
+	return str(SaveManager.get_quest_stage("banshee_village_bishop")) == "bishop_defeated"
+
+
+func prepare_for_route_exit():
+	location_exit_save_pending = true
+	if story_wolf_lock_active and is_wolf_hunt_stage():
+		story_wolf_lock_active = false
+		story_transform_prompt_consumed = true
+		if player != null and player.has_method("convert_story_wolf_lock_to_timed_wolf"):
+			player.convert_story_wolf_lock_to_timed_wolf()
+		if SaveManager != null and SaveManager.has_method("set_pending_player_travel_message"):
+			SaveManager.set_pending_player_travel_message(FINAL_WOLF_INSTRUCTION_TEXT, 7.5)
+		final_wolf_instruction_shown = true
+
+	temporarily_cleared_banshee_paths.clear()
+	for banshee in banshees:
+		var banshee_path: String = get_relative_node_path(banshee)
+		if banshee_path != "" and permanently_cleared_banshee_paths.has(banshee_path):
+			continue
+
+		defeated_banshees.erase(banshee)
+		var villager: Node = get_banshee_assigned_villager(banshee)
+		var villager_path: String = get_relative_node_path(villager)
+		if villager_path != "":
+			cleared_villager_paths.erase(villager_path)
+	state_generation += 1
+	restore_stage_world_state()
 
 
 func is_wolf_hunt_stage() -> bool:

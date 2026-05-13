@@ -3,6 +3,7 @@
 Use for story-heavy or progression-owning levels.
 
 - Scene: `res://scenes/levels/<LevelName>.tscn`
+- Metadata: register the scene in `SaveManager.LEVEL_DISPLAY_REGISTRY` with a unique `level_index`, `display_name`, `category`, `is_boss_level`, and `map_region_id`.
 - Coordinator: `res://scripts/levels/<level_name>/<LevelName>FlowController.gd`
 - Helpers: progression, presentation, encounters, interiors, prompts, or dev presets only when needed.
 - Dialogue: `res://resources/dialogue/levels/<level_name>/`
@@ -11,7 +12,7 @@ Use for story-heavy or progression-owning levels.
 - Story staging markers: `PlayableWorld/Markers/StoryPositions/<StoryBeatOrActorName>`.
 - Patrol markers: `PlayableWorld/Markers/PatrolPaths/<PatrolName>`.
 - Route exits: `PlayableWorld/Environment/Interactables/RouteExits/<Name>Exit`.
-- Use `res://templates/route_level/README.md` for lightweight travel levels.
+- Use `res://templates/lightweight_level/README.md` for lightweight travel/exploration levels.
 - Keep level scene paths stable once saves or dev starts reference them.
 - It is okay for different marker types to share coordinates when they serve different systems.
 

@@ -347,6 +347,71 @@ func get_save_form_id() -> StringName:
 	return player.current_form_id
 
 
+func collect_transformation_travel_state() -> Dictionary:
+	return {
+		"form_id": str(player.current_form_id),
+		"is_transforming": false,
+		"transformation_duration": player.transformation_duration,
+		"transformation_time_remaining": player.transformation_time_remaining,
+		"transformation_cooldown_seconds": player.transformation_cooldown_seconds,
+		"transformation_cooldown_timer": player.transformation_cooldown_timer,
+		"story_wolf_transformation_locked": player.story_wolf_transformation_locked,
+		"dev_wolf_transformation_locked": player.dev_wolf_transformation_locked,
+	}
+
+
+func apply_transformation_travel_state(state: Dictionary):
+	if state.is_empty():
+		return
+
+	var form_id: StringName = StringName(str(state.get("form_id", "human")))
+	player.transformation_generation += 1
+	player.is_transforming = false
+	player.story_wolf_transformation_locked = bool(state.get("story_wolf_transformation_locked", false))
+	player.dev_wolf_transformation_locked = bool(state.get("dev_wolf_transformation_locked", false))
+	player.transformation_duration = maxf(float(state.get("transformation_duration", 0.0)), 0.0)
+	player.transformation_time_remaining = clampf(float(state.get("transformation_time_remaining", 0.0)), 0.0, player.transformation_duration)
+	player.transformation_cooldown_seconds = maxf(float(state.get("transformation_cooldown_seconds", player.transformation_cooldown_seconds)), 0.0)
+	player.transformation_cooldown_timer = clampf(float(state.get("transformation_cooldown_timer", 0.0)), 0.0, player.transformation_cooldown_seconds)
+	set_transformation_autosave_blocked(false)
+
+	if form_id == &"wolf" and not has_wolf_transformation_unlocked():
+		form_id = &"human"
+
+	player.set_form(form_id)
+	if form_id == &"wolf":
+		if player.transformation_duration <= 0.0:
+			player.transformation_duration = get_wolf_transformation_base_duration()
+		if player.transformation_time_remaining <= 0.0:
+			player.transformation_time_remaining = player.transformation_duration
+		player.transformation_state_changed.emit(true)
+		player.transformation_timer_changed.emit(player.transformation_time_remaining, player.transformation_duration, true)
+	else:
+		player.story_wolf_transformation_locked = false
+		player.dev_wolf_transformation_locked = false
+		player.transformation_duration = 0.0
+		player.transformation_time_remaining = 0.0
+		player.transformation_state_changed.emit(false)
+		player.transformation_timer_changed.emit(0.0, 0.0, false)
+
+	emit_transformation_cooldown_progress()
+	player.hold_dialogue_idle()
+	player.update_effects()
+
+
+func convert_story_wolf_lock_to_timed_wolf():
+	if not player.story_wolf_transformation_locked:
+		return
+
+	player.story_wolf_transformation_locked = false
+	var base_duration: float = get_wolf_transformation_base_duration()
+	player.transformation_duration = base_duration
+	player.transformation_time_remaining = base_duration
+	player.transformation_timer_changed.emit(player.transformation_time_remaining, player.transformation_duration, player.current_form_id == &"wolf")
+	set_transformation_autosave_blocked(false)
+	player.update_effects()
+
+
 func end_transformation_immediately():
 	player.transformation_generation += 1
 	player.is_transforming = false

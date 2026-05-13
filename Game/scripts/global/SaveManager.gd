@@ -3,6 +3,7 @@ extends Node
 signal upgrade_state_changed
 signal player_lives_changed(current_lives: int, max_lives: int)
 signal gauge_display_settings_changed(show_hud_gauges: bool, show_player_gauges: bool)
+signal current_level_changed(level_path: String, metadata: Dictionary)
 
 const SAVE_VERSION := 1
 const MANUAL_SAVE_SLOT_COUNT := 3
@@ -31,9 +32,47 @@ const BANSHEE_VARIANT_CORRUPTED_MELEE := "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED := "corrupted_strong_ranged"
 const BANSHEE_VILLAGE_SCENE := "res://scenes/levels/BansheeVillage.tscn"
 const STARTING_WILDERNESS_SCENE := "res://scenes/levels/StartingWilderness.tscn"
+const WEEPING_WOODS_SCENE := "res://scenes/levels/WeepingWoods.tscn"
+const LEVEL_CATEGORY_TOWN_CITY := "town_city"
+const LEVEL_CATEGORY_WILDERNESS := "wilderness"
+const LEVEL_CATEGORY_LARGE_INTERIOR := "large_interior"
+const LEVEL_CATEGORY_KEY_LOCATION := "key_location"
 const LEVEL_DISPLAY_REGISTRY := {
+	STARTING_WILDERNESS_SCENE: {
+		"level_index": 1,
+		"display_name": "Starting Wilderness",
+		"category": LEVEL_CATEGORY_KEY_LOCATION,
+		"is_boss_level": false,
+		"map_region_id": "starting_wilderness",
+		"progression_state_key": "",
+		"progression_names": {},
+		"dev_presets": [
+			{"label": "Intro", "preset": "intro"},
+			{"label": "Banshees Active", "preset": "banshees_active"},
+			{"label": "Wolf Unlocked", "preset": "wolf_unlocked"},
+			{"label": "Vincent Revealed", "preset": "vincent_revealed"},
+			{"label": "Bishop Available", "preset": "bishop_available"},
+			{"label": "Bishop Defeated", "preset": "bishop_defeated"},
+		],
+	},
+	WEEPING_WOODS_SCENE: {
+		"level_index": 2,
+		"display_name": "Weeping Woods",
+		"category": LEVEL_CATEGORY_WILDERNESS,
+		"is_boss_level": false,
+		"map_region_id": "weeping_woods",
+		"progression_state_key": "",
+		"progression_names": {},
+		"dev_presets": [
+			{"label": "Start", "preset": ""},
+		],
+	},
 	BANSHEE_VILLAGE_SCENE: {
+		"level_index": 3,
 		"display_name": "Banshee Village",
+		"category": LEVEL_CATEGORY_TOWN_CITY,
+		"is_boss_level": false,
+		"map_region_id": "banshee_village",
 		"progression_state_key": "quest_stage",
 		"progression_names": {
 			"intro": "Banshee Village Arrival",
@@ -55,14 +94,6 @@ const LEVEL_DISPLAY_REGISTRY := {
 			{"label": "First Report", "preset": "first_banshee_report_ready"},
 			{"label": "Second Report", "preset": "second_banshee_report_ready"},
 			{"label": "Third Report", "preset": "third_banshee_report_ready"},
-		],
-	},
-	STARTING_WILDERNESS_SCENE: {
-		"display_name": "Starting Wilderness",
-		"progression_state_key": "",
-		"progression_names": {},
-		"dev_presets": [
-			{"label": "Start", "preset": ""},
 		],
 	},
 }
@@ -88,10 +119,14 @@ var pending_scene_load_scene_path: String = ""
 var pending_scene_load_preserve_story_flags: bool = false
 var pending_scene_load_save_reason: String = ""
 var pending_scene_load_entry_marker_path: NodePath
+var pending_player_travel_state: Dictionary = {}
+var pending_player_travel_message_text: String = ""
+var pending_player_travel_message_timeout: float = 0.0
 var respawn_load_pending: bool = false
 var pending_new_game_slot: int = -1
 var pending_dev_start_scene_path: String = ""
 var pending_dev_start_preset: String = ""
+var pending_dev_switch_slot: int = -1
 var upgrade_state: Dictionary = {
 	"unlocked": {
 		"attack": true,
@@ -336,8 +371,17 @@ func get_save_disabled_message() -> String:
 	return ""
 
 
-func autosave_level_entered(level: Node) -> bool:
+func set_current_level(level: Node):
+	if current_level == level and level != null and is_instance_valid(level):
+		return
+
 	current_level = level
+	var level_path: String = get_level_path(level)
+	current_level_changed.emit(level_path, get_level_metadata(level_path))
+
+
+func autosave_level_entered(level: Node) -> bool:
+	set_current_level(level)
 	if should_skip_autosave("level_enter"):
 		last_error = ""
 		return false
@@ -418,6 +462,7 @@ func should_block_player_death_save() -> bool:
 
 
 func change_scene_to_file_and_load(scene_path: String, slot: int = AUTOSAVE_SLOT, preserve_current_story_flags: bool = false, save_after_load_reason: String = "", entry_marker_path: NodePath = NodePath("")) -> Error:
+	capture_pending_player_travel_state()
 	pending_scene_load_slot = slot
 	pending_scene_load_scene_path = scene_path
 	pending_scene_load_preserve_story_flags = preserve_current_story_flags
@@ -462,6 +507,8 @@ func apply_pending_scene_load():
 	var load_succeeded: bool = load_slot_into_current_level(load_slot)
 	if not load_succeeded:
 		warn_pending_scene_load_failed(load_slot)
+		apply_level_state(get_current_level(), {})
+		apply_pending_player_travel_state(get_current_level())
 		clear_pending_scene_load()
 		respawn_load_pending = false
 		set_tree_paused_safely(false)
@@ -475,6 +522,7 @@ func apply_pending_scene_load():
 			if raw_state is Dictionary:
 				set_quest_state(str(quest_id), raw_state)
 	apply_pending_scene_entry_marker(get_current_level())
+	apply_pending_player_travel_state(get_current_level())
 	set_tree_paused_safely(false)
 
 	var save_reason: String = pending_scene_load_save_reason
@@ -510,6 +558,69 @@ func clear_pending_scene_load():
 	set_autosave_blocked(PENDING_SCENE_LOAD_AUTOSAVE_BLOCKER, false)
 
 
+func capture_pending_player_travel_state():
+	pending_player_travel_state = {}
+	var player: Node = get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("collect_transformation_travel_state"):
+		var raw_state: Variant = player.call("collect_transformation_travel_state")
+		if raw_state is Dictionary:
+			pending_player_travel_state = (raw_state as Dictionary).duplicate(true)
+
+
+func apply_pending_player_travel_state(level: Node):
+	if pending_player_travel_state.is_empty() and pending_player_travel_message_text == "":
+		return
+
+	var player: Node = get_tree().get_first_node_in_group("player")
+	if player != null and player.has_method("apply_transformation_travel_state") and not pending_player_travel_state.is_empty():
+		var travel_state: Dictionary = pending_player_travel_state.duplicate(true)
+		if get_level_path(level) != BANSHEE_VILLAGE_SCENE:
+			travel_state["story_wolf_transformation_locked"] = false
+		player.call("apply_transformation_travel_state", travel_state)
+
+	if pending_player_travel_message_text != "":
+		show_pending_player_travel_message(player)
+
+	pending_player_travel_state = {}
+	pending_player_travel_message_text = ""
+	pending_player_travel_message_timeout = 0.0
+
+
+func set_pending_player_travel_message(text: String, timeout_seconds: float = 7.5):
+	pending_player_travel_message_text = text
+	pending_player_travel_message_timeout = timeout_seconds
+
+
+func show_pending_player_travel_message(player: Node):
+	if player == null or not (player is Node2D):
+		return
+
+	var label: Label = Label.new()
+	label.name = "TravelStoryPrompt"
+	label.z_as_relative = false
+	label.z_index = 250
+	label.position = Vector2(-120.0, -120.0)
+	label.size = Vector2(240.0, 58.0)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_font_size_override("font_size", 9)
+	label.add_theme_color_override("font_color", Color(0.98, 0.94, 0.82, 1.0))
+	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.9))
+	label.add_theme_constant_override("shadow_offset_x", 1)
+	label.add_theme_constant_override("shadow_offset_y", 1)
+	label.text = pending_player_travel_message_text
+	player.add_child(label)
+	if pending_player_travel_message_timeout > 0.0:
+		hide_travel_message_after_delay(label, pending_player_travel_message_timeout)
+
+
+func hide_travel_message_after_delay(label: Label, timeout_seconds: float):
+	await get_tree().create_timer(timeout_seconds).timeout
+	if label != null and is_instance_valid(label):
+		label.queue_free()
+
+
 func start_new_game(slot: int, start_scene_path: String) -> bool:
 	if not is_manual_save_slot(slot):
 		last_error = "Save slot %d is not a manual save slot." % slot
@@ -521,6 +632,9 @@ func start_new_game(slot: int, start_scene_path: String) -> bool:
 	clear_pending_scene_load()
 	respawn_load_pending = false
 	pending_new_game_slot = slot
+	pending_player_travel_state = {}
+	pending_player_travel_message_text = ""
+	pending_player_travel_message_timeout = 0.0
 	active_slot = slot
 	story_flags.clear()
 	quest_states.clear()
@@ -641,6 +755,51 @@ func start_dev_scene(scene_path: String, preset: String = "") -> bool:
 
 	last_error = ""
 	return true
+
+
+func dev_switch_active_save_to_level(scene_path: String, preset: String = "") -> bool:
+	if not OS.is_debug_build() and not Engine.is_editor_hint():
+		last_error = "Dev travel is only available in debug builds."
+		return false
+	if scene_path == "":
+		last_error = "Dev travel scene is missing."
+		return false
+	if not is_manual_save_slot(active_slot):
+		last_error = "Dev travel requires an active manual save slot."
+		return false
+
+	prepare_current_level_for_route_exit()
+	remember_level_state(get_current_level())
+	capture_pending_player_travel_state()
+	set_pending_dev_start(scene_path, preset)
+	pending_dev_switch_slot = active_slot
+	set_tree_paused_safely(false)
+	var error: Error = get_tree().change_scene_to_file(scene_path)
+	if error != OK:
+		pending_dev_switch_slot = -1
+		set_pending_dev_start("", "")
+		last_error = "Could not dev travel to %s. Error: %s" % [scene_path, error_string(error)]
+		return false
+
+	call_deferred("complete_pending_dev_switch_save")
+	last_error = ""
+	return true
+
+
+func complete_pending_dev_switch_save():
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var slot: int = pending_dev_switch_slot
+	pending_dev_switch_slot = -1
+	if not is_manual_save_slot(slot):
+		return
+
+	var level: Node = get_current_level()
+	apply_pending_player_travel_state(level)
+	set_autosave_blocked("banshee_village_dev_preset", false)
+	save_game_to_slot(slot, "dev_travel", level)
+	save_game("dev_travel", level)
 
 
 func load_slot_into_current_level(slot: int) -> bool:
@@ -768,9 +927,8 @@ func get_level_state_from_save_data(data: Dictionary, level_path: String) -> Dic
 
 
 func get_save_display_name(level_path: String, level_state: Dictionary, _saved_quest_states: Variant = {}) -> String:
-	var raw_entry: Variant = LEVEL_DISPLAY_REGISTRY.get(level_path, {})
-	if raw_entry is Dictionary:
-		var entry: Dictionary = raw_entry
+	var entry: Dictionary = get_level_metadata(level_path)
+	if not entry.is_empty():
 		var display_name: String = str(entry.get("display_name", get_level_display_name_fallback(level_path)))
 		var progression_state_key: String = str(entry.get("progression_state_key", ""))
 		var raw_progression_names: Variant = entry.get("progression_names", {})
@@ -782,6 +940,30 @@ func get_save_display_name(level_path: String, level_state: Dictionary, _saved_q
 		return display_name
 
 	return get_level_display_name_fallback(level_path)
+
+
+func get_level_metadata(level_path: String) -> Dictionary:
+	var raw_entry: Variant = LEVEL_DISPLAY_REGISTRY.get(level_path, {})
+	if raw_entry is Dictionary:
+		var entry: Dictionary = raw_entry
+		return entry.duplicate(true)
+
+	return {}
+
+
+func get_current_level_metadata() -> Dictionary:
+	return get_level_metadata(get_level_path(get_current_level()))
+
+
+func get_level_location_label(level_path: String, include_index: bool = false) -> String:
+	var metadata: Dictionary = get_level_metadata(level_path)
+	var display_name: String = str(metadata.get("display_name", get_level_display_name_fallback(level_path)))
+	if include_index:
+		var level_index: int = int(metadata.get("level_index", 0))
+		if level_index > 0:
+			return "%02d - %s" % [level_index, display_name]
+
+	return display_name
 
 
 func get_level_display_name_fallback(level_path: String) -> String:
@@ -809,11 +991,22 @@ func get_title_dev_level_entries() -> Array:
 
 		entries.append({
 			"scene_path": str(level_path),
-			"display_name": str(entry.get("display_name", get_level_display_name_fallback(str(level_path)))),
+			"level_index": int(entry.get("level_index", 0)),
+			"display_name": get_level_location_label(str(level_path), true),
 			"dev_presets": raw_presets,
 		})
 
+	entries.sort_custom(Callable(self, "sort_dev_level_entry_by_index"))
 	return entries
+
+
+func sort_dev_level_entry_by_index(a: Dictionary, b: Dictionary) -> bool:
+	var a_index: int = int(a.get("level_index", 0))
+	var b_index: int = int(b.get("level_index", 0))
+	if a_index == b_index:
+		return str(a.get("display_name", "")) < str(b.get("display_name", ""))
+
+	return a_index < b_index
 
 
 func reset_current_level_for_dev() -> bool:
@@ -860,22 +1053,35 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 	var current_level_path: String = get_level_path(level)
 	var raw_saved_level_states: Variant = data.get("level_states_by_path", {})
 	var has_multi_level_state: bool = raw_saved_level_states is Dictionary
-	if current_level_path != "" and saved_level_path != "" and saved_level_path != current_level_path and not has_multi_level_state:
+	var is_pending_scene_transition: bool = is_scene_load_pending_for(current_level_path)
+	if current_level_path != "" and saved_level_path != "" and saved_level_path != current_level_path and not has_multi_level_state and not is_pending_scene_transition:
 		last_error = "Save data belongs to a different level."
 		return false
 
 	var legacy_level_state: Variant = data.get("level_state", {})
 	apply_level_states_by_path(raw_saved_level_states, saved_level_path, legacy_level_state)
-	if current_level_path != "" and saved_level_path != "" and saved_level_path != current_level_path and get_saved_level_state_for_path(current_level_path).is_empty():
+	var destination_state_missing_for_pending_transition: bool = (
+		is_pending_scene_transition
+		and current_level_path != ""
+		and saved_level_path != ""
+		and saved_level_path != current_level_path
+		and get_saved_level_state_for_path(current_level_path).is_empty()
+	)
+	if current_level_path != "" and saved_level_path != "" and saved_level_path != current_level_path and get_saved_level_state_for_path(current_level_path).is_empty() and not is_pending_scene_transition:
 		warn_level_state_load_mismatch(current_level_path, saved_level_path)
 		last_error = "Save data belongs to a different level."
 		return false
-	var current_level_state: Dictionary = get_level_state_for_current_load(current_level_path, saved_level_path, legacy_level_state)
-	if current_level_state.is_empty() and has_saved_scene_local_state(saved_level_path, legacy_level_state):
+	var current_level_state: Dictionary = {}
+	if not destination_state_missing_for_pending_transition:
+		current_level_state = get_level_state_for_current_load(current_level_path, saved_level_path, legacy_level_state)
+	if current_level_state.is_empty() and has_saved_scene_local_state(saved_level_path, legacy_level_state) and not is_pending_scene_transition:
 		warn_level_state_load_mismatch(current_level_path, saved_level_path)
 		last_error = "Save data could not be applied to the current level state."
 		return false
 	var current_level_state_source: String = get_level_state_source_for_current_load(current_level_path, saved_level_path, legacy_level_state)
+	if current_level_state.is_empty() and is_pending_scene_transition and current_level_path != saved_level_path:
+		current_level_state_source = "pending_scene_default"
+		print_verbose("Pending scene load has no saved local state for '%s'; applying default level state." % current_level_path)
 	warn_level_state_restore_source(int(data.get("slot", 0)), current_level_path, saved_level_path, current_level_state_source, current_level_state)
 
 	if CombatStateManager != null and CombatStateManager.has_method("clear_all"):

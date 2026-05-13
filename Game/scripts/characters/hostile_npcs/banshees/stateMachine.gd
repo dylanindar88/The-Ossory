@@ -17,6 +17,10 @@ const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/h
 @export var villager_reversal_front_buffer: float = 4.0
 @export var tuning: BansheeTuning = DEFAULT_TUNING
 @export_enum("corrupted_melee", "corrupted_strong_ranged") var combat_variant: String = COMBAT_VARIANT_CORRUPTED_MELEE
+@export_enum("corrupted_melee", "corrupted_strong_ranged") var base_combat_variant: String = COMBAT_VARIANT_CORRUPTED_MELEE
+@export_enum("corrupted_melee", "corrupted_strong_ranged") var upgraded_combat_variant: String = COMBAT_VARIANT_CORRUPTED_STRONG_RANGED
+@export var upgrade_after_vincent: bool = true
+@export var undetected_alpha: float = 0.2
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health = $Health
@@ -79,12 +83,12 @@ var block_stun_duration: float
 var block_stun_move_speed_modifier: float
 var player_stop_distance: float
 var facing_deadzone: float
-var combat_enabled: bool = true
-var damage_enabled: bool = true
+var combat_enabled: bool = false
+var damage_enabled: bool = false
 var story_revealed: bool = false
 var story_spawn_position: Vector2
 var story_spawn_facing_left: bool = false
-var suppress_story_detection: bool = false
+var suppress_story_detection: bool = true
 var last_damage_source: Node = null
 var last_killer_form_id: StringName = &""
 
@@ -99,6 +103,7 @@ func _ready():
 	aggro_sensor.setup(self)
 	story_lifecycle.setup(self)
 	configure_collision()
+	set_story_combat_enabled(combat_enabled, undetected_alpha)
 	connect_ranges()
 	setup_villager_stalk_behavior()
 
@@ -125,6 +130,7 @@ func _ready():
 
 	player = get_tree().get_first_node_in_group("player")
 	refresh_patrol_points()
+	apply_unrevealed_opacity()
 	change_state(get_default_state())
 
 
@@ -291,7 +297,7 @@ func select_nearest_patrol_point():
 
 
 func return_to_default_state():
-	if has_patrol_route():
+	if has_patrol_route() or has_assigned_villager():
 		begin_return_to_patrol()
 		return
 
@@ -306,16 +312,39 @@ func begin_return_to_static_position():
 
 
 func begin_return_to_patrol():
-	if not has_patrol_route():
+	if not has_patrol_route() and not has_assigned_villager():
 		begin_return_to_static_position()
 		return
 
 	keep_assigned_villager_waiting()
 	returning_to_static_position = false
-	return_patrol_path_offset = patrol_route.path_offset
-	return_patrol_point_index = patrol_route.point_index
-	return_patrol_target = get_return_patrol_target()
+	if has_patrol_route():
+		return_patrol_path_offset = patrol_route.path_offset
+		return_patrol_point_index = patrol_route.point_index
+		return_patrol_target = get_return_patrol_target()
+	elif get_assigned_villager() is Node2D:
+		var villager_node: Node2D = get_assigned_villager() as Node2D
+		return_patrol_target = villager_node.global_position
+	else:
+		return_patrol_target = story_spawn_position
 	change_state("return_to_patrol")
+
+
+func begin_assigned_villager_catchup_if_needed() -> bool:
+	if dead or not has_assigned_villager():
+		return false
+
+	var villager: Node = get_assigned_villager()
+	if not (villager is Node2D):
+		return false
+
+	var villager_node: Node2D = villager as Node2D
+	var return_arrival_distance: float = villager_stalk_behavior.get_return_arrival_distance()
+	if global_position.distance_to(villager_node.global_position) <= return_arrival_distance:
+		return false
+
+	begin_return_to_patrol()
+	return true
 
 
 func get_return_patrol_target() -> Vector2:
@@ -679,6 +708,11 @@ func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
 	combat_area_controller.set_story_combat_enabled(enabled, visible_alpha)
 
 
+func apply_unrevealed_opacity():
+	if not story_revealed and not dead:
+		modulate.a = undetected_alpha
+
+
 func set_damage_enabled(enabled: bool):
 	combat_area_controller.set_damage_enabled(enabled)
 
@@ -720,6 +754,24 @@ func set_combat_variant(variant: String):
 
 func get_combat_variant() -> String:
 	return combat_variant
+
+
+func resolve_combat_variant_for_story(upgrades_available: bool) -> String:
+	if upgrades_available and upgrade_after_vincent:
+		return normalize_combat_variant(upgraded_combat_variant)
+
+	return normalize_combat_variant(base_combat_variant)
+
+
+func apply_story_combat_variant(upgrades_available: bool):
+	set_combat_variant(resolve_combat_variant_for_story(upgrades_available))
+
+
+func normalize_combat_variant(variant: String) -> String:
+	if variant == COMBAT_VARIANT_CORRUPTED_STRONG_RANGED:
+		return COMBAT_VARIANT_CORRUPTED_STRONG_RANGED
+
+	return COMBAT_VARIANT_CORRUPTED_MELEE
 
 
 func apply_saved_combat_variant(state: Dictionary):
@@ -833,6 +885,10 @@ func refresh_player_ranges_after_transform():
 
 func refresh_player_ranges_after_transform_deferred():
 	await aggro_sensor.refresh_player_ranges_after_transform_deferred()
+
+
+func is_refreshing_player_ranges_after_transform() -> bool:
+	return aggro_sensor.is_refreshing_player_ranges_after_transform()
 
 
 func is_player_overlapping_area(area: Area2D) -> bool:

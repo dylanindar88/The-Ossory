@@ -132,13 +132,18 @@ func set_banshee_world_rule(rule_name: String, value: Variant):
 
 func get_banshee_world_rules() -> Dictionary:
 	var flags: Dictionary = get_quest_state(save_manager.QUEST_BANSHEE_WORLD).get("flags", {})
+	var bishop_defeated: bool = get_quest_stage(save_manager.QUEST_BANSHEE_VILLAGE_BISHOP) == save_manager.QUEST_STAGE_BISHOP_DEFEATED
 	var variant: String = str(flags.get("combat_variant", save_manager.BANSHEE_VARIANT_CORRUPTED_MELEE))
+	if bishop_defeated:
+		variant = save_manager.BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
 	if variant != save_manager.BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED:
 		variant = save_manager.BANSHEE_VARIANT_CORRUPTED_MELEE
 
 	return {
-		"banshees_hostile_enabled": bool(flags.get("banshees_hostile_enabled", false)),
-		"player_can_damage_banshees": bool(flags.get("player_can_damage_banshees", false)),
-		"wolf_permanent_clear_enabled": bool(flags.get("wolf_permanent_clear_enabled", false)),
+		"banshees_hostile_enabled": bool(flags.get("banshees_hostile_enabled", false)) or bishop_defeated,
+		"player_can_damage_banshees": bool(flags.get("player_can_damage_banshees", false)) or bishop_defeated,
+		"wolf_permanent_clear_enabled": bool(flags.get("wolf_permanent_clear_enabled", false)) or bishop_defeated,
+		"bishop_defeated": bishop_defeated,
 		"combat_variant": variant,
+		"vincent_upgrades_enabled": variant == save_manager.BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED,
 	}

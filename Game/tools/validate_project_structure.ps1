@@ -71,7 +71,10 @@ $stalePatterns = @(
     'res://scripts/global/banshee_village/',
     'res://scenes/levels/InitialSpawn\.tscn',
     'Level-InitialSpawn',
-    'InitialSpawnOption'
+    'InitialSpawnOption',
+    'res://templates/route_level/',
+    'Route Level Template',
+    'Route\s+[0-9]+'
 )
 
 foreach ($file in $textFiles) {
@@ -102,6 +105,103 @@ if (Test-Path -LiteralPath $globalRoot) {
         $relative = Get-RelativePath $file.FullName
         if ($relative -match 'scripts/global/banshee_village' -or $file.Name -eq "BansheeVillageFlowController.gd" -or $file.Name -eq "VincentHouseInteriorController.gd") {
             Add-ValidationError "$relative is level-specific but lives under scripts/global."
+        }
+    }
+}
+
+$saveManagerPath = Join-Path $projectRoot "scripts\global\SaveManager.gd"
+if (Test-Path -LiteralPath $saveManagerPath) {
+    $saveManagerContent = Get-Content -LiteralPath $saveManagerPath -Raw
+    $categoryValues = @{}
+    $categoryMatches = [regex]::Matches($saveManagerContent, 'const (LEVEL_CATEGORY_[A-Z0-9_]+) := "([^"]+)"')
+    foreach ($match in $categoryMatches) {
+        $categoryValues[$match.Groups[1].Value] = $match.Groups[2].Value
+    }
+
+    $allowedCategories = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($value in $categoryValues.Values) {
+        [void]$allowedCategories.Add($value)
+    }
+
+    $sceneConstantToPath = @{}
+    $sceneConstantMatches = [regex]::Matches($saveManagerContent, 'const ([A-Z0-9_]+_SCENE) := "(res://scenes/levels/[^"]+\.tscn)"')
+    foreach ($match in $sceneConstantMatches) {
+        $sceneConstantToPath[$match.Groups[1].Value] = $match.Groups[2].Value
+    }
+
+    $indexToScene = @{}
+    $registeredScenePaths = New-Object System.Collections.Generic.HashSet[string]
+    foreach ($constantName in $sceneConstantToPath.Keys) {
+        $scenePath = $sceneConstantToPath[$constantName]
+        [void]$registeredScenePaths.Add($scenePath)
+        $fullScenePath = Convert-ResPathToFullPath $scenePath
+        if ($fullScenePath -eq "" -or -not (Test-Path -LiteralPath $fullScenePath)) {
+            Add-ValidationError "SaveManager registers missing level scene: $scenePath"
+            continue
+        }
+
+        $entryMatch = [regex]::Match($saveManagerContent, "(?ms)$([regex]::Escape($constantName)):\s*\{(.*?)\n\t\},")
+        if (-not $entryMatch.Success) {
+            Add-ValidationError "SaveManager level scene $scenePath is missing a LEVEL_DISPLAY_REGISTRY entry."
+            continue
+        }
+
+        $entryBody = $entryMatch.Groups[1].Value
+        $indexMatch = [regex]::Match($entryBody, '"level_index":\s*([0-9]+)')
+        if (-not $indexMatch.Success) {
+            Add-ValidationError "SaveManager level scene $scenePath is missing level_index."
+        } else {
+            $levelIndex = [int]::Parse($indexMatch.Groups[1].Value)
+            if ($levelIndex -le 0) {
+                Add-ValidationError "SaveManager level scene $scenePath has non-positive level_index $levelIndex."
+            } elseif ($indexToScene.ContainsKey($levelIndex)) {
+                Add-ValidationError "SaveManager level_index $levelIndex is duplicated by $scenePath and $($indexToScene[$levelIndex])."
+            } else {
+                $indexToScene[$levelIndex] = $scenePath
+            }
+        }
+
+        foreach ($requiredField in @("display_name", "map_region_id")) {
+            $fieldMatch = [regex]::Match($entryBody, '"' + $requiredField + '":\s*"([^"]*)"')
+            if (-not $fieldMatch.Success -or $fieldMatch.Groups[1].Value -eq "") {
+                Add-ValidationError "SaveManager level scene $scenePath has an empty or missing $requiredField."
+            }
+        }
+
+        $categoryMatch = [regex]::Match($entryBody, '"category":\s*(?:"([^"]+)"|([A-Z0-9_]+))')
+        if (-not $categoryMatch.Success) {
+            Add-ValidationError "SaveManager level scene $scenePath is missing category."
+        } else {
+            $category = $categoryMatch.Groups[1].Value
+            if ($category -eq "") {
+                $categoryConstant = $categoryMatch.Groups[2].Value
+                $category = [string]$categoryValues[$categoryConstant]
+            }
+            if ($category -eq "" -or -not $allowedCategories.Contains($category)) {
+                Add-ValidationError "SaveManager level scene $scenePath has invalid category '$($categoryMatch.Value)'."
+            }
+        }
+
+        $bossMatch = [regex]::Match($entryBody, '"is_boss_level":\s*(true|false)')
+        if (-not $bossMatch.Success) {
+            Add-ValidationError "SaveManager level scene $scenePath is missing is_boss_level."
+        }
+    }
+
+    $levelsRoot = Join-Path $projectRoot "scenes\levels"
+    if (Test-Path -LiteralPath $levelsRoot) {
+        $levelScenes = Get-ChildItem -Path $levelsRoot -Filter "*.tscn" -File
+        foreach ($scene in $levelScenes) {
+            $relativeScenePath = "res://scenes/levels/$($scene.Name)"
+            if (-not $registeredScenePaths.Contains($relativeScenePath)) {
+                Add-ValidationError "$relativeScenePath is missing from SaveManager.LEVEL_DISPLAY_REGISTRY."
+            }
+
+            $sceneContent = Get-Content -LiteralPath $scene.FullName -Raw
+            $expectedRootName = "Level-$($scene.BaseName)"
+            if ($sceneContent -notmatch "\[node name=`"$([regex]::Escape($expectedRootName))`" type=`"Node2D`"\]") {
+                Add-ValidationError "$relativeScenePath root node should be '$expectedRootName'."
+            }
         }
     }
 }

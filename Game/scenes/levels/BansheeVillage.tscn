@@ -1,4 +1,4 @@
-[gd_scene load_steps=46 format=3 uid="uid://tm3ttab50kd3"]
+[gd_scene load_steps=47 format=3 uid="uid://tm3ttab50kd3"]
 
 [ext_resource type="Texture2D" uid="uid://brkmctvq1u5iw" path="res://art/terrain/graves/grave1.aseprite" id="2_v2wya"]
 [ext_resource type="Texture2D" uid="uid://cbuinl7rlsyqa" path="res://art/terrain/graves/grave2.aseprite" id="3_l450g"]
@@ -35,6 +35,7 @@
 [ext_resource type="PackedScene" uid="uid://gd1nn4prmspg" path="res://scenes/environment/buildings/VincentHouseInterior.tscn" id="44_vincent_interior"]
 [ext_resource type="PackedScene" uid="uid://w7osmdtqr73a" path="res://scenes/characters/npcs/vincent/Vincent.tscn" id="45_vincent"]
 [ext_resource type="Script" path="res://scripts/interactions/RouteExitArea.gd" id="46_route_exit"]
+[ext_resource type="Script" path="res://scripts/levels/shared/LevelInteractionRouter.gd" id="47_interaction_router"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jdcol"]
 size = Vector2(21.9688, 3.03253)
@@ -447,6 +448,8 @@ y_sort_enabled = true
 position = Vector2(-1212, 419)
 script = ExtResource("46_route_exit")
 route_id = "west"
+destination_scene_path = "res://scenes/levels/WeepingWoods.tscn"
+destination_entry_marker_path = NodePath("PlayableWorld/Markers/Entrances/NorthEastEntrance")
 blocked_message = "The western path is not available yet."
 missing_destination_message = "The western route has not been built yet."
 
@@ -756,6 +759,10 @@ scale = Vector2(0.9, 0.9)
 
 [node name="LevelSaveController" type="Node" parent="."]
 script = ExtResource("35_lsc")
+
+[node name="LevelInteractionRouter" type="Node" parent="."]
+script = ExtResource("47_interaction_router")
+level_controller_path = NodePath("../BansheeVillageFlowController")
 
 [node name="BansheeVillageFlowController" type="Node" parent="."]
 script = ExtResource("36_flow")

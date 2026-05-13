@@ -24,7 +24,7 @@ const VALID_DEV_PRESETS: Array[String] = [
 const WOLF_TRANSFORMATION_DULLUHAN_UNLOCK_FLAG = "wolf_transformation_unlocked_by_dulluhan"
 const VINCENT_HOUSE_DIALOGUE_FLAG = "vincent_house_dialogue_completed"
 const BISHOP_CONFRONTATION_ACCEPTED_FLAG = "bishop_confrontation_accepted"
-const LEVEL_STATE_VERSION = 5
+const LEVEL_STATE_VERSION = 6
 const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 
 var flow
@@ -80,6 +80,7 @@ func get_dev_preset_options() -> Array[String]:
 func build_dev_level_state(preset: String) -> Dictionary:
 	var stage: String = STAGE_RULES.STAGE_INTRO
 	var kill_count: int = 0
+	var temporary_paths: Array = []
 	var permanent_paths: Array = []
 	if preset == DEV_PRESET_ELDER_QUEST_ACCEPTED:
 		stage = STAGE_RULES.STAGE_COMBAT_ACTIVE
@@ -95,11 +96,11 @@ func build_dev_level_state(preset: String) -> Dictionary:
 	elif preset == DEV_PRESET_SECOND_BANSHEE_REPORT_READY:
 		stage = STAGE_RULES.STAGE_WOLF_HUNT_CLEARED
 		kill_count = int(flow.get("report_kill_threshold")) + get_banshees().size()
-		permanent_paths = get_all_banshee_paths()
+		temporary_paths = get_all_banshee_paths()
 	elif preset == DEV_PRESET_THIRD_BANSHEE_REPORT_READY:
 		stage = STAGE_RULES.STAGE_THIRD_WAVE_CLEARED
 		kill_count = int(flow.get("report_kill_threshold")) + get_banshees().size()
-		permanent_paths = get_all_banshee_paths()
+		temporary_paths = get_all_banshee_paths()
 	var dev_dulluhan_transformation_granted: bool = does_preset_unlock_wolf_transformation(preset)
 
 	return {
@@ -107,6 +108,7 @@ func build_dev_level_state(preset: String) -> Dictionary:
 		"quest_stage": stage,
 		"banshee_kill_count": kill_count,
 		"revealed_banshee_paths": [],
+		"temporarily_cleared_banshee_paths": temporary_paths,
 		"permanently_cleared_banshee_paths": permanent_paths,
 		"final_dulluhan_teaser_completed": does_preset_start_after_final_dulluhan_teaser(preset),
 		"story_transform_prompt_consumed": preset != DEV_PRESET_DULLUHAN_TRANSFORMATION_UNLOCKED,

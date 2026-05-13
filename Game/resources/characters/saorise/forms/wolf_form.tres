@@ -47,4 +47,4 @@ hurt_shape_rotation = 0.0
 attack_profiles = {}
 attack_animation_prefix = &"attack"
 attack_damage_multiplier = 1.5
-incoming_damage_multiplier = 1.0
+incoming_damage_multiplier = 0.6

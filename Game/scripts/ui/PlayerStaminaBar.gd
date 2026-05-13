@@ -33,7 +33,7 @@ var template_border_top: float = 0.0
 var template_border_right: float = 0.0
 var template_border_bottom: float = 0.0
 var template_border_scale: Vector2 = Vector2.ONE
-var template_border_texture_filter: int = CanvasItem.TEXTURE_FILTER_PARENT_NODE
+var template_border_texture_filter: CanvasItem.TextureFilter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
 
 var stamina_row: Node2D
 var stamina_bar: TextureProgressBar

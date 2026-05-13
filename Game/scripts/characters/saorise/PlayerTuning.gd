@@ -24,7 +24,7 @@ extends Resource
 @export var block_stamina_drain_rate: float = 8.0
 
 @export_group("Run")
-@export var run_stamina_drain_rate: float = 8.0
+@export var run_stamina_drain_rate: float = 5.0
 
 @export_group("Health")
 @export var max_health: int = 100

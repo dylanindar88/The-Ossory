@@ -20,7 +20,7 @@ func update_kill_counter():
 		return
 
 	if flow.quest_stage == STAGE_RULES.STAGE_REPORT_COMPLETE or flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_ACTIVE:
-		flow.kill_counter.text = "Cleared: %d/%d" % [flow.permanently_cleared_banshee_paths.size(), flow.banshees.size()]
+		flow.kill_counter.text = "Cleared: %d/%d" % [flow.get_current_visit_banshee_clear_count(), flow.banshees.size()]
 		return
 
 	var shown_count: int = mini(flow.banshee_kill_count, flow.report_kill_threshold)
@@ -78,7 +78,7 @@ func should_show_exterior_vincent() -> bool:
 		or flow.quest_stage == STAGE_RULES.STAGE_BISHOP_PATH_READY
 		or (
 			flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_ELDER_READY
-			and flow.are_all_banshees_permanently_cleared()
+			and flow.are_all_banshees_cleared_for_current_visit()
 		)
 	)
 
@@ -90,7 +90,7 @@ func should_show_bishop_direction_progression() -> bool:
 			flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_CLEARED
 			or (
 				flow.quest_stage == STAGE_RULES.STAGE_THIRD_WAVE_ELDER_READY
-				and flow.are_all_banshees_permanently_cleared()
+				and flow.are_all_banshees_cleared_for_current_visit()
 			)
 		)
 	)

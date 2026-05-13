@@ -1,0 +1,63 @@
+[gd_resource type="Resource" script_class="DialogueProfile" load_steps=16 format=3 uid="uid://dihri7s5qynnw"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueProfile.gd" id="1_profile"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueEntry.gd" id="2_entry"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="3_sequence"]
+
+[sub_resource type="Resource" id="DialogueSequence_intro"]
+script = ExtResource("3_sequence")
+pages = Array[String](["Road is quiet today. Too quiet, maybe, but quiet is still better than screaming."])
+
+[sub_resource type="Resource" id="DialogueEntry_intro"]
+script = ExtResource("2_entry")
+key = &"intro"
+sequence = SubResource("DialogueSequence_intro")
+
+[sub_resource type="Resource" id="DialogueSequence_banshees_active"]
+script = ExtResource("3_sequence")
+pages = Array[String](["I heard what happened in the village. If something is following me, do not wait for it to introduce itself."])
+
+[sub_resource type="Resource" id="DialogueEntry_banshees_active"]
+script = ExtResource("2_entry")
+key = &"banshees_active"
+sequence = SubResource("DialogueSequence_banshees_active")
+
+[sub_resource type="Resource" id="DialogueSequence_wolf_unlocked"]
+script = ExtResource("3_sequence")
+pages = Array[String](["The old stories say a wolf can make the dead remember they are dead. I hope the stories are right."])
+
+[sub_resource type="Resource" id="DialogueEntry_wolf_unlocked"]
+script = ExtResource("2_entry")
+key = &"wolf_unlocked"
+sequence = SubResource("DialogueSequence_wolf_unlocked")
+
+[sub_resource type="Resource" id="DialogueSequence_vincent_revealed"]
+script = ExtResource("3_sequence")
+pages = Array[String](["They are coming back stronger now. Whatever Vincent told you, I believe it. Something holy has gone rotten."])
+
+[sub_resource type="Resource" id="DialogueEntry_vincent_revealed"]
+script = ExtResource("2_entry")
+key = &"vincent_revealed"
+sequence = SubResource("DialogueSequence_vincent_revealed")
+
+[sub_resource type="Resource" id="DialogueSequence_bishop_available"]
+script = ExtResource("3_sequence")
+pages = Array[String](["If the bishop is the root of this, then these roads will not stay safe until he is gone."])
+
+[sub_resource type="Resource" id="DialogueEntry_bishop_available"]
+script = ExtResource("2_entry")
+key = &"bishop_available"
+sequence = SubResource("DialogueSequence_bishop_available")
+
+[sub_resource type="Resource" id="DialogueSequence_bishop_defeated"]
+script = ExtResource("3_sequence")
+pages = Array[String](["The road feels lighter. I had forgotten what it was like to walk without listening for a scream."])
+
+[sub_resource type="Resource" id="DialogueEntry_bishop_defeated"]
+script = ExtResource("2_entry")
+key = &"bishop_defeated"
+sequence = SubResource("DialogueSequence_bishop_defeated")
+
+[resource]
+script = ExtResource("1_profile")
+entries = Array[ExtResource("2_entry")]([SubResource("DialogueEntry_intro"), SubResource("DialogueEntry_banshees_active"), SubResource("DialogueEntry_wolf_unlocked"), SubResource("DialogueEntry_vincent_revealed"), SubResource("DialogueEntry_bishop_available"), SubResource("DialogueEntry_bishop_defeated")])

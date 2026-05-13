@@ -2,6 +2,7 @@ extends CanvasLayer
 
 const BANSHEE_VILLAGE_SCENE: String = "res://scenes/levels/BansheeVillage.tscn"
 const STARTING_WILDERNESS_SCENE: String = "res://scenes/levels/StartingWilderness.tscn"
+const WEEPING_WOODS_SCENE: String = "res://scenes/levels/WeepingWoods.tscn"
 const NEW_GAME_START_SCENE: String = STARTING_WILDERNESS_SCENE
 
 @onready var main_view: VBoxContainer = $Control/Panel/RightContent/ViewContainer/MainView
@@ -102,19 +103,24 @@ func build_dev_menu_from_registry():
 	if entries.is_empty():
 		entries = [
 			{
+				"scene_path": STARTING_WILDERNESS_SCENE,
+				"display_name": "01 - Starting Wilderness",
+				"dev_presets": [{"label": "Start", "preset": ""}],
+			},
+			{
+				"scene_path": WEEPING_WOODS_SCENE,
+				"display_name": "02 - Weeping Woods",
+				"dev_presets": [{"label": "Start", "preset": ""}],
+			},
+			{
 				"scene_path": BANSHEE_VILLAGE_SCENE,
-				"display_name": "Banshee Village",
+				"display_name": "03 - Banshee Village",
 				"dev_presets": [
 					{"label": "Start", "preset": "start"},
 					{"label": "First Report", "preset": "first_banshee_report_ready"},
 					{"label": "Second Report", "preset": "second_banshee_report_ready"},
 					{"label": "Third Report", "preset": "third_banshee_report_ready"},
 				],
-			},
-			{
-				"scene_path": STARTING_WILDERNESS_SCENE,
-				"display_name": "Starting Wilderness",
-				"dev_presets": [{"label": "Start", "preset": ""}],
 			},
 		]
 

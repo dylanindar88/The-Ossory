@@ -19,20 +19,21 @@ func apply_banshee_villager_presentation(combat_enabled: bool):
 		if flow.saved_banshee_states.has(banshee_path):
 			var raw_saved_state: Variant = flow.saved_banshee_states[banshee_path]
 			if raw_saved_state is Dictionary:
-				saved_state = raw_saved_state
+				saved_state = (raw_saved_state as Dictionary).duplicate(true)
 
 		var villager: Node = flow.get_banshee_assigned_villager(banshee)
 		var villager_path: String = flow.get_relative_node_path(villager)
 		var permanent_clear: bool = flow.permanently_cleared_banshee_paths.has(banshee_path)
-		var villager_is_clear: bool = permanent_clear or flow.cleared_villager_paths.has(villager_path)
+		var temporary_clear: bool = flow.temporarily_cleared_banshee_paths.has(banshee_path)
+		var villager_is_clear: bool = permanent_clear or temporary_clear or flow.cleared_villager_paths.has(villager_path)
 		var saved_dead: bool = bool(saved_state.get("dead", false))
 
-		if permanent_clear or saved_dead or villager_is_clear:
+		if permanent_clear or temporary_clear or saved_dead or villager_is_clear:
 			flow.set_villager_clear_sequence(villager)
 			flow.complete_villager_banshee_story(villager)
 			apply_cleared_banshee_state(banshee, saved_state)
 			flow.defeated_banshees[banshee] = true
-			if saved_dead and not permanent_clear:
+			if saved_dead and not permanent_clear and not temporary_clear:
 				schedule_banshee_respawn(banshee)
 			continue
 
@@ -46,8 +47,7 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 	if banshee == null:
 		return
 
-	if banshee.has_method("set_combat_variant"):
-		banshee.set_combat_variant(get_banshee_combat_variant_for_story())
+	apply_story_variant_to_banshee(banshee)
 
 	var banshee_path: String = flow.get_relative_node_path(banshee)
 	var is_revealed: bool = combat_enabled and flow.revealed_banshee_paths.has(banshee_path)
@@ -59,8 +59,7 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 		alpha = 1.0
 
 	if not saved_state.is_empty() and banshee.has_method("restore_from_story_save"):
-		if flow.third_wave_spawned or flow.is_third_wave_stage():
-			saved_state["combat_variant"] = BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
+		sanitize_saved_banshee_variant(saved_state, banshee)
 		banshee.restore_from_story_save(saved_state, flow.hidden_banshee_alpha, combat_enabled, is_revealed)
 		return
 
@@ -81,21 +80,21 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 
 	if banshee.has_method("set_story_revealed"):
 		banshee.set_story_revealed(is_revealed, flow.hidden_banshee_alpha)
+	if combat_enabled and banshee.has_method("begin_assigned_villager_catchup_if_needed"):
+		banshee.begin_assigned_villager_catchup_if_needed()
 
 
 func apply_cleared_banshee_state(banshee: Node, saved_state: Dictionary = {}):
 	if banshee == null:
 		return
 
-	if banshee.has_method("set_combat_variant"):
-		banshee.set_combat_variant(get_banshee_combat_variant_for_story())
+	apply_story_variant_to_banshee(banshee)
 
 	var banshee_path: String = flow.get_relative_node_path(banshee)
 	flow.revealed_banshee_paths.erase(banshee_path)
 
 	if not saved_state.is_empty() and banshee.has_method("restore_dead_from_story_save"):
-		if flow.third_wave_spawned or flow.is_third_wave_stage():
-			saved_state["combat_variant"] = BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
+		sanitize_saved_banshee_variant(saved_state, banshee)
 		banshee.restore_dead_from_story_save(saved_state, flow.hidden_banshee_alpha)
 	elif banshee.has_method("hide_as_story_defeated"):
 		banshee.hide_as_story_defeated(flow.hidden_banshee_alpha)
@@ -109,9 +108,37 @@ func get_banshee_combat_variant_for_story() -> String:
 
 
 func set_all_banshee_combat_variants(variant: String):
+	var upgrades_available: bool = variant == BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED
 	for banshee in flow.banshees:
-		if banshee != null and banshee.has_method("set_combat_variant"):
-			banshee.set_combat_variant(variant)
+		if banshee != null:
+			apply_story_variant_to_banshee(banshee, upgrades_available)
+
+
+func are_banshee_upgrades_available() -> bool:
+	return flow.third_wave_spawned or flow.is_third_wave_stage()
+
+
+func apply_story_variant_to_banshee(banshee: Node, upgrades_available: Variant = null):
+	if banshee == null:
+		return
+
+	var use_upgraded_variant: bool = are_banshee_upgrades_available() if upgrades_available == null else bool(upgrades_available)
+	if banshee.has_method("apply_story_combat_variant"):
+		banshee.apply_story_combat_variant(use_upgraded_variant)
+	elif banshee.has_method("set_combat_variant"):
+		banshee.set_combat_variant(BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED if use_upgraded_variant else BANSHEE_VARIANT_CORRUPTED_MELEE)
+
+
+func get_story_variant_for_banshee(banshee: Node, upgrades_available: Variant = null) -> String:
+	var use_upgraded_variant: bool = are_banshee_upgrades_available() if upgrades_available == null else bool(upgrades_available)
+	if banshee != null and banshee.has_method("resolve_combat_variant_for_story"):
+		return str(banshee.resolve_combat_variant_for_story(use_upgraded_variant))
+
+	return BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED if use_upgraded_variant else BANSHEE_VARIANT_CORRUPTED_MELEE
+
+
+func sanitize_saved_banshee_variant(saved_state: Dictionary, banshee: Node):
+	saved_state["combat_variant"] = get_story_variant_for_banshee(banshee)
 
 
 func handle_banshee_detected_player_for_reveal(banshee: Node):
@@ -152,6 +179,8 @@ func respawn_banshee(banshee: Node):
 	var banshee_path: String = flow.get_relative_node_path(banshee)
 	if flow.permanently_cleared_banshee_paths.has(banshee_path):
 		return
+	if flow.temporarily_cleared_banshee_paths.has(banshee_path):
+		return
 
 	flow.defeated_banshees.erase(banshee)
 	flow.revealed_banshee_paths.erase(banshee_path)
@@ -164,14 +193,14 @@ func respawn_banshee(banshee: Node):
 	flow.reset_villager_stalk_state(villager)
 
 	if banshee.has_method("respawn_for_story"):
-		if banshee.has_method("set_combat_variant"):
-			banshee.set_combat_variant(get_banshee_combat_variant_for_story())
+		apply_story_variant_to_banshee(banshee)
 		banshee.respawn_for_story(flow.hidden_banshee_alpha)
 	elif banshee.has_method("restore_after_load"):
-		if banshee.has_method("set_combat_variant"):
-			banshee.set_combat_variant(get_banshee_combat_variant_for_story())
+		apply_story_variant_to_banshee(banshee)
 		banshee.restore_after_load()
 		if banshee.has_method("enable_story_combat"):
 			banshee.enable_story_combat(flow.hidden_banshee_alpha)
 		elif banshee.has_method("set_story_combat_enabled"):
 			banshee.set_story_combat_enabled(true, flow.hidden_banshee_alpha)
+		if banshee.has_method("begin_assigned_villager_catchup_if_needed"):
+			banshee.begin_assigned_villager_catchup_if_needed()

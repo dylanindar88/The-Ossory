@@ -17,7 +17,7 @@ func physics_update(banshee, delta):
 		banshee.change_state("scream")
 		return
 
-	if not banshee.has_patrol_route() and not banshee.returning_to_static_position:
+	if not banshee.has_patrol_route() and not banshee.has_assigned_villager() and not banshee.returning_to_static_position:
 		banshee.change_state("idle")
 		return
 

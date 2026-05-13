@@ -24,6 +24,9 @@ func physics_update(banshee, delta):
 	banshee.move_and_slide()
 
 	if not banshee.has_player_target() or not banshee.player_in_tracking:
+		if banshee.has_player_target() and banshee.is_refreshing_player_ranges_after_transform():
+			return
+
 		banshee.return_to_default_state()
 		return
 

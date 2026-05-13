@@ -1,4 +1,4 @@
-[gd_scene load_steps=19 format=3 uid="uid://cd8kyptum0qfo"]
+[gd_scene load_steps=21 format=3 uid="uid://cd8kyptum0qfo"]
 
 [ext_resource type="Script" path="res://scripts/characters/saorise/health/healthUI.gd" id="1_ue8h7"]
 [ext_resource type="Texture2D" uid="uid://uq1qdekd7ra3" path="res://art/ui/HealthBarBorder.aseprite" id="2_bi2l4"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://wj3ai48h2a5x" path="res://art/ui/WolfBarBorder.aseprite" id="4_wolf_border"]
 [ext_resource type="Texture2D" uid="uid://bdh8oajoq50ls" path="res://art/icons/stockIcon.png" id="5_stock_icon"]
 [ext_resource type="Texture2D" uid="uid://b7aiqnng4klq1" path="res://art/icons/stockCenter.png" id="6_stock_center"]
+[ext_resource type="Script" path="res://scripts/ui/LocationIndicator.gd" id="7_location_indicator"]
 
 [sub_resource type="Gradient" id="Gradient_gsh0t"]
 offsets = PackedFloat32Array(0.609195)
@@ -15,43 +16,51 @@ colors = PackedColorArray(0, 0, 0, 1)
 gradient = SubResource("Gradient_gsh0t")
 width = 139
 
-[sub_resource type="Gradient" id="Gradient_nfl2p"]
+[sub_resource type="Gradient" id="Gradient_xbsfc"]
 colors = PackedColorArray(0.1, 0.95, 0.2, 1, 0.1, 0.95, 0.2, 1)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_mxd5p"]
-gradient = SubResource("Gradient_nfl2p")
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_uqb1u"]
+gradient = SubResource("Gradient_xbsfc")
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_i3fvg"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_lnqsf"]
 atlas = ExtResource("6_stock_center")
 region = Rect2(0, 0, 64, 64)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_2nw4m"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_fubsq"]
 atlas = ExtResource("5_stock_icon")
 region = Rect2(0, 0, 64, 64)
 
-[sub_resource type="Gradient" id="Gradient_4de3b"]
+[sub_resource type="Gradient" id="Gradient_hwamv"]
 offsets = PackedFloat32Array(0.609195)
 colors = PackedColorArray(0, 0, 0, 1)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_yludo"]
-gradient = SubResource("Gradient_4de3b")
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_84a4t"]
+gradient = SubResource("Gradient_hwamv")
 width = 139
 
-[sub_resource type="Gradient" id="Gradient_u1fsc"]
+[sub_resource type="Gradient" id="Gradient_tijlc"]
 offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
 colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_akf6f"]
-gradient = SubResource("Gradient_u1fsc")
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_n2bxc"]
+gradient = SubResource("Gradient_tijlc")
 width = 139
 
-[sub_resource type="Gradient" id="Gradient_525yu"]
+[sub_resource type="Gradient" id="Gradient_gsc5h"]
 offsets = PackedFloat32Array(0, 0.5, 1)
 colors = PackedColorArray(0.55, 0.12, 0, 1, 0.95, 0.36, 0.04, 1, 1, 0.62, 0.12, 1)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_6xwo1"]
-gradient = SubResource("Gradient_525yu")
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_i4xav"]
+gradient = SubResource("Gradient_gsc5h")
 width = 139
+
+[sub_resource type="LabelSettings" id="LabelSettings_4l3ai"]
+font_size = 30
+outline_size = 10
+outline_color = Color(0, 0.258824, 0, 1)
+shadow_size = 3
+shadow_color = Color(0, 0, 0, 1)
+shadow_offset = Vector2(4, 1)
 
 [node name="HUD" type="CanvasLayer"]
 
@@ -72,7 +81,7 @@ value = 100.0
 rounded = true
 nine_patch_stretch = true
 texture_under = SubResource("GradientTexture2D_m3wux")
-texture_progress = SubResource("GradientTexture2D_mxd5p")
+texture_progress = SubResource("GradientTexture2D_uqb1u")
 
 [node name="Container" type="TextureRect" parent="HealthUI"]
 layout_mode = 0
@@ -97,7 +106,7 @@ offset_left = 16.0
 offset_top = 16.0
 offset_right = 32.0
 offset_bottom = 32.0
-texture = SubResource("AtlasTexture_i3fvg")
+texture = SubResource("AtlasTexture_lnqsf")
 expand_mode = 1
 stretch_mode = 5
 
@@ -106,7 +115,7 @@ layout_mode = 0
 offset_left = 16.0
 offset_right = 32.0
 offset_bottom = 16.0
-texture = SubResource("AtlasTexture_2nw4m")
+texture = SubResource("AtlasTexture_fubsq")
 expand_mode = 1
 stretch_mode = 5
 
@@ -116,7 +125,7 @@ offset_left = 29.8564
 offset_top = 24.0
 offset_right = 45.8564
 offset_bottom = 40.0
-texture = SubResource("AtlasTexture_2nw4m")
+texture = SubResource("AtlasTexture_fubsq")
 expand_mode = 1
 stretch_mode = 5
 
@@ -126,7 +135,7 @@ offset_left = 2.14359
 offset_top = 24.0
 offset_right = 18.1436
 offset_bottom = 40.0
-texture = SubResource("AtlasTexture_2nw4m")
+texture = SubResource("AtlasTexture_fubsq")
 expand_mode = 1
 stretch_mode = 5
 
@@ -138,7 +147,7 @@ offset_left = -0.628949
 offset_top = 29.5597
 offset_right = 15.3711
 offset_bottom = 45.5597
-texture = SubResource("AtlasTexture_2nw4m")
+texture = SubResource("AtlasTexture_fubsq")
 expand_mode = 1
 stretch_mode = 5
 
@@ -150,7 +159,7 @@ offset_left = -1.1
 offset_top = 12.4
 offset_right = 14.9
 offset_bottom = 28.4
-texture = SubResource("AtlasTexture_2nw4m")
+texture = SubResource("AtlasTexture_fubsq")
 expand_mode = 1
 stretch_mode = 5
 
@@ -162,7 +171,7 @@ offset_left = 16.3522
 offset_top = 38.9937
 offset_right = 32.3522
 offset_bottom = 54.9937
-texture = SubResource("AtlasTexture_2nw4m")
+texture = SubResource("AtlasTexture_fubsq")
 expand_mode = 1
 stretch_mode = 5
 
@@ -185,8 +194,8 @@ max_value = 1.0
 value = 1.0
 rounded = true
 nine_patch_stretch = true
-texture_under = SubResource("GradientTexture2D_yludo")
-texture_progress = SubResource("GradientTexture2D_akf6f")
+texture_under = SubResource("GradientTexture2D_84a4t")
+texture_progress = SubResource("GradientTexture2D_n2bxc")
 
 [node name="Border" type="TextureRect" parent="HealthUI/HudStaminaGauge"]
 texture_filter = 1
@@ -217,8 +226,8 @@ max_value = 1.0
 value = 1.0
 rounded = true
 nine_patch_stretch = true
-texture_under = SubResource("GradientTexture2D_yludo")
-texture_progress = SubResource("GradientTexture2D_6xwo1")
+texture_under = SubResource("GradientTexture2D_84a4t")
+texture_progress = SubResource("GradientTexture2D_i4xav")
 
 [node name="Border" type="TextureRect" parent="HealthUI/HudWolfGauge"]
 texture_filter = 1
@@ -242,3 +251,23 @@ theme_override_constants/shadow_offset_x = 1
 theme_override_constants/shadow_offset_y = 1
 theme_override_font_sizes/font_size = 18
 text = "Banshees: 0/6"
+
+[node name="LocationIndicator" type="Label" parent="."]
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -304.0
+offset_top = 20.0
+offset_right = -24.0
+offset_bottom = 96.0
+grow_horizontal = 0
+theme_override_colors/font_color = Color(0.92, 0.92, 0.92, 1)
+theme_override_colors/font_shadow_color = Color(0, 0, 0, 0.85)
+theme_override_constants/shadow_offset_x = 1
+theme_override_constants/shadow_offset_y = 1
+theme_override_font_sizes/font_size = 18
+text = "Location"
+label_settings = SubResource("LabelSettings_4l3ai")
+horizontal_alignment = 1
+vertical_alignment = 1
+script = ExtResource("7_location_indicator")

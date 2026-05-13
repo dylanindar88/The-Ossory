@@ -10,7 +10,10 @@ func _ready():
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	level = get_parent()
 	if SaveManager != null:
-		SaveManager.current_level = level
+		if SaveManager.has_method("set_current_level"):
+			SaveManager.set_current_level(level)
+		else:
+			SaveManager.current_level = level
 
 	if autosave_on_enter:
 		call_deferred("autosave_level_entered")

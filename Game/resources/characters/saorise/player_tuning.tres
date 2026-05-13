@@ -5,7 +5,7 @@
 [resource]
 script = ExtResource("1_xl6wd")
 walk_speed = 100.0
-run_speed = 210.0
+run_speed = 225.0
 dash_speed = 420.0
 dash_duration = 0.18
 dash_cooldown = 0.75
@@ -18,7 +18,7 @@ block_speed_modifier = 0.5
 block_invulnerability_time = 0.35
 block_stamina_cost = 20.0
 block_stamina_drain_rate = 8.0
-run_stamina_drain_rate = 8.0
+run_stamina_drain_rate = 3.0
 max_health = 100
 hits_to_die = 3
 invulnerability_time = 0.75

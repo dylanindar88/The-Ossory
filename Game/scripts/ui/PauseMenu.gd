@@ -31,6 +31,13 @@ var respawn_view_open: bool = false
 var pending_confirmation_slot: int = 0
 var pending_confirmation_action: String = ""
 var syncing_gauge_checkboxes: bool = false
+var dev_travel_option: Control
+var dev_travel_button: Button
+var dev_travel_view: VBoxContainer
+var dev_travel_options: VBoxContainer
+var dev_travel_status_label: Label
+var dev_travel_back_button: Button
+var first_dev_travel_button: Button
 
 
 func _ready():
@@ -59,6 +66,7 @@ func _ready():
 	player_gauges_checkbox.toggled.connect(_on_player_gauges_toggled)
 	SaveManager.player_lives_changed.connect(_on_player_lives_changed)
 	connect_save_slot_buttons()
+	create_dev_travel_controls()
 
 	configure_zoom_slider()
 	configure_gauge_checkboxes()
@@ -69,9 +77,9 @@ func _ready():
 func _unhandled_input(event):
 	if is_pause_toggle_event(event):
 		if respawn_view_open:
-			var viewport := get_viewport()
-			if viewport != null:
-				viewport.set_input_as_handled()
+			var respawn_viewport := get_viewport()
+			if respawn_viewport != null:
+				respawn_viewport.set_input_as_handled()
 			return
 
 		if pause_open:
@@ -89,6 +97,164 @@ func connect_save_slot_buttons():
 		get_slot_button(slot, "OverwriteButton").pressed.connect(_on_overwrite_slot_pressed.bind(slot))
 		get_slot_button(slot, "LoadButton").pressed.connect(_on_load_slot_pressed.bind(slot))
 		get_slot_button(slot, "DeleteButton").pressed.connect(_on_delete_slot_pressed.bind(slot))
+
+
+func create_dev_travel_controls():
+	if not is_dev_travel_enabled():
+		return
+
+	create_dev_travel_menu_option()
+	create_dev_travel_view()
+
+
+func is_dev_travel_enabled() -> bool:
+	return OS.is_debug_build() or Engine.is_editor_hint()
+
+
+func create_dev_travel_menu_option():
+	var source_option: Control = options_button.get_parent() as Control
+	if source_option == null:
+		return
+
+	dev_travel_option = source_option.duplicate()
+	dev_travel_option.name = "DevTravelOption"
+	menu_view.add_child(dev_travel_option)
+	menu_view.move_child(dev_travel_option, title_screen_button.get_parent().get_index())
+	dev_travel_button = dev_travel_option.get_node_or_null("Button") as Button
+	if dev_travel_button != null:
+		for connection in dev_travel_button.pressed.get_connections():
+			var callable: Callable = connection.get("callable", Callable())
+			if callable.is_valid():
+				dev_travel_button.pressed.disconnect(callable)
+		dev_travel_button.text = "Dev Travel"
+		dev_travel_button.pressed.connect(open_dev_travel)
+
+
+func create_dev_travel_view():
+	dev_travel_view = VBoxContainer.new()
+	dev_travel_view.name = "DevTravelView"
+	dev_travel_view.visible = false
+	dev_travel_view.anchor_left = 0.5
+	dev_travel_view.anchor_right = 0.5
+	dev_travel_view.offset_left = -96.0
+	dev_travel_view.offset_top = 34.0
+	dev_travel_view.offset_right = 284.0
+	dev_travel_view.offset_bottom = 568.0
+	dev_travel_view.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	dev_travel_view.scale = Vector2(0.5, 0.5)
+	dev_travel_view.add_theme_constant_override("separation", 10)
+	dev_travel_view.alignment = BoxContainer.ALIGNMENT_CENTER
+	$Overlay/Panel.add_child(dev_travel_view)
+
+	var title_label := Label.new()
+	title_label.text = "Dev Travel"
+	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dev_travel_view.add_child(title_label)
+
+	var scroll := ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(380, 410)
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	dev_travel_view.add_child(scroll)
+
+	dev_travel_options = VBoxContainer.new()
+	dev_travel_options.add_theme_constant_override("separation", 6)
+	scroll.add_child(dev_travel_options)
+
+	dev_travel_status_label = Label.new()
+	dev_travel_status_label.custom_minimum_size = Vector2(380, 24)
+	dev_travel_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dev_travel_view.add_child(dev_travel_status_label)
+
+	dev_travel_back_button = Button.new()
+	dev_travel_back_button.custom_minimum_size = Vector2(280, 42)
+	dev_travel_back_button.text = "Back"
+	dev_travel_back_button.pressed.connect(open_main_menu)
+	dev_travel_view.add_child(dev_travel_back_button)
+
+
+func open_dev_travel():
+	if not is_dev_travel_enabled() or dev_travel_view == null:
+		return
+
+	menu_view.visible = false
+	options_view.visible = false
+	save_slots_view.visible = false
+	respawn_view.visible = false
+	set_dev_travel_view_visible(true)
+	clear_pending_confirmation()
+	build_dev_travel_options()
+	if first_dev_travel_button != null:
+		first_dev_travel_button.grab_focus()
+	else:
+		dev_travel_back_button.grab_focus()
+
+
+func build_dev_travel_options():
+	first_dev_travel_button = null
+	dev_travel_status_label.text = ""
+	for child in dev_travel_options.get_children():
+		child.queue_free()
+
+	var entries: Array = SaveManager.get_title_dev_level_entries() if SaveManager != null and SaveManager.has_method("get_title_dev_level_entries") else []
+	for raw_entry in entries:
+		if raw_entry is Dictionary:
+			add_dev_travel_level_section(raw_entry)
+
+
+func add_dev_travel_level_section(entry: Dictionary):
+	var scene_path: String = str(entry.get("scene_path", ""))
+	var raw_presets: Variant = entry.get("dev_presets", [])
+	if scene_path == "" or not (raw_presets is Array):
+		return
+
+	var level_label := Label.new()
+	level_label.custom_minimum_size = Vector2(360, 24)
+	level_label.text = str(entry.get("display_name", scene_path))
+	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dev_travel_options.add_child(level_label)
+
+	for raw_preset in raw_presets:
+		if not (raw_preset is Dictionary):
+			continue
+		var preset: Dictionary = raw_preset
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(360, 34)
+		button.text = str(preset.get("label", "Start"))
+		button.pressed.connect(_on_dev_travel_pressed.bind(scene_path, str(preset.get("preset", ""))))
+		dev_travel_options.add_child(button)
+		if first_dev_travel_button == null:
+			first_dev_travel_button = button
+
+
+func _on_dev_travel_pressed(scene_path: String, preset: String):
+	if SaveManager == null or not SaveManager.has_method("dev_switch_active_save_to_level"):
+		dev_travel_status_label.text = "Dev travel is unavailable."
+		return
+
+	set_dev_travel_buttons_disabled(true)
+	var switch_started: bool = SaveManager.dev_switch_active_save_to_level(scene_path, preset)
+	if switch_started:
+		pause_open = false
+		overlay.visible = false
+		set_tree_paused_safely(false)
+		return
+
+	dev_travel_status_label.text = SaveManager.last_error if SaveManager.last_error != "" else "Could not dev travel."
+	set_dev_travel_buttons_disabled(false)
+
+
+func set_dev_travel_buttons_disabled(disabled: bool):
+	if dev_travel_options == null:
+		return
+
+	for child in dev_travel_options.get_children():
+		if child is Button:
+			(child as Button).disabled = disabled
+
+
+func set_dev_travel_view_visible(visible_value: bool):
+	if dev_travel_view != null:
+		dev_travel_view.visible = visible_value
 
 
 func is_pause_toggle_event(event: InputEvent) -> bool:
@@ -119,6 +285,7 @@ func resume_game():
 	pause_open = false
 	overlay.visible = false
 	clear_pending_confirmation()
+	set_dev_travel_view_visible(false)
 	get_tree().paused = false
 
 
@@ -130,6 +297,7 @@ func open_main_menu():
 	options_view.visible = false
 	save_slots_view.visible = false
 	respawn_view.visible = false
+	set_dev_travel_view_visible(false)
 	clear_pending_confirmation()
 	update_save_button_state()
 	if pause_open:
@@ -143,6 +311,7 @@ func open_options():
 	options_view.visible = true
 	save_slots_view.visible = false
 	respawn_view.visible = false
+	set_dev_travel_view_visible(false)
 	clear_pending_confirmation()
 	zoom_slider.grab_focus()
 
@@ -157,6 +326,7 @@ func open_save_slots():
 	options_view.visible = false
 	save_slots_view.visible = true
 	respawn_view.visible = false
+	set_dev_travel_view_visible(false)
 	save_status_label.text = ""
 	save_slots_status_label.text = ""
 	clear_pending_confirmation()
@@ -230,6 +400,7 @@ func close_after_successful_load():
 	options_view.visible = false
 	save_slots_view.visible = false
 	respawn_view.visible = false
+	set_dev_travel_view_visible(false)
 	clear_pending_confirmation()
 	set_tree_paused_safely(false)
 
@@ -252,6 +423,7 @@ func open_respawn_view():
 	options_view.visible = false
 	save_slots_view.visible = false
 	respawn_view.visible = true
+	set_dev_travel_view_visible(false)
 	respawn_status_label.text = ""
 	clear_pending_confirmation()
 	respawn_button.disabled = SaveManager.get_most_recent_save_slot(true) < 0
@@ -343,6 +515,7 @@ func return_to_title_screen():
 	options_view.visible = false
 	save_slots_view.visible = false
 	respawn_view.visible = false
+	set_dev_travel_view_visible(false)
 	clear_pending_confirmation()
 	save_status_label.text = ""
 	save_slots_status_label.text = ""

@@ -2,10 +2,22 @@ class_name BansheeStoryLifecycle
 extends Node
 
 var banshee
+var detection_suppression_generation: int = 0
 
 
 func setup(owner_banshee):
 	banshee = owner_banshee
+
+
+func get_unrevealed_alpha(fallback_alpha: float = 0.2) -> float:
+	if banshee == null:
+		return fallback_alpha
+
+	var alpha: Variant = banshee.get("undetected_alpha")
+	if alpha == null:
+		return fallback_alpha
+
+	return float(alpha)
 
 
 func set_story_revealed(revealed: bool, hidden_alpha: float):
@@ -13,7 +25,7 @@ func set_story_revealed(revealed: bool, hidden_alpha: float):
 	if banshee.story_revealed:
 		banshee.modulate.a = 1.0
 	else:
-		banshee.modulate.a = hidden_alpha
+		banshee.modulate.a = get_unrevealed_alpha(hidden_alpha)
 
 
 func hide_as_story_defeated(hidden_alpha: float):
@@ -69,19 +81,33 @@ func reveal_for_story_detection():
 func begin_story_detection_suppression():
 	# Area monitoring is restored with deferred calls, so ignore one restore-frame
 	# detection pass before allowing story reveal logic to run again.
+	detection_suppression_generation += 1
 	banshee.suppress_story_detection = true
 	banshee.call_deferred("end_story_detection_suppression_after_physics")
 
 
 func end_story_detection_suppression_after_physics():
-	await banshee.get_tree().physics_frame
+	var generation := detection_suppression_generation
+	if banshee == null or not is_instance_valid(banshee) or not banshee.is_inside_tree():
+		return
+
+	var tree: SceneTree = banshee.get_tree()
+	if tree == null:
+		return
+
+	await tree.physics_frame
+	if generation != detection_suppression_generation:
+		return
+	if banshee == null or not is_instance_valid(banshee) or not banshee.is_inside_tree():
+		return
+
 	banshee.suppress_story_detection = false
 
 
 func restore_after_load():
 	banshee.last_damage_source = null
 	banshee.last_killer_form_id = &""
-	banshee.damage_enabled = true
+	banshee.damage_enabled = false
 	banshee.dead = false
 	banshee.visible = true
 	banshee.velocity = Vector2.ZERO
@@ -93,6 +119,7 @@ func restore_after_load():
 	banshee.player_in_attack_range = false
 	banshee.player_in_tracking = false
 	banshee.story_revealed = false
+	set_story_revealed(false, get_unrevealed_alpha())
 	banshee.clear_hurt_state_overrides()
 	banshee.set_physics_process(true)
 
@@ -111,7 +138,10 @@ func restore_after_load():
 			health_node.emit_signal("health_changed", health_node.get("health"), health_node.get("max_health"))
 
 	banshee.player = banshee.get_tree().get_first_node_in_group("player")
-	banshee.enable_combat_areas()
+	if banshee.combat_enabled:
+		banshee.enable_combat_areas()
+	else:
+		banshee.disable_combat_areas()
 	banshee.setup_villager_stalk_behavior()
 	banshee.refresh_patrol_points()
 	banshee.apply_variant_tuning()
@@ -127,14 +157,16 @@ func respawn_for_story(hidden_alpha: float):
 	banshee.facing_left = banshee.story_spawn_facing_left
 	if banshee.sprite != null:
 		banshee.sprite.flip_h = banshee.facing_left
-	banshee.set_story_combat_enabled(true, hidden_alpha)
+	banshee.set_story_combat_enabled(true, get_unrevealed_alpha(hidden_alpha))
+	banshee.set_damage_enabled(true)
 	set_story_revealed(false, hidden_alpha)
 	banshee.stop_health_regeneration()
+	banshee.begin_assigned_villager_catchup_if_needed()
 
 
 func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
 	begin_story_detection_suppression()
-	var restore_position: Vector2 = get_story_respawn_position()
+	var restore_position: Vector2 = banshee.story_spawn_position
 	banshee.global_position = restore_position
 	restore_after_load()
 	banshee.global_position = restore_position
@@ -142,7 +174,7 @@ func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool,
 	if banshee.sprite != null:
 		banshee.sprite.flip_h = banshee.facing_left
 
-	var visible_alpha: float = hidden_alpha
+	var visible_alpha: float = get_unrevealed_alpha(hidden_alpha)
 	if combat_should_be_enabled and should_be_revealed:
 		visible_alpha = 1.0
 
@@ -150,6 +182,8 @@ func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool,
 	banshee.set_damage_enabled(combat_should_be_enabled)
 	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
 	banshee.stop_health_regeneration()
+	if combat_should_be_enabled:
+		banshee.begin_assigned_villager_catchup_if_needed()
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
@@ -181,14 +215,16 @@ func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_shou
 		if health_node.has_signal("health_changed"):
 			health_node.emit_signal("health_changed", restored_health, max_health_value)
 
-	var visible_alpha: float = hidden_alpha
+	var visible_alpha: float = get_unrevealed_alpha(hidden_alpha)
 	if combat_should_be_enabled and should_be_revealed:
 		visible_alpha = 1.0
 
 	banshee.set_story_combat_enabled(combat_should_be_enabled, visible_alpha)
-	banshee.set_damage_enabled(bool(state.get("damage_enabled", combat_should_be_enabled)))
+	banshee.set_damage_enabled(combat_should_be_enabled and bool(state.get("damage_enabled", combat_should_be_enabled)))
 	set_story_revealed(combat_should_be_enabled and should_be_revealed, hidden_alpha)
 	banshee.stop_health_regeneration()
+	if combat_should_be_enabled:
+		banshee.begin_assigned_villager_catchup_if_needed()
 
 
 func restore_dead_from_story_save(state: Dictionary, hidden_alpha: float):

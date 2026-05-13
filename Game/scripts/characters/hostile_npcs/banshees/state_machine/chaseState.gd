@@ -14,6 +14,12 @@ func physics_update(banshee, _delta):
 	banshee.keep_assigned_villager_waiting()
 
 	if not banshee.has_player_target() or not banshee.player_in_tracking:
+		if banshee.has_player_target() and banshee.is_refreshing_player_ranges_after_transform():
+			banshee.velocity = Vector2.ZERO
+			banshee.face_target()
+			banshee.move_and_slide()
+			return
+
 		banshee.return_to_default_state()
 		return
 

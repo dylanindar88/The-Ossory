@@ -3,6 +3,11 @@ extends Node
 
 var banshee
 var refreshing_player_ranges_after_transform: bool = false
+var was_engaged_before_transform_refresh: bool = false
+var tracked_transform_signal_player: Node = null
+var pending_form_settle_physics_frames: int = 0
+
+const FORM_CHANGE_SETTLE_PHYSICS_FRAMES: int = 2
 
 
 func setup(owner_banshee):
@@ -30,6 +35,8 @@ func on_player_detection_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	track_player_transform_signal(body)
+
 	if should_defer_player_range_change(body):
 		banshee.player = body
 		refresh_player_ranges_after_transform()
@@ -39,6 +46,7 @@ func on_player_detection_body_entered(body: Node2D):
 		return
 
 	banshee.player = body
+	track_player_transform_signal(body)
 	banshee.player_in_detection = true
 	banshee.player_in_tracking = true
 	banshee.stop_health_regeneration()
@@ -60,6 +68,8 @@ func on_attack_range_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	track_player_transform_signal(body)
+
 	if should_defer_player_range_change(body):
 		banshee.player = body
 		refresh_player_ranges_after_transform()
@@ -69,6 +79,7 @@ func on_attack_range_body_entered(body: Node2D):
 		return
 
 	banshee.player = body
+	track_player_transform_signal(body)
 	banshee.player_in_attack_range = true
 	banshee.player_in_tracking = true
 	banshee.stop_health_regeneration()
@@ -89,6 +100,8 @@ func on_tracking_range_body_entered(body: Node2D):
 	if not body.is_in_group("player"):
 		return
 
+	track_player_transform_signal(body)
+
 	if should_defer_player_range_change(body):
 		banshee.player = body
 		refresh_player_ranges_after_transform()
@@ -98,6 +111,7 @@ func on_tracking_range_body_entered(body: Node2D):
 		return
 
 	banshee.player = body
+	track_player_transform_signal(body)
 	if not can_tracking_range_maintain_aggro(banshee.is_currently_engaging_player()):
 		return
 
@@ -132,6 +146,9 @@ func should_defer_player_range_change(body: Node2D) -> bool:
 	if body == null:
 		return false
 
+	if refreshing_player_ranges_after_transform and body == banshee.player:
+		return true
+
 	if body.has_method("is_transforming_forms") and bool(body.call("is_transforming_forms")):
 		return true
 
@@ -151,6 +168,8 @@ func is_passive_aggro_state() -> bool:
 
 
 func refresh_player_ranges_after_transform():
+	was_engaged_before_transform_refresh = was_engaged_before_transform_refresh or banshee.is_currently_engaging_player()
+	pending_form_settle_physics_frames = max(pending_form_settle_physics_frames, FORM_CHANGE_SETTLE_PHYSICS_FRAMES)
 	if refreshing_player_ranges_after_transform:
 		return
 
@@ -163,6 +182,8 @@ func refresh_player_ranges_after_transform_deferred():
 
 	if should_ignore_player_aggro():
 		refreshing_player_ranges_after_transform = false
+		was_engaged_before_transform_refresh = false
+		pending_form_settle_physics_frames = 0
 		banshee.player_in_detection = false
 		banshee.player_in_attack_range = false
 		banshee.player_in_tracking = false
@@ -171,22 +192,38 @@ func refresh_player_ranges_after_transform_deferred():
 
 	if banshee.player == null or not is_instance_valid(banshee.player):
 		refreshing_player_ranges_after_transform = false
+		was_engaged_before_transform_refresh = false
+		pending_form_settle_physics_frames = 0
 		banshee.player_in_detection = false
 		banshee.player_in_attack_range = false
 		banshee.player_in_tracking = false
 		banshee.update_combat_engagement()
 		return
 
-	if should_defer_player_range_change(banshee.player):
+	var player_is_still_transforming: bool = banshee.player.has_method("is_transforming_forms") and bool(banshee.player.call("is_transforming_forms"))
+	var player_respawn_pending: bool = banshee.player.has_method("is_life_respawn_pending") and bool(banshee.player.call("is_life_respawn_pending"))
+	if player_is_still_transforming or player_respawn_pending:
+		if banshee.player.has_method("is_transforming_forms") and bool(banshee.player.call("is_transforming_forms")):
+			banshee.player_in_tracking = banshee.player_in_tracking or was_engaged_before_transform_refresh
+			banshee.update_combat_engagement()
 		banshee.call_deferred("refresh_player_ranges_after_transform_deferred")
 		return
 
-	var was_already_engaged: bool = banshee.is_currently_engaging_player()
+	if pending_form_settle_physics_frames > 0:
+		pending_form_settle_physics_frames -= 1
+		banshee.player_in_tracking = banshee.player_in_tracking or was_engaged_before_transform_refresh
+		banshee.update_combat_engagement()
+		banshee.call_deferred("refresh_player_ranges_after_transform_deferred")
+		return
+
+	var was_already_engaged: bool = banshee.is_currently_engaging_player() or was_engaged_before_transform_refresh
 	var overlapping_detection: bool = is_player_overlapping_area(banshee.player_detection_area)
 	var overlapping_attack: bool = is_player_overlapping_area(banshee.attack_range)
 	var overlapping_tracking: bool = is_player_overlapping_area(banshee.tracking_range)
 
 	refreshing_player_ranges_after_transform = false
+	was_engaged_before_transform_refresh = false
+	pending_form_settle_physics_frames = 0
 	banshee.player_in_detection = overlapping_detection
 	banshee.player_in_attack_range = overlapping_attack
 	banshee.player_in_tracking = overlapping_tracking and can_tracking_range_maintain_aggro(was_already_engaged)
@@ -202,8 +239,38 @@ func refresh_player_ranges_after_transform_deferred():
 	banshee.update_combat_engagement()
 
 
+func is_refreshing_player_ranges_after_transform() -> bool:
+	return refreshing_player_ranges_after_transform
+
+
 func is_player_overlapping_area(area: Area2D) -> bool:
 	return get_overlapping_player(area) == banshee.player
+
+
+func track_player_transform_signal(player_node: Node):
+	if player_node == null or not player_node.has_signal("transformation_state_changed"):
+		return
+
+	var callback := Callable(self, "_on_player_transformation_state_changed")
+	if tracked_transform_signal_player == player_node:
+		if not player_node.is_connected("transformation_state_changed", callback):
+			player_node.connect("transformation_state_changed", callback)
+		return
+
+	if tracked_transform_signal_player != null and is_instance_valid(tracked_transform_signal_player):
+		if tracked_transform_signal_player.is_connected("transformation_state_changed", callback):
+			tracked_transform_signal_player.disconnect("transformation_state_changed", callback)
+
+	tracked_transform_signal_player = player_node
+	if not player_node.is_connected("transformation_state_changed", callback):
+		player_node.connect("transformation_state_changed", callback)
+
+
+func _on_player_transformation_state_changed(_active: bool):
+	if banshee == null or banshee.player == null or not is_instance_valid(banshee.player):
+		return
+
+	refresh_player_ranges_after_transform()
 
 
 func refresh_player_detection_after_dialogue():
@@ -215,6 +282,7 @@ func refresh_player_detection_after_dialogue():
 		return
 
 	banshee.player = overlapping_player
+	track_player_transform_signal(overlapping_player)
 	banshee.player_in_detection = true
 	banshee.player_in_tracking = true
 	banshee.player_in_attack_range = get_overlapping_player(banshee.attack_range) != null

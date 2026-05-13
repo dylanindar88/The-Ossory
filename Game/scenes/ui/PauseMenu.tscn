@@ -47,17 +47,16 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="MenuView" type="VBoxContainer" parent="Overlay/Panel"]
-visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
-offset_left = -91.0
-offset_top = -125.5
-offset_right = 189.0
-offset_bottom = 218.5
+offset_left = -90.9091
+offset_top = -128.909
+offset_right = 189.091
+offset_bottom = 279.091
 grow_horizontal = 2
 grow_vertical = 2
 scale = Vector2(0.65, 0.65)
@@ -308,6 +307,7 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="SaveSlotsView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
