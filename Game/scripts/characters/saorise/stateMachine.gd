@@ -645,16 +645,16 @@ func get_sprite_animation_duration(anim_name: String, fallback: float) -> float:
 	return float(sprite_frames.get_frame_count(anim_name)) / animation_speed
 
 
-func move_with_villager_blocking(delta: float):
+func move_with_non_hostile_npc_blocking(delta: float):
 	var motion: Vector2 = velocity * delta
-	if should_stop_for_villager(motion):
+	if should_stop_for_non_hostile_npc(motion):
 		velocity = Vector2.ZERO
 		return
 
 	move_and_slide()
 
 
-func should_stop_for_villager(motion: Vector2) -> bool:
+func should_stop_for_non_hostile_npc(motion: Vector2) -> bool:
 	if motion == Vector2.ZERO:
 		return false
 
@@ -667,7 +667,7 @@ func should_stop_for_villager(motion: Vector2) -> bool:
 		return false
 
 	var collider_node: Node2D = collider as Node2D
-	return collider_node.is_in_group("villagers") and is_motion_toward_node(collider_node, motion)
+	return collider_node.is_in_group("non_hostile_npcs") and is_motion_toward_node(collider_node, motion)
 
 
 func is_motion_toward_node(node: Node2D, motion: Vector2) -> bool:

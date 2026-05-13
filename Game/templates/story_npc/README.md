@@ -8,6 +8,7 @@ Use for named NPCs with story-state dialogue or progression signals.
 - Dialogue profile: `res://resources/dialogue/npcs/<npc_name>/<npc_name>_story_profile.tres`
 - Use `DialogueProfile` keys for story states.
 - Story progression reacts to completion signals, not text content.
+- Join `non_hostile_npcs` when the actor is friendly, neutral, merchant, quest, civilian, or dialogue-focused.
 
 Validation:
 - Dialogue profile has every key the controller asks for.

@@ -25,7 +25,7 @@ func begin_combat_stage():
 	flow.revealed_banshee_paths.clear()
 	flow.temporarily_cleared_banshee_paths.clear()
 	flow.permanently_cleared_banshee_paths.clear()
-	flow.defeated_banshees.clear()
+	flow.defeated_banshee_nodes.clear()
 	flow.set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_MELEE)
 	flow.restore_stage_world_state()
 
@@ -86,7 +86,7 @@ func begin_third_wave_elder_ready_stage():
 	flow.revealed_banshee_paths.clear()
 	flow.temporarily_cleared_banshee_paths.clear()
 	flow.permanently_cleared_banshee_paths.clear()
-	flow.defeated_banshees.clear()
+	flow.defeated_banshee_nodes.clear()
 	flow.set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED)
 	flow.restore_stage_world_state()
 	flow.sync_story_wolf_transformation_lock()
@@ -144,10 +144,10 @@ func decline_bishop_confrontation():
 
 
 func handle_banshee_defeated(banshee: Node):
-	if flow.quest_stage == STAGE_RULES.STAGE_INTRO or flow.defeated_banshees.has(banshee):
+	if flow.quest_stage == STAGE_RULES.STAGE_INTRO or flow.defeated_banshee_nodes.has(banshee):
 		return
 
-	flow.defeated_banshees[banshee] = true
+	flow.defeated_banshee_nodes[banshee] = true
 	flow.banshee_kill_count += 1
 	var banshee_path: String = flow.get_relative_node_path(banshee)
 	flow.revealed_banshee_paths.erase(banshee_path)

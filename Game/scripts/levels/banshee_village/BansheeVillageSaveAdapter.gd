@@ -29,7 +29,7 @@ func collect_level_state() -> Dictionary:
 		"bishop_confrontation_accepted_for_level": flow.bishop_confrontation_accepted_for_level,
 		"dulluhan": collect_dulluhan_state(),
 		"banshees": collect_banshee_states(),
-		"villagers": collect_villager_states(),
+		"non_hostile_npcs": collect_non_hostile_npc_states(),
 	}
 
 
@@ -45,14 +45,14 @@ func validate_level_state(state: Dictionary) -> Array:
 
 	if not (state.get("banshees", []) is Array):
 		messages.append("BansheeVillage save has malformed banshees snapshot data.")
-	if not (state.get("villagers", []) is Array):
-		messages.append("BansheeVillage save has malformed villagers snapshot data.")
+	if not (state.get("non_hostile_npcs", []) is Array):
+		messages.append("BansheeVillage save has malformed non-hostile NPC snapshot data.")
 	if not (state.get("temporarily_cleared_banshee_paths", []) is Array):
 		messages.append("BansheeVillage save has malformed temporarily_cleared_banshee_paths.")
 
 	append_missing_node_warnings(messages)
 	append_missing_actor_path_warnings(messages, state.get("banshees", []), "banshee")
-	append_missing_actor_path_warnings(messages, state.get("villagers", []), "villager")
+	append_missing_actor_path_warnings(messages, state.get("non_hostile_npcs", []), "non-hostile NPC")
 	append_missing_assigned_villager_warnings(messages)
 	return messages
 
@@ -73,11 +73,11 @@ func apply_level_state(state: Dictionary):
 	flow.vincent_house_dialogue_completed_for_level = get_saved_bool(normalized_state, "vincent_house_dialogue_completed_for_level", STAGE_RULES.infer_vincent_house_dialogue_completed_from_stage(flow.quest_stage))
 	flow.bishop_confrontation_accepted_for_level = get_saved_bool(normalized_state, "bishop_confrontation_accepted_for_level", STAGE_RULES.infer_bishop_confrontation_accepted_from_stage(flow.quest_stage))
 	flow.cleared_villager_paths = {}
-	flow.defeated_banshees.clear()
+	flow.defeated_banshee_nodes.clear()
 	flow.temporarily_cleared_banshee_paths = {}
 	flow.permanently_cleared_banshee_paths = {}
 	flow.saved_banshee_states = parse_saved_banshee_states(normalized_state.get("banshees", []))
-	flow.saved_villager_states = SaveManager.parse_actor_snapshot_lookup(normalized_state.get("villagers", []))
+	flow.saved_villager_states = SaveManager.parse_actor_snapshot_lookup(normalized_state.get("non_hostile_npcs", []))
 
 	flow.revealed_banshee_paths = {}
 	apply_path_lookup(flow.revealed_banshee_paths, normalized_state.get("revealed_banshee_paths", []))
@@ -126,12 +126,12 @@ func collect_banshee_states() -> Array:
 	return SaveManager.collect_story_actor_states(flow.get_parent(), hostile_root, "hostile_npcs")
 
 
-func collect_villager_states() -> Array:
+func collect_non_hostile_npc_states() -> Array:
 	if flow.location_exit_save_pending:
 		return []
 
 	var npc_root: Node = flow.get_node_or_null(flow.npc_root_path)
-	return SaveManager.collect_story_actor_states(flow.get_parent(), npc_root, "villagers")
+	return SaveManager.collect_story_actor_states(flow.get_parent(), npc_root, "non_hostile_npcs")
 
 
 func collect_dulluhan_state() -> Dictionary:

@@ -31,7 +31,7 @@ func get_saved_level_state_for_path(level_path: String, fallback_state: Dictiona
 	return fallback_state.duplicate(true)
 
 
-func apply_level_states_by_path(data: Variant, saved_level_path: String = "", legacy_level_state: Variant = {}):
+func apply_level_states_by_path(data: Variant):
 	save_manager.level_states_by_path.clear()
 	if data is Dictionary:
 		var source: Dictionary = data
@@ -41,12 +41,8 @@ func apply_level_states_by_path(data: Variant, saved_level_path: String = "", le
 				var typed_state: Dictionary = raw_state
 				save_manager.level_states_by_path[str(level_path)] = typed_state.duplicate(true)
 
-	if saved_level_path != "" and legacy_level_state is Dictionary and not save_manager.level_states_by_path.has(saved_level_path):
-		var typed_legacy_state: Dictionary = legacy_level_state
-		save_manager.level_states_by_path[saved_level_path] = typed_legacy_state.duplicate(true)
 
-
-func get_level_state_for_current_load(current_level_path: String, saved_level_path: String, legacy_level_state: Variant) -> Dictionary:
+func get_level_state_for_current_load(current_level_path: String, saved_level_path: String) -> Dictionary:
 	var current_state: Dictionary = get_saved_level_state_for_path(current_level_path)
 	if not current_state.is_empty():
 		return current_state
@@ -55,21 +51,12 @@ func get_level_state_for_current_load(current_level_path: String, saved_level_pa
 	if not saved_state.is_empty():
 		return saved_state
 
-	if legacy_level_state is Dictionary:
-		var typed_legacy_state: Dictionary = legacy_level_state
-		if not typed_legacy_state.is_empty():
-			return typed_legacy_state.duplicate(true)
-
 	return {}
 
 
-func has_saved_scene_local_state(saved_level_path: String, legacy_level_state: Variant) -> bool:
+func has_saved_scene_local_state(saved_level_path: String) -> bool:
 	if saved_level_path != "" and not get_saved_level_state_for_path(saved_level_path).is_empty():
 		return true
-
-	if legacy_level_state is Dictionary:
-		var typed_legacy_state: Dictionary = legacy_level_state
-		return not typed_legacy_state.is_empty()
 
 	return false
 
@@ -95,15 +82,11 @@ func warn_pending_scene_load_failed(slot: int):
 	push_warning("Pending save load failed for slot %d. Saved scene: '%s'. Current scene: '%s'. Saved quest_stage: '%s'. Error: %s" % [slot, saved_level_path, current_level_path, saved_quest_stage, load_error])
 
 
-func get_level_state_source_for_current_load(current_level_path: String, saved_level_path: String, legacy_level_state: Variant) -> String:
+func get_level_state_source_for_current_load(current_level_path: String, saved_level_path: String) -> String:
 	if current_level_path != "" and not get_saved_level_state_for_path(current_level_path).is_empty():
 		return "current_scene_path"
 	if saved_level_path != "" and not get_saved_level_state_for_path(saved_level_path).is_empty():
 		return "saved_scene_path"
-	if legacy_level_state is Dictionary:
-		var typed_legacy_state: Dictionary = legacy_level_state
-		if not typed_legacy_state.is_empty():
-			return "legacy_level_state"
 	return "empty"
 
 
@@ -175,9 +158,9 @@ func uses_level_owned_hostile_state(level: Node) -> bool:
 	return false
 
 
-func uses_level_owned_villager_state(level: Node) -> bool:
+func uses_level_owned_non_hostile_npc_state(level: Node) -> bool:
 	for provider in get_level_state_providers(level):
-		if provider.has_method("uses_level_owned_villager_state") and bool(provider.call("uses_level_owned_villager_state")):
+		if provider.has_method("uses_level_owned_non_hostile_npc_state") and bool(provider.call("uses_level_owned_non_hostile_npc_state")):
 			return true
 
 	return false

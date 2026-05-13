@@ -6,7 +6,8 @@ Use for simple non-story NPCs.
 - Script: reuse or create a controller under `res://scripts/characters/npcs/<group_or_name>/`
 - Animation resource: `res://resources/characters/npcs/<group_or_name>/<npc_name>.tres`
 - Dialogue bank: `res://resources/dialogue/npcs/<group_or_name>/<npc_name>_default.tres`
-- Expected group: `villagers` or another explicit NPC group used by the level.
+- Expected generic group: `non_hostile_npcs`.
+- Content-specific group: use `celtic_villagers` only for actual Celtic villager behavior.
 
 Validation:
 - Scene references external `SpriteFrames`.

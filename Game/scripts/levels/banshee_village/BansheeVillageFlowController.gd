@@ -82,7 +82,7 @@ var cleared_villager_paths: Dictionary = {}
 var revealed_banshee_paths: Dictionary = {}
 var temporarily_cleared_banshee_paths: Dictionary = {}
 var permanently_cleared_banshee_paths: Dictionary = {}
-var defeated_banshees: Dictionary = {}
+var defeated_banshee_nodes: Dictionary = {}
 var saved_banshee_states: Dictionary = {}
 var saved_villager_states: Dictionary = {}
 var player: Node
@@ -184,7 +184,7 @@ func uses_level_owned_hostile_state() -> bool:
 	return true
 
 
-func uses_level_owned_villager_state() -> bool:
+func uses_level_owned_non_hostile_npc_state() -> bool:
 	return true
 
 
@@ -369,8 +369,8 @@ func collect_banshee_states() -> Array:
 	return save_adapter.collect_banshee_states()
 
 
-func collect_villager_states() -> Array:
-	return save_adapter.collect_villager_states()
+func collect_non_hostile_npc_states() -> Array:
+	return save_adapter.collect_non_hostile_npc_states()
 
 
 func collect_dulluhan_state() -> Dictionary:
@@ -405,7 +405,7 @@ func apply_intro_defaults():
 	revealed_banshee_paths.clear()
 	temporarily_cleared_banshee_paths.clear()
 	permanently_cleared_banshee_paths.clear()
-	defeated_banshees.clear()
+	defeated_banshee_nodes.clear()
 	saved_banshee_states.clear()
 	saved_villager_states.clear()
 	set_all_banshee_combat_variants(BANSHEE_VARIANT_CORRUPTED_MELEE)
@@ -611,7 +611,7 @@ func is_banshee_defeated_or_waiting(banshee: Node) -> bool:
 	if banshee == null:
 		return false
 
-	if defeated_banshees.has(banshee):
+	if defeated_banshee_nodes.has(banshee):
 		return true
 
 	if bool(banshee.get("dead")):
@@ -944,7 +944,7 @@ func prepare_for_route_exit():
 		if banshee_path != "" and permanently_cleared_banshee_paths.has(banshee_path):
 			continue
 
-		defeated_banshees.erase(banshee)
+		defeated_banshee_nodes.erase(banshee)
 		var villager: Node = get_banshee_assigned_villager(banshee)
 		var villager_path: String = get_relative_node_path(villager)
 		if villager_path != "":

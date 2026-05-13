@@ -24,7 +24,7 @@ var house_dialogue_completed_override_value: bool = false
 
 
 func _ready():
-	add_to_group("villagers")
+	add_to_group("non_hostile_npcs")
 	dialogue_session.setup(self)
 	play_idle()
 	refresh_progress_flag()

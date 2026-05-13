@@ -186,7 +186,7 @@ func find_social_partner() -> Node2D:
 		return null
 
 	var radius_squared: float = get_social_radius() * get_social_radius()
-	var villagers: Array[Node] = owner.get_tree().get_nodes_in_group("villagers")
+	var villagers: Array[Node] = owner.get_tree().get_nodes_in_group("celtic_villagers")
 	var best_partner: Node2D = null
 	var best_distance: float = radius_squared
 

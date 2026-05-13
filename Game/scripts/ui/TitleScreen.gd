@@ -1,10 +1,5 @@
 extends CanvasLayer
 
-const BANSHEE_VILLAGE_SCENE: String = "res://scenes/levels/BansheeVillage.tscn"
-const STARTING_WILDERNESS_SCENE: String = "res://scenes/levels/StartingWilderness.tscn"
-const WEEPING_WOODS_SCENE: String = "res://scenes/levels/WeepingWoods.tscn"
-const NEW_GAME_START_SCENE: String = STARTING_WILDERNESS_SCENE
-
 @onready var main_view: VBoxContainer = $Control/Panel/RightContent/ViewContainer/MainView
 @onready var new_game_slots_view: VBoxContainer = $Control/Panel/RightContent/ViewContainer/NewGameSlotsView
 @onready var load_slots_view: VBoxContainer = $Control/Panel/RightContent/ViewContainer/LoadSlotsView
@@ -101,28 +96,7 @@ func build_dev_menu_from_registry():
 	if SaveManager != null and SaveManager.has_method("get_title_dev_level_entries"):
 		entries = SaveManager.get_title_dev_level_entries()
 	if entries.is_empty():
-		entries = [
-			{
-				"scene_path": STARTING_WILDERNESS_SCENE,
-				"display_name": "01 - Starting Wilderness",
-				"dev_presets": [{"label": "Start", "preset": ""}],
-			},
-			{
-				"scene_path": WEEPING_WOODS_SCENE,
-				"display_name": "02 - Weeping Woods",
-				"dev_presets": [{"label": "Start", "preset": ""}],
-			},
-			{
-				"scene_path": BANSHEE_VILLAGE_SCENE,
-				"display_name": "03 - Banshee Village",
-				"dev_presets": [
-					{"label": "Start", "preset": "start"},
-					{"label": "First Report", "preset": "first_banshee_report_ready"},
-					{"label": "Second Report", "preset": "second_banshee_report_ready"},
-					{"label": "Third Report", "preset": "third_banshee_report_ready"},
-				],
-			},
-		]
+		return
 
 	for raw_entry in entries:
 		if not (raw_entry is Dictionary):
@@ -397,7 +371,7 @@ func _on_new_game_slot_pressed(slot: int):
 		refresh_new_game_slots()
 		return
 
-	if not SaveManager.start_new_game(slot, NEW_GAME_START_SCENE):
+	if not SaveManager.start_new_game(slot, SaveManager.STARTING_WILDERNESS_SCENE):
 		new_game_status_label.text = SaveManager.last_error if SaveManager.last_error != "" else "Could not start new game."
 
 

@@ -32,7 +32,7 @@ func apply_banshee_villager_presentation(combat_enabled: bool):
 			flow.set_villager_clear_sequence(villager)
 			flow.complete_villager_banshee_story(villager)
 			apply_cleared_banshee_state(banshee, saved_state)
-			flow.defeated_banshees[banshee] = true
+			flow.defeated_banshee_nodes[banshee] = true
 			if saved_dead and not permanent_clear and not temporary_clear:
 				schedule_banshee_respawn(banshee)
 			continue
@@ -145,7 +145,7 @@ func handle_banshee_detected_player_for_reveal(banshee: Node):
 	if flow.quest_stage == STAGE_RULES.STAGE_INTRO or banshee == null:
 		return
 
-	if flow.defeated_banshees.has(banshee):
+	if flow.defeated_banshee_nodes.has(banshee):
 		return
 
 	var banshee_path: String = flow.get_relative_node_path(banshee)
@@ -173,7 +173,7 @@ func respawn_banshee(banshee: Node):
 	if flow.quest_stage == STAGE_RULES.STAGE_INTRO or banshee == null or not is_instance_valid(banshee):
 		return
 
-	if not flow.defeated_banshees.has(banshee):
+	if not flow.defeated_banshee_nodes.has(banshee):
 		return
 
 	var banshee_path: String = flow.get_relative_node_path(banshee)
@@ -182,7 +182,7 @@ func respawn_banshee(banshee: Node):
 	if flow.temporarily_cleared_banshee_paths.has(banshee_path):
 		return
 
-	flow.defeated_banshees.erase(banshee)
+	flow.defeated_banshee_nodes.erase(banshee)
 	flow.revealed_banshee_paths.erase(banshee_path)
 
 	var villager: Node = flow.get_banshee_assigned_villager(banshee)

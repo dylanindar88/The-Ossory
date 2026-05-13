@@ -203,4 +203,4 @@ func update_movement(player, delta: float):
 
 	var movement_speed: float = player.run_speed if player.current_form_always_runs() else player.walk_speed
 	player.velocity = input_vector * movement_speed * player.block_speed_modifier
-	player.move_with_villager_blocking(delta)
+	player.move_with_non_hostile_npc_blocking(delta)

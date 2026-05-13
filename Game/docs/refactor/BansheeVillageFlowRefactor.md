@@ -17,7 +17,7 @@ For future level setup, use `res://docs/content_authoring.md` and `res://templat
 
 ## Save Compatibility
 
-`BansheeVillageFlowController.collect_level_state()` remains the public save interface until a later explicit migration. These level-state keys must stay compatible:
+`BansheeVillageFlowController.collect_level_state()` remains the public save interface. These v2 level-state keys should stay stable until the next explicit schema break:
 
 - `state_version`
 - `quest_stage`
@@ -35,11 +35,11 @@ For future level setup, use `res://docs/content_authoring.md` and `res://templat
 - `bishop_confrontation_accepted_for_level`
 - `dulluhan`
 - `banshees`
-- `villagers`
+- `non_hostile_npcs`
 
 ## Level Flow Convention
 
-Future story-heavy levels should use one scene-attached coordinator as the public save provider. Optional helper scripts may own progression, encounter, presentation, interior travel, prompts, or dev setup, but helpers must not create separate save schemas unless the coordinator owns migration and compatibility.
+Future story-heavy levels should use one scene-attached coordinator as the public save provider. Optional helper scripts may own progression, encounter, presentation, interior travel, prompts, or dev setup, but helpers must not create separate save schemas unless the coordinator owns the packed provider shape.
 
 ## Completed Helper Layout
 
@@ -51,7 +51,7 @@ Future story-heavy levels should use one scene-attached coordinator as the publi
 - `BansheeVillageInteriorTravelController.gd` owns Vincent house transfer and active interior state.
 - `BansheeVillageStoryPromptController.gd` owns the story wolf prompt and transformation lock.
 - `BansheeVillagePresentationController.gd` owns route gates, flags, kill counter text, Dulluhan visibility, and exterior Vincent presentation.
-- `BansheeVillageEncounterController.gd` owns banshee/villager story state, reveal/clear rules, combat variants, and respawn timing.
+- `BansheeVillageEncounterController.gd` owns banshee and Celtic villager story state, reveal/clear rules, combat variants, and respawn timing.
 
 ## Manual Smoke Checklist
 

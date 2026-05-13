@@ -1,6 +1,6 @@
 # Content Authoring Guide
 
-Use this as the quick checklist before adding new levels, NPCs, hostile entities, or bosses. Banshee Village is the concrete reference implementation.
+Use this as the quick checklist before adding new levels, NPCs, hostile entities, or bosses. `res://docs/development_spec.md` is the repo-wide source for naming, save, and development etiquette. Banshee Village is the concrete reference implementation.
 
 ## Storage Conventions
 
@@ -26,10 +26,10 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 
 1. Create the level scene under `res://scenes/levels/`.
 2. Register the scene in `SaveManager.LEVEL_DISPLAY_REGISTRY` with a unique `level_index`, `display_name`, `category`, `is_boss_level`, and `map_region_id`.
-3. Add a scene-attached flow coordinator only if the level owns story progression, level-local state, or special route/interior behavior.
+3. Add a scene-attached flow coordinator under `res://scripts/levels/<level_name>/`. It can be minimal for now, but future levels are expected to need at least a small save provider.
 4. Put level-specific helpers under `res://scripts/levels/<level_name>/`.
-5. Keep one public level-state provider unless there is an explicit save migration plan.
-6. Keep save keys, quest stage strings, and route IDs stable once saves can reference them.
+5. Keep one public level-state provider unless multiple providers are clearly needed; multi-provider state is packed under `_providers`.
+6. Keep save keys, quest stage strings, and route IDs stable within a save schema version. Schema breaks require a `SaveManager.SAVE_VERSION` bump.
 
 ## Story Progression State
 
@@ -38,6 +38,7 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 - Use level-local state for scene-owned details such as active interiors, local encounter waves, local NPC positions, temporary clears, local prompts, and save restoration snapshots.
 - Keep local level state behind the level coordinator's `collect_level_state`, `apply_level_state`, and `validate_level_state` methods.
 - Do not promote a level-local field into a global flag until another level or global UI actually needs it.
+- Store level-local data through `level_states_by_path`; do not add a top-level `level_state` save key.
 
 ## Story-Heavy Level Pattern
 
@@ -86,6 +87,8 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 3. Use `DialogueBank` for simple default chatter.
 4. Use `DialogueProfile` for story-state dialogue.
 5. Keep dialogue completion signals separate from the dialogue text.
+6. Add generic friendly, neutral, quest, merchant, and civilian NPCs to `non_hostile_npcs`.
+7. Add Celtic villagers to both `non_hostile_npcs` and `celtic_villagers`.
 
 ## Adding A Hostile Or Boss
 

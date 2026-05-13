@@ -5,7 +5,7 @@ signal player_lives_changed(current_lives: int, max_lives: int)
 signal gauge_display_settings_changed(show_hud_gauges: bool, show_player_gauges: bool)
 signal current_level_changed(level_path: String, metadata: Dictionary)
 
-const SAVE_VERSION := 1
+const SAVE_VERSION := 2
 const MANUAL_SAVE_SLOT_COUNT := 3
 const AUTOSAVE_SLOT := 4
 const SAVE_SLOT_COUNT := 4
@@ -687,16 +687,16 @@ func get_saved_level_state_for_path(level_path: String, fallback_state: Dictiona
 	return level_state_controller.get_saved_level_state_for_path(level_path, fallback_state)
 
 
-func apply_level_states_by_path(data: Variant, saved_level_path: String = "", legacy_level_state: Variant = {}):
-	level_state_controller.apply_level_states_by_path(data, saved_level_path, legacy_level_state)
+func apply_level_states_by_path(data: Variant):
+	level_state_controller.apply_level_states_by_path(data)
 
 
-func get_level_state_for_current_load(current_level_path: String, saved_level_path: String, legacy_level_state: Variant) -> Dictionary:
-	return level_state_controller.get_level_state_for_current_load(current_level_path, saved_level_path, legacy_level_state)
+func get_level_state_for_current_load(current_level_path: String, saved_level_path: String) -> Dictionary:
+	return level_state_controller.get_level_state_for_current_load(current_level_path, saved_level_path)
 
 
-func has_saved_scene_local_state(saved_level_path: String, legacy_level_state: Variant) -> bool:
-	return level_state_controller.has_saved_scene_local_state(saved_level_path, legacy_level_state)
+func has_saved_scene_local_state(saved_level_path: String) -> bool:
+	return level_state_controller.has_saved_scene_local_state(saved_level_path)
 
 
 func warn_level_state_load_mismatch(current_level_path: String, saved_level_path: String):
@@ -707,8 +707,8 @@ func warn_pending_scene_load_failed(slot: int):
 	level_state_controller.warn_pending_scene_load_failed(slot)
 
 
-func get_level_state_source_for_current_load(current_level_path: String, saved_level_path: String, legacy_level_state: Variant) -> String:
-	return level_state_controller.get_level_state_source_for_current_load(current_level_path, saved_level_path, legacy_level_state)
+func get_level_state_source_for_current_load(current_level_path: String, saved_level_path: String) -> String:
+	return level_state_controller.get_level_state_source_for_current_load(current_level_path, saved_level_path)
 
 
 func get_quest_stage_from_state(state: Dictionary) -> String:
@@ -921,10 +921,6 @@ func get_level_state_from_save_data(data: Dictionary, level_path: String) -> Dic
 		if raw_state is Dictionary:
 			return raw_state
 
-	var raw_fallback_state: Variant = data.get("level_state", {})
-	if raw_fallback_state is Dictionary:
-		return raw_fallback_state
-
 	return {}
 
 
@@ -1005,8 +1001,7 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 		last_error = "Save data belongs to a different level."
 		return false
 
-	var legacy_level_state: Variant = data.get("level_state", {})
-	apply_level_states_by_path(raw_saved_level_states, saved_level_path, legacy_level_state)
+	apply_level_states_by_path(raw_saved_level_states)
 	var destination_state_missing_for_pending_transition: bool = (
 		is_pending_scene_transition
 		and current_level_path != ""
@@ -1020,12 +1015,12 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 		return false
 	var current_level_state: Dictionary = {}
 	if not destination_state_missing_for_pending_transition:
-		current_level_state = get_level_state_for_current_load(current_level_path, saved_level_path, legacy_level_state)
-	if current_level_state.is_empty() and has_saved_scene_local_state(saved_level_path, legacy_level_state) and not is_pending_scene_transition:
+		current_level_state = get_level_state_for_current_load(current_level_path, saved_level_path)
+	if current_level_state.is_empty() and has_saved_scene_local_state(saved_level_path) and not is_pending_scene_transition:
 		warn_level_state_load_mismatch(current_level_path, saved_level_path)
 		last_error = "Save data could not be applied to the current level state."
 		return false
-	var current_level_state_source: String = get_level_state_source_for_current_load(current_level_path, saved_level_path, legacy_level_state)
+	var current_level_state_source: String = get_level_state_source_for_current_load(current_level_path, saved_level_path)
 	if current_level_state.is_empty() and is_pending_scene_transition and current_level_path != saved_level_path:
 		current_level_state_source = "pending_scene_default"
 		print_verbose("Pending scene load has no saved local state for '%s'; applying default level state." % current_level_path)
@@ -1046,9 +1041,9 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 		player_lives_changed.emit(player_lives, get_max_player_lives())
 	apply_player_state(level, data.get("player", {}))
 	if not uses_level_owned_hostile_state(level):
-		apply_defeated_banshees(level, data.get("defeated_banshees", []))
-	if not uses_level_owned_villager_state(level):
-		apply_villager_states(level, data.get("villagers", []))
+		apply_defeated_hostiles(level, data.get("defeated_hostiles", []))
+	if not uses_level_owned_non_hostile_npc_state(level):
+		apply_non_hostile_npc_states(level, data.get("non_hostile_npcs", []))
 	apply_level_state(level, current_level_state)
 	if not verify_level_state_after_apply(level, current_level_state, int(data.get("slot", 0)), current_level_state_source):
 		return false
@@ -1078,6 +1073,14 @@ func get_save_file_name(slot: int) -> String:
 	return file_controller.get_save_file_name(slot)
 
 
+func _set_test_save_path_format(path_format: String):
+	file_controller.set_save_path_format_override(path_format)
+
+
+func _clear_test_save_path_format():
+	file_controller.clear_save_path_format_override()
+
+
 func get_current_level() -> Node:
 	if current_level != null and is_instance_valid(current_level) and current_level.is_inside_tree():
 		return current_level
@@ -1091,13 +1094,13 @@ func build_save_data(reason: String, level: Node, slot: int) -> Dictionary:
 	if level_path != "":
 		level_states_by_path[level_path] = current_level_state
 
-	var defeated_banshee_state: Array = []
+	var defeated_hostile_state: Array = []
 	if not uses_level_owned_hostile_state(level):
-		defeated_banshee_state = collect_defeated_banshees(level)
+		defeated_hostile_state = collect_defeated_hostiles(level)
 
-	var villager_state: Array = []
-	if not uses_level_owned_villager_state(level):
-		villager_state = collect_villager_states(level)
+	var non_hostile_npc_state: Array = []
+	if not uses_level_owned_non_hostile_npc_state(level):
+		non_hostile_npc_state = collect_non_hostile_npc_states(level)
 
 	return {
 		"version": SAVE_VERSION,
@@ -1111,9 +1114,8 @@ func build_save_data(reason: String, level: Node, slot: int) -> Dictionary:
 		"saved_at_datetime": Time.get_datetime_string_from_system(),
 		"level_path": level_path,
 		"player": collect_player_state(level),
-		"defeated_banshees": defeated_banshee_state,
-		"villagers": villager_state,
-		"level_state": current_level_state,
+		"defeated_hostiles": defeated_hostile_state,
+		"non_hostile_npcs": non_hostile_npc_state,
 		"level_states_by_path": level_states_by_path.duplicate(true),
 	}
 
@@ -1133,12 +1135,12 @@ func collect_player_state(level: Node) -> Dictionary:
 	return actor_state_controller.collect_player_state(level)
 
 
-func collect_defeated_banshees(level: Node) -> Array:
-	return actor_state_controller.collect_defeated_banshees(level)
+func collect_defeated_hostiles(level: Node) -> Array:
+	return actor_state_controller.collect_defeated_hostiles(level)
 
 
-func collect_villager_states(level: Node) -> Array:
-	return actor_state_controller.collect_villager_states(level)
+func collect_non_hostile_npc_states(level: Node) -> Array:
+	return actor_state_controller.collect_non_hostile_npc_states(level)
 
 
 func collect_story_actor_states(level: Node, root: Node, required_group: String = "") -> Array:
@@ -1169,8 +1171,8 @@ func uses_level_owned_hostile_state(level: Node) -> bool:
 	return level_state_controller.uses_level_owned_hostile_state(level)
 
 
-func uses_level_owned_villager_state(level: Node) -> bool:
-	return level_state_controller.uses_level_owned_villager_state(level)
+func uses_level_owned_non_hostile_npc_state(level: Node) -> bool:
+	return level_state_controller.uses_level_owned_non_hostile_npc_state(level)
 
 
 func apply_level_state(level: Node, state_data: Variant):
@@ -1197,8 +1199,8 @@ func apply_player_state(level: Node, player_data: Variant):
 	actor_state_controller.apply_player_state(level, player_data)
 
 
-func apply_defeated_banshees(level: Node, defeated_paths: Variant):
-	actor_state_controller.apply_defeated_banshees(level, defeated_paths)
+func apply_defeated_hostiles(level: Node, defeated_paths: Variant):
+	actor_state_controller.apply_defeated_hostiles(level, defeated_paths)
 
 
 func apply_defeated_hostile_state(hostile: Node):
@@ -1209,8 +1211,8 @@ func apply_active_hostile_state(hostile: Node):
 	actor_state_controller.apply_active_hostile_state(hostile)
 
 
-func apply_villager_states(level: Node, villager_states: Variant):
-	actor_state_controller.apply_villager_states(level, villager_states)
+func apply_non_hostile_npc_states(level: Node, npc_states: Variant):
+	actor_state_controller.apply_non_hostile_npc_states(level, npc_states)
 
 
 func get_relative_node_path(level: Node, node: Node) -> String:

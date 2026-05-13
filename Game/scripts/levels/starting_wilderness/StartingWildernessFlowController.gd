@@ -65,7 +65,7 @@ func collect_level_state() -> Dictionary:
 		"state_version": LEVEL_STATE_VERSION,
 		"dialogue_key": str(get_dialogue_key_for_story()),
 		"encounter": encounter_state,
-		"villagers": collect_villager_states(),
+		"non_hostile_npcs": collect_non_hostile_npc_states(),
 	}
 
 
@@ -75,7 +75,7 @@ func apply_level_state(state: Dictionary):
 	ensure_encounter_controller()
 	saved_villager_states = {}
 	if SaveManager != null:
-		saved_villager_states = SaveManager.parse_actor_snapshot_lookup(state.get("villagers", []))
+		saved_villager_states = SaveManager.parse_actor_snapshot_lookup(state.get("non_hostile_npcs", []))
 	restore_saved_villager_states()
 
 	var encounter_state: Dictionary = {}
@@ -93,8 +93,8 @@ func validate_level_state(state: Dictionary) -> Array:
 	var messages: Array = []
 	if int(state.get("state_version", 0)) > LEVEL_STATE_VERSION:
 		messages.append("StartingWilderness save state version %d is newer than supported version %d." % [int(state.get("state_version", 0)), LEVEL_STATE_VERSION])
-	if not (state.get("villagers", []) is Array):
-		messages.append("StartingWilderness save has malformed villagers snapshot data.")
+	if not (state.get("non_hostile_npcs", []) is Array):
+		messages.append("StartingWilderness save has malformed non-hostile NPC snapshot data.")
 	var raw_encounter_state: Variant = state.get("encounter", {})
 	if state.has("encounter") and not (raw_encounter_state is Dictionary):
 		messages.append("StartingWilderness save has malformed encounter state.")
@@ -112,7 +112,7 @@ func uses_level_owned_hostile_state() -> bool:
 	return true
 
 
-func uses_level_owned_villager_state() -> bool:
+func uses_level_owned_non_hostile_npc_state() -> bool:
 	return true
 
 
@@ -206,7 +206,7 @@ func build_dev_level_state() -> Dictionary:
 			"permanently_cleared_banshee_paths": [],
 			"banshees": [],
 		},
-		"villagers": [],
+		"non_hostile_npcs": [],
 	}
 
 
@@ -252,12 +252,12 @@ func ensure_encounter_controller():
 		setup_encounter_controller()
 
 
-func collect_villager_states() -> Array:
+func collect_non_hostile_npc_states() -> Array:
 	if SaveManager == null or location_exit_save_pending:
 		return []
 
 	var npc_root: Node = get_node_or_null(npc_root_path)
-	return SaveManager.collect_story_actor_states(get_parent(), npc_root, "villagers")
+	return SaveManager.collect_story_actor_states(get_parent(), npc_root, "non_hostile_npcs")
 
 
 func restore_saved_villager_states():

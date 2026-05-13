@@ -2,6 +2,7 @@ class_name SaveFileController
 extends RefCounted
 
 var save_manager
+var save_path_format_override: String = ""
 
 
 func setup(owner_save_manager):
@@ -31,7 +32,16 @@ func is_autosave_slot(slot: int) -> bool:
 
 
 func get_save_path(slot: int) -> String:
-	return save_manager.SAVE_PATH_FORMAT % clamp(slot, 1, save_manager.SAVE_SLOT_COUNT)
+	var path_format: String = save_path_format_override if save_path_format_override != "" else save_manager.SAVE_PATH_FORMAT
+	return path_format % clamp(slot, 1, save_manager.SAVE_SLOT_COUNT)
+
+
+func set_save_path_format_override(path_format: String):
+	save_path_format_override = path_format
+
+
+func clear_save_path_format_override():
+	save_path_format_override = ""
 
 
 func get_save_file_name(slot: int) -> String:
@@ -88,12 +98,15 @@ func delete_save(slot: int) -> bool:
 		save_manager.last_error = ""
 		return true
 
-	var dir: DirAccess = DirAccess.open("user://")
+	var save_path: String = get_save_path(slot)
+	var save_dir_path: String = save_path.get_base_dir() if save_path_format_override != "" else "user://"
+	var save_file_name: String = save_path.get_file() if save_path_format_override != "" else get_save_file_name(slot)
+	var dir: DirAccess = DirAccess.open(save_dir_path)
 	if dir == null:
 		save_manager.last_error = "Could not open the user save directory."
 		return false
 
-	var error: Error = dir.remove(get_save_file_name(slot))
+	var error: Error = dir.remove(save_file_name)
 	if error != OK:
 		save_manager.last_error = "Could not delete save slot %d. Error: %s" % [slot, error_string(error)]
 		return false

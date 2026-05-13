@@ -116,7 +116,7 @@ func is_saved_player_dead(player_data: Variant) -> bool:
 	return bool(health_data.get("dead", false)) or int(health_data.get("current", 1)) <= 0
 
 
-func collect_defeated_banshees(level: Node) -> Array:
+func collect_defeated_hostiles(level: Node) -> Array:
 	var defeated: Array = []
 	for hostile in save_manager.get_tree().get_nodes_in_group("hostile_npcs"):
 		if not is_node_in_level(level, hostile):
@@ -133,7 +133,7 @@ func collect_defeated_banshees(level: Node) -> Array:
 	return defeated
 
 
-func apply_defeated_banshees(level: Node, defeated_paths: Variant):
+func apply_defeated_hostiles(level: Node, defeated_paths: Variant):
 	if not (defeated_paths is Array):
 		return
 
@@ -173,43 +173,43 @@ func apply_active_hostile_state(hostile: Node):
 	hostile.set_physics_process(true)
 
 
-func collect_villager_states(level: Node) -> Array:
-	var villagers: Array = []
-	for villager in save_manager.get_tree().get_nodes_in_group("villagers"):
-		if not is_node_in_level(level, villager):
+func collect_non_hostile_npc_states(level: Node) -> Array:
+	var npc_states: Array = []
+	for npc in save_manager.get_tree().get_nodes_in_group("non_hostile_npcs"):
+		if not is_node_in_level(level, npc):
 			continue
 
-		villagers.append({
-			"node_path": get_relative_node_path(level, villager),
-			"paused_by_external_actor": bool(villager.get("paused_by_external_actor")),
-			"external_pause_completed": bool(villager.get("external_pause_completed")),
+		npc_states.append({
+			"node_path": get_relative_node_path(level, npc),
+			"paused_by_external_actor": bool(npc.get("paused_by_external_actor")),
+			"external_pause_completed": bool(npc.get("external_pause_completed")),
 		})
 
-	return villagers
+	return npc_states
 
 
-func apply_villager_states(level: Node, villager_states: Variant):
-	if not (villager_states is Array):
+func apply_non_hostile_npc_states(level: Node, npc_states: Variant):
+	if not (npc_states is Array):
 		return
 
-	for raw_state in villager_states:
+	for raw_state in npc_states:
 		if not (raw_state is Dictionary):
 			continue
 
 		var state: Dictionary = raw_state
-		var villager: Node = get_node_from_saved_path(level, str(state.get("node_path", "")))
-		if villager == null:
+		var npc: Node = get_node_from_saved_path(level, str(state.get("node_path", "")))
+		if npc == null:
 			continue
 
 		var paused_by_external_actor: bool = bool(state.get("paused_by_external_actor", false))
 		var external_pause_completed: bool = bool(state.get("external_pause_completed", false))
-		if villager.has_method("apply_saved_story_pause_state"):
-			villager.apply_saved_story_pause_state(paused_by_external_actor, external_pause_completed)
+		if npc.has_method("apply_saved_story_pause_state"):
+			npc.apply_saved_story_pause_state(paused_by_external_actor, external_pause_completed)
 		else:
-			villager.set("paused_by_external_actor", paused_by_external_actor)
-			villager.set("external_pause_completed", external_pause_completed)
-		if villager.has_method("play_idle_animation") and bool(state.get("external_pause_completed", false)):
-			villager.play_idle_animation()
+			npc.set("paused_by_external_actor", paused_by_external_actor)
+			npc.set("external_pause_completed", external_pause_completed)
+		if npc.has_method("play_idle_animation") and bool(state.get("external_pause_completed", false)):
+			npc.play_idle_animation()
 
 
 func collect_story_actor_states(level: Node, root: Node, required_group: String = "") -> Array:

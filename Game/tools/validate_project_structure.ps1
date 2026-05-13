@@ -74,7 +74,15 @@ $stalePatterns = @(
     'InitialSpawnOption',
     'res://templates/route_level/',
     'Route Level Template',
-    'Route\s+[0-9]+'
+    'Route\s+[0-9]+',
+    'defeated_banshees',
+    '"villagers"',
+    'uses_level_owned_villager_state',
+    'collect_villager_states',
+    'apply_villager_states',
+    'move_with_villager_blocking',
+    'should_stop_for_villager',
+    'legacy_level_state'
 )
 
 foreach ($file in $textFiles) {
@@ -202,6 +210,27 @@ if (Test-Path -LiteralPath $saveManagerPath) {
             if ($sceneContent -notmatch "\[node name=`"$([regex]::Escape($expectedRootName))`" type=`"Node2D`"\]") {
                 Add-ValidationError "$relativeScenePath root node should be '$expectedRootName'."
             }
+
+            if ($sceneContent -notmatch '\[node name="LevelSaveController" type="Node" parent="\."\]') {
+                Add-ValidationError "$relativeScenePath is missing a root LevelSaveController node."
+            }
+
+            if ($sceneContent -notmatch '\[node name="LevelInteractionRouter" type="Node" parent="\."\]') {
+                Add-ValidationError "$relativeScenePath is missing a root LevelInteractionRouter node."
+            }
+
+            $expectedFlowName = "$($scene.BaseName)FlowController"
+            if ($sceneContent -notmatch "\[node name=`"$([regex]::Escape($expectedFlowName))`" type=`"Node`" parent=`"\.`"\]") {
+                Add-ValidationError "$relativeScenePath is missing root flow controller '$expectedFlowName'."
+            }
+
+            $routerBlockMatch = [regex]::Match($sceneContent, '(?ms)\[node name="LevelInteractionRouter" type="Node" parent="\."\].*?(?=\r?\n\[node|\z)')
+            if ($routerBlockMatch.Success) {
+                $expectedControllerPath = "level_controller_path = NodePath(`"../$expectedFlowName`")"
+                if ($routerBlockMatch.Value -notmatch [regex]::Escape($expectedControllerPath)) {
+                    Add-ValidationError "$relativeScenePath LevelInteractionRouter should point to ../$expectedFlowName."
+                }
+            }
         }
     }
 }
@@ -288,6 +317,11 @@ foreach ($scene in $sceneFiles) {
                 Add-ValidationError "$relative route exit '$nodeName' has a destination scene but no destination_entry_marker_path."
             } elseif ($entryMarkerPath -notmatch '^PlayableWorld/Markers/Entrances/') {
                 Add-ValidationWarning "$relative route exit '$nodeName' destination_entry_marker_path should use PlayableWorld/Markers/Entrances/..."
+            }
+        } else {
+            $missingMessageMatch = [regex]::Match($block, '(?m)^missing_destination_message = "([^"]+)"')
+            if (-not $missingMessageMatch.Success -or $missingMessageMatch.Groups[1].Value.Trim() -eq "") {
+                Add-ValidationError "$relative route exit '$nodeName' has no destination scene and needs an explicit missing_destination_message."
             }
         }
     }

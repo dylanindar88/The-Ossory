@@ -7,6 +7,7 @@ Use the hostile entity pattern first, then add boss-specific pieces.
 - Helpers may own phases, arena locks, special attacks, or story lifecycle.
 - Tuning and animation resources live under `res://resources/characters/hostile_npcs/<boss_name>/`.
 - Level flow owns quest progression, arena gates, save state, and reward handoff.
+- Global story flags or quest stages own cross-level unlocks and metroidvania gates.
 
 Validation:
 - Boss can be spawned or direct-loaded with all resources present.

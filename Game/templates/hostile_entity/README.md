@@ -7,6 +7,7 @@ Use for combat enemies and hostile projectiles/entities.
 - Animation resource: `res://resources/characters/hostile_npcs/<entity_group>/<entity_name>.tres`
 - Tuning resource when values are shared or designer-edited.
 - Keep public actor methods stable if level flow or save/load calls them.
+- Use generic hostile save naming such as `defeated_hostiles` unless a content-specific system requires a narrower name.
 
 Validation:
 - Scene references external `SpriteFrames`.

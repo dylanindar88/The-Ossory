@@ -1,10 +1,12 @@
 # Lightweight Level Template Checklist
 
-Use for named levels that mainly support travel, exploration, optional encounters, collectibles, NPCs, or side content without requiring a progression coordinator.
+Use for named levels that mainly support travel, exploration, optional encounters, collectibles, NPCs, or side content. Even lightweight levels should normally have a minimal flow controller so future save/provider needs have a stable home.
 
 - Scene: `res://scenes/levels/<LevelName>.tscn`
 - Root node: `Level-<LevelName>`
 - Metadata: register the scene in `SaveManager.LEVEL_DISPLAY_REGISTRY` with a unique `level_index`, `display_name`, `category`, `is_boss_level`, and `map_region_id`.
+- Coordinator: `res://scripts/levels/<level_name>/<LevelName>FlowController.gd`
+- Save wiring: include `LevelSaveController` so the coordinator can act as a level-state provider.
 - Entrances: `PlayableWorld/Markers/Entrances/<DirectionOrSource>Entrance`
 - Exits: `PlayableWorld/Environment/Interactables/RouteExits/<DirectionOrDestination>Exit`
 - Route exits use `RouteExitArea.gd` with stable `route_id` values.

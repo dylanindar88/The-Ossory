@@ -121,7 +121,7 @@ func build_dev_level_state(preset: String) -> Dictionary:
 		"bishop_confrontation_accepted_for_level": false,
 		"dulluhan": {},
 		"banshees": [],
-		"villagers": [],
+		"non_hostile_npcs": [],
 	}
 
 

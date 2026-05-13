@@ -22,3 +22,4 @@ For full NPC and level setup conventions, see `res://docs/content_authoring.md`.
 - Story progression should react to dialogue completion signals, not to the text content.
 - Keep entry keys stable unless the controller code is updated in the same change.
 - Use one `DialogueSequence` page for each intentional page. The dialogue bubble may still paginate long pages visually.
+- Generic NPC save/collision systems should use `non_hostile_npcs`; use `celtic_villagers` only for actual Celtic villager dialogue or ambient behavior.

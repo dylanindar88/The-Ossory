@@ -56,7 +56,8 @@ var ambient_behavior: VillagerAmbientPatrolBehavior = VillagerAmbientPatrolBehav
 
 
 func _ready():
-	add_to_group("villagers")
+	add_to_group("non_hostile_npcs")
+	add_to_group("celtic_villagers")
 	connect_player_proximity_area()
 	refresh_patrol_points()
 	ambient_behavior.setup(self, patrol_path)
@@ -343,7 +344,7 @@ func should_stop_for_character_blocker(motion: Vector2) -> bool:
 		return false
 
 	var collider_node: Node2D = collider as Node2D
-	var is_character_blocker: bool = collider_node.is_in_group("player") or collider_node.is_in_group("villagers")
+	var is_character_blocker: bool = collider_node.is_in_group("player") or collider_node.is_in_group("non_hostile_npcs")
 	return is_character_blocker and is_motion_toward_node(collider_node, motion)
 
 

@@ -45,7 +45,7 @@ func physics_update(player, delta):
 	var input_vector: Vector2 = player.get_move_input_vector()
 	var movement_speed: float = player.run_speed if player.current_form_always_runs() else player.walk_speed
 	player.velocity = input_vector * movement_speed * player.attack_speed_modifier
-	player.move_with_villager_blocking(delta)
+	player.move_with_non_hostile_npc_blocking(delta)
 
 	if attack_timer <= 0:
 		if next_combo_pressed and combo_part < 3:

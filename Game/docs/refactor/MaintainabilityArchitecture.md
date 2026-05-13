@@ -1,6 +1,6 @@
 # Maintainability Refactor Architecture
 
-This refactor keeps public scene/autoload APIs stable while moving dense internal responsibilities into focused helpers. The goal is easier future development for levels, quests, bosses, and actors without changing game behavior or save compatibility.
+This refactor keeps public scene/autoload APIs stable while moving dense internal responsibilities into focused helpers. The goal is easier future development for levels, quests, bosses, and actors without changing game behavior. Save compatibility is schema-versioned; planned breaks require an explicit `SaveManager.SAVE_VERSION` bump.
 
 For concrete content setup checklists, use `res://docs/content_authoring.md` and the README files under `res://templates/`.
 
@@ -22,14 +22,15 @@ Helpers are internal delegates. External callers should continue using the coord
 
 ## Compatibility Rules
 
-- Do not rename quest stage strings, save keys, signals, input actions, scene node paths, or public wrapper methods without a separate migration plan.
-- Keep existing save schema keys stable, including `level_state`, `level_states_by_path`, `_providers`, `player`, `defeated_banshees`, `villagers`, `story_flags`, `quest_states`, and `upgrade_state`.
-- Keep Banshee Village as one public level-state provider until a future migration explicitly proves multi-provider ownership is safe for existing saves.
+- Do not rename quest stage strings, save keys, signals, input actions, scene node paths, or public wrapper methods without a planned schema/API break and call-site updates.
+- Current v2 save keys include `level_states_by_path`, `_providers`, `player`, `defeated_hostiles`, `non_hostile_npcs`, `story_flags`, `quest_states`, and `upgrade_state`.
+- Do not write a top-level `level_state`; `level_states_by_path` is canonical.
+- Keep Banshee Village as one public level-state provider unless the coordinator owns the multi-provider packing and compatibility.
 - Keep scene-load, new-game, respawn, and dev-start orchestration in `SaveManager.gd` unless a later pass scopes that migration.
 
 ## Future Development Pattern
 
-For future story-heavy levels, use one scene-attached coordinator with focused internal helpers for progression, presentation, encounters, travel, and prompts. The coordinator should own save compatibility and expose a single stable level-state dictionary unless the migration plan explicitly defines otherwise.
+For future story-heavy levels, use one scene-attached coordinator with focused internal helpers for progression, presentation, encounters, travel, and prompts. The coordinator should own save shape and expose a stable level-state dictionary for the active schema version.
 
 For future actors or bosses, keep scene-facing methods on the actor coordinator/state machine and move only private lifecycle, sensor, combat-area, or save details into helpers. This keeps existing callers stable while allowing behavior to grow in smaller files.
 
