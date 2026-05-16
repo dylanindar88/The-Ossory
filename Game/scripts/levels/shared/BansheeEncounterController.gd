@@ -115,12 +115,14 @@ func apply_banshee_world_rules():
 	var rules: Dictionary = get_banshee_world_rules()
 	var hostile_enabled: bool = bool(rules.get("banshees_hostile_enabled", false))
 	var damage_enabled: bool = bool(rules.get("player_can_damage_banshees", false))
+	var wolf_weakness_effect_enabled: bool = bool(rules.get("wolf_permanent_clear_enabled", false))
 	var upgrades_available: bool = are_banshee_upgrades_available(rules)
 
 	for banshee in banshees:
 		if banshee == null or not is_instance_valid(banshee):
 			continue
 
+		set_banshee_wolf_weakness_effect_enabled(banshee, wolf_weakness_effect_enabled)
 		var banshee_path: String = get_relative_node_path(banshee)
 		if permanently_cleared_banshee_paths.has(banshee_path):
 			apply_cleared_banshee_state(banshee)
@@ -136,6 +138,11 @@ func apply_banshee_world_rules():
 		if raw_saved_state is Dictionary:
 			saved_state = (raw_saved_state as Dictionary).duplicate(true)
 			sanitize_saved_banshee_variant(saved_state, banshee, upgrades_available)
+
+		if is_saved_banshee_defeated(banshee, saved_state):
+			apply_saved_defeated_banshee_state(banshee, saved_state)
+			schedule_banshee_respawn(banshee)
+			continue
 
 		var restored_from_saved_state: bool = false
 		if not saved_state.is_empty() and banshee.has_method("restore_from_story_save"):
@@ -173,6 +180,11 @@ func apply_banshee_rules_to_actor(banshee: Node, hostile_enabled: bool, damage_e
 
 	if banshee.has_method("set_damage_enabled"):
 		banshee.set_damage_enabled(hostile_enabled and damage_enabled)
+
+
+func set_banshee_wolf_weakness_effect_enabled(banshee: Node, enabled: bool):
+	if banshee != null and banshee.has_method("set_wolf_weakness_effect_enabled"):
+		banshee.set_wolf_weakness_effect_enabled(enabled)
 
 
 func are_banshee_upgrades_available(rules: Dictionary) -> bool:
@@ -241,6 +253,25 @@ func apply_cleared_banshee_state(banshee: Node):
 			banshee.disable_combat_areas()
 
 
+func apply_saved_defeated_banshee_state(banshee: Node, saved_state: Dictionary):
+	if banshee.has_method("restore_dead_from_story_save"):
+		banshee.restore_dead_from_story_save(saved_state, hidden_banshee_alpha)
+	elif banshee.has_method("hide_as_story_defeated"):
+		banshee.hide_as_story_defeated(hidden_banshee_alpha)
+	else:
+		apply_cleared_banshee_state(banshee)
+
+
+func is_saved_banshee_defeated(banshee: Node, saved_state: Dictionary) -> bool:
+	if saved_state.is_empty():
+		return false
+
+	if banshee != null and banshee.has_method("is_saved_defeated_story_state"):
+		return bool(banshee.call("is_saved_defeated_story_state", saved_state))
+
+	return bool(saved_state.get("dead", false)) or int(saved_state.get("health", 1)) <= 0
+
+
 func schedule_banshee_respawn(banshee: Node):
 	var scheduled_generation: int = state_generation
 	await get_tree().create_timer(respawn_delay_seconds).timeout
@@ -263,9 +294,11 @@ func respawn_banshee(banshee: Node):
 	var rules: Dictionary = get_banshee_world_rules()
 	var hostile_enabled: bool = bool(rules.get("banshees_hostile_enabled", false))
 	var damage_enabled: bool = bool(rules.get("player_can_damage_banshees", false))
+	var wolf_weakness_effect_enabled: bool = bool(rules.get("wolf_permanent_clear_enabled", false))
 	var upgrades_available: bool = are_banshee_upgrades_available(rules)
 
 	apply_story_variant_to_banshee(banshee, upgrades_available)
+	set_banshee_wolf_weakness_effect_enabled(banshee, wolf_weakness_effect_enabled)
 	if banshee.has_method("respawn_for_story"):
 		banshee.respawn_for_story(hidden_banshee_alpha)
 	elif banshee.has_method("restore_after_load"):

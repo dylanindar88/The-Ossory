@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="KnightTuning" load_steps=3 format=3 uid="uid://drtfbtc8aodyo"]
+
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightTuning.gd" id="1_tuning"]
+[ext_resource type="Resource" uid="uid://br7vbgt3brukh" path="res://resources/dialogue/npcs/knights/basic_knight_melee_encounter.tres" id="2_dialogue"]
+
+[resource]
+script = ExtResource("1_tuning")
+actor_id = &"basic_knight_melee"
+display_name = "Basic Knight Melee"
+max_health = 45
+invulnerability_time = 0.15
+hurt_duration_seconds = 0.35
+walk_speed = 50.0
+run_speed = 96.0
+patrol_arrival_distance = 6.0
+player_stop_distance = 24.0
+facing_deadzone = 0.1
+detection_range = 135.0
+tracking_range = 285.0
+attack_range = 42.0
+attack_damage = 9
+attack_cooldown = 1.0
+attack_windup_seconds = 0.2
+attack_recover_seconds = 0.35
+projectile_speed = 260.0
+projectile_lifetime = 2.0
+ranged_min_distance = 70.0
+ranged_preferred_distance = 160.0
+respawn_delay_seconds = 10.0
+encounter_dialogue_bank = ExtResource("2_dialogue")

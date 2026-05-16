@@ -1,0 +1,31 @@
+[gd_resource type="Resource" script_class="KnightTuning" load_steps=4 format=3 uid="uid://hflwkg33u51c"]
+
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightTuning.gd" id="1_tuning"]
+[ext_resource type="PackedScene" path="res://scenes/characters/hostile_npcs/knights/KnightArrowProjectile.tscn" id="2_projectile"]
+[ext_resource type="Resource" uid="uid://bi0e5fgrsake" path="res://resources/dialogue/npcs/knights/basic_knight_ranged_encounter.tres" id="3_dialogue"]
+
+[resource]
+script = ExtResource("1_tuning")
+actor_id = &"basic_knight_ranged"
+display_name = "Basic Knight Ranged"
+max_health = 32
+invulnerability_time = 0.15
+walk_speed = 46.0
+run_speed = 86.0
+patrol_arrival_distance = 6.0
+player_stop_distance = 78.0
+facing_deadzone = 0.1
+detection_range = 160.0
+tracking_range = 340.0
+attack_range = 240.0
+attack_damage = 7
+attack_cooldown = 1.45
+attack_windup_seconds = 0.28
+attack_recover_seconds = 0.4
+projectile_scene = ExtResource("2_projectile")
+projectile_speed = 280.0
+projectile_lifetime = 2.2
+ranged_min_distance = 72.0
+ranged_preferred_distance = 170.0
+respawn_delay_seconds = 10.0
+encounter_dialogue_bank = ExtResource("3_dialogue")

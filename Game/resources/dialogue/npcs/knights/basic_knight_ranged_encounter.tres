@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DialogueBank" load_steps=5 format=3 uid="uid://bi0e5fgrsake"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueBank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="2_sequence"]
+
+[sub_resource type="Resource" id="DialogueSequence_ranged_1"]
+script = ExtResource("2_sequence")
+pages = Array[String](["Target sighted."])
+
+[sub_resource type="Resource" id="DialogueSequence_ranged_2"]
+script = ExtResource("2_sequence")
+pages = Array[String](["Keep your distance."])
+
+[resource]
+script = ExtResource("1_bank")
+selection_mode = 1
+fixed_sequence = SubResource("DialogueSequence_ranged_1")
+random_sequences = Array[ExtResource("2_sequence")]([SubResource("DialogueSequence_ranged_1"), SubResource("DialogueSequence_ranged_2")])
+level_override_key = &"basic_knight_ranged"

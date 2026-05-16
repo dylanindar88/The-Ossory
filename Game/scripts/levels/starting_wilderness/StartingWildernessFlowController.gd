@@ -2,6 +2,7 @@ extends Node
 
 const LEVEL_STATE_VERSION: int = 1
 const BANSHEE_ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/shared/BansheeEncounterController.gd")
+const KNIGHT_CAMP_ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/shared/KnightCampEncounterController.gd")
 const DEFAULT_STORY_DIALOGUE_PROFILE: DialogueProfile = preload("res://resources/dialogue/levels/starting_wilderness/starting_wilderness_villager_story_profile.tres")
 
 const DIALOGUE_KEY_INTRO := &"intro"
@@ -29,12 +30,12 @@ const VILLAGER_BANSHEE_DEFEAT_RESUME_PATROL: String = "resume_patrol"
 const VILLAGER_BANSHEE_AGGRO_IGNORE: String = "ignore"
 
 @export var villager_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs/MaleVillager")
-@export var banshee_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/HostileNPCs/Banshee")
+@export var banshee_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/HostileNPCs/Banshees/Banshee")
 @export var npc_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs")
 @export var hostile_root_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/HostileNPCs")
 @export var patrol_path_from_villager: NodePath = NodePath("../../../../Markers/PatrolPaths/VillagerPath")
-@export var patrol_path_from_banshee: NodePath = NodePath("../../../../Markers/PatrolPaths/VillagerPath")
-@export var assigned_villager_path_from_banshee: NodePath = NodePath("../../NPCs/MaleVillager")
+@export var patrol_path_from_banshee: NodePath = NodePath("../../../../../Markers/PatrolPaths/VillagerPath")
+@export var assigned_villager_path_from_banshee: NodePath = NodePath("../../../NPCs/MaleVillager")
 @export var hidden_banshee_alpha: float = 0.2
 @export var passive_banshee_alpha: float = 0.2
 @export var respawn_delay_seconds: float = 10.0
@@ -43,6 +44,7 @@ const VILLAGER_BANSHEE_AGGRO_IGNORE: String = "ignore"
 var villager: Node
 var banshee: Node
 var encounter_controller: BansheeEncounterController
+var knight_camp_controller: KnightCampEncounterController
 var saved_villager_states: Dictionary = {}
 var location_exit_save_pending: bool = false
 
@@ -52,6 +54,7 @@ func _ready():
 	banshee = get_node_or_null(banshee_path)
 	wire_patrol_nodes()
 	setup_encounter_controller()
+	setup_knight_camp_controller()
 	apply_dev_start_preset()
 	apply_story_dialogue()
 
@@ -60,11 +63,15 @@ func collect_level_state() -> Dictionary:
 	var encounter_state: Dictionary = {}
 	if encounter_controller != null:
 		encounter_state = encounter_controller.collect_level_state()
+	var knight_camp_state: Dictionary = {}
+	if knight_camp_controller != null:
+		knight_camp_state = knight_camp_controller.collect_level_state()
 
 	return {
 		"state_version": LEVEL_STATE_VERSION,
 		"dialogue_key": str(get_dialogue_key_for_story()),
 		"encounter": encounter_state,
+		"knight_camps": knight_camp_state,
 		"non_hostile_npcs": collect_non_hostile_npc_states(),
 	}
 
@@ -73,6 +80,7 @@ func apply_level_state(state: Dictionary):
 	location_exit_save_pending = false
 	wire_patrol_nodes()
 	ensure_encounter_controller()
+	ensure_knight_camp_controller()
 	saved_villager_states = {}
 	if SaveManager != null:
 		saved_villager_states = SaveManager.parse_actor_snapshot_lookup(state.get("non_hostile_npcs", []))
@@ -84,6 +92,12 @@ func apply_level_state(state: Dictionary):
 		encounter_state = raw_encounter_state
 	if encounter_controller != null:
 		encounter_controller.apply_level_state(encounter_state)
+	var knight_camp_state: Dictionary = {}
+	var raw_knight_camp_state: Variant = state.get("knight_camps", {})
+	if raw_knight_camp_state is Dictionary:
+		knight_camp_state = raw_knight_camp_state
+	if knight_camp_controller != null:
+		knight_camp_controller.apply_level_state(knight_camp_state)
 
 	apply_starting_wilderness_villager_policy()
 	apply_story_dialogue()
@@ -98,6 +112,9 @@ func validate_level_state(state: Dictionary) -> Array:
 	var raw_encounter_state: Variant = state.get("encounter", {})
 	if state.has("encounter") and not (raw_encounter_state is Dictionary):
 		messages.append("StartingWilderness save has malformed encounter state.")
+	var raw_knight_camp_state: Variant = state.get("knight_camps", {})
+	if state.has("knight_camps") and not (raw_knight_camp_state is Dictionary):
+		messages.append("StartingWilderness save has malformed knight camp state.")
 	if villager == null:
 		messages.append("StartingWildernessFlowController could not find villager at %s." % villager_path)
 	if banshee == null:
@@ -105,6 +122,9 @@ func validate_level_state(state: Dictionary) -> Array:
 	if encounter_controller != null and raw_encounter_state is Dictionary:
 		var encounter_state: Dictionary = raw_encounter_state
 		messages.append_array(encounter_controller.validate_level_state(encounter_state))
+	if knight_camp_controller != null and raw_knight_camp_state is Dictionary:
+		var knight_camp_state: Dictionary = raw_knight_camp_state
+		messages.append_array(knight_camp_controller.validate_level_state(knight_camp_state))
 	return messages
 
 
@@ -120,6 +140,8 @@ func prepare_for_route_exit():
 	location_exit_save_pending = true
 	if encounter_controller != null:
 		encounter_controller.prepare_for_route_exit()
+	if knight_camp_controller != null:
+		knight_camp_controller.prepare_for_route_exit()
 
 
 func handle_level_interaction(_interactable: Node2D, _player: Node2D) -> bool:
@@ -206,6 +228,12 @@ func build_dev_level_state() -> Dictionary:
 			"permanently_cleared_banshee_paths": [],
 			"banshees": [],
 		},
+		"knight_camps": {
+			"state_version": 1,
+			"destroyed_campfire_ids": [],
+			"campfires": [],
+			"knights": [],
+		},
 		"non_hostile_npcs": [],
 	}
 
@@ -250,6 +278,23 @@ func setup_encounter_controller():
 func ensure_encounter_controller():
 	if encounter_controller == null:
 		setup_encounter_controller()
+
+
+func setup_knight_camp_controller():
+	if knight_camp_controller != null:
+		return
+
+	knight_camp_controller = KNIGHT_CAMP_ENCOUNTER_CONTROLLER_SCRIPT.new()
+	knight_camp_controller.name = "KnightCampEncounterController"
+	knight_camp_controller.state_root_path = NodePath("../..")
+	knight_camp_controller.hostile_root_path = NodePath("../../PlayableWorld/Environment/Characters/HostileNPCs")
+	knight_camp_controller.campfire_root_path = NodePath("../../PlayableWorld/Environment/Characters/HostileNPCs")
+	add_child(knight_camp_controller)
+
+
+func ensure_knight_camp_controller():
+	if knight_camp_controller == null:
+		setup_knight_camp_controller()
 
 
 func collect_non_hostile_npc_states() -> Array:

@@ -481,7 +481,7 @@ shape = SubResource("RectangleShape2D_east_route_exit")
 [node name="Entrances" type="Node2D" parent="PlayableWorld/Markers"]
 
 [node name="WestEntrance" type="Marker2D" parent="PlayableWorld/Markers/Entrances"]
-position = Vector2(-1212, 419)
+position = Vector2(-1159, 421)
 
 [node name="SouthEntrance" type="Marker2D" parent="PlayableWorld/Markers/Entrances"]
 position = Vector2(0, 970)

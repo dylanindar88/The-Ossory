@@ -1,0 +1,129 @@
+[gd_scene load_steps=15 format=3 uid="uid://dtm57amql3svl"]
+
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightController.gd" id="1_script"]
+[ext_resource type="Resource" uid="uid://drtfbtc8aodyo" path="res://resources/characters/hostile_npcs/knights/basic_knight_melee_tuning.tres" id="2_tuning"]
+[ext_resource type="SpriteFrames" uid="uid://be81pyxr5216o" path="res://resources/characters/hostile_npcs/knights/knight_melee_animations.tres" id="3_frames"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightHealth.gd" id="4_health"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="5_effects"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="6_border"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightHealthBar.gd" id="7_health_bar"]
+
+[sub_resource type="CircleShape2D" id="CapsuleShape2D_movement"]
+radius = 7.0
+
+[sub_resource type="Gradient" id="Gradient_health_under"]
+offsets = PackedFloat32Array(0)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_health_under"]
+gradient = SubResource("Gradient_health_under")
+width = 44
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hurt"]
+radius = 12.0
+height = 34.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_attack"]
+size = Vector2(36, 28)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_tracking"]
+radius = 321.002
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_og1wt"]
+
+[node name="BasicKnightMelee" type="CharacterBody2D"]
+y_sort_enabled = true
+collision_layer = 4
+collision_mask = 11
+motion_mode = 1
+max_slides = 8
+wall_min_slide_angle = 0.0
+safe_margin = 0.04
+script = ExtResource("1_script")
+tuning = ExtResource("2_tuning")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+y_sort_enabled = true
+scale = Vector2(0.45, 0.45)
+sprite_frames = ExtResource("3_frames")
+animation = &"attack"
+frame = 8
+frame_progress = 1.0
+offset = Vector2(0, -65.2)
+
+[node name="MovementBox" type="CollisionShape2D" parent="."]
+position = Vector2(0, -2)
+shape = SubResource("CapsuleShape2D_movement")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 8.0
+path_max_distance = 32.0
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("4_health")
+tuning = ExtResource("2_tuning")
+
+[node name="Effects" parent="." instance=ExtResource("5_effects")]
+position = Vector2(0, -60)
+scale = Vector2(1.5, 1.5)
+
+[node name="HealthBarDisplay" type="Node2D" parent="."]
+visible = false
+position = Vector2(0, 3)
+scale = Vector2(0.8, 0.8)
+
+[node name="HealthBar" type="TextureProgressBar" parent="HealthBarDisplay"]
+z_as_relative = false
+offset_left = -14.0
+offset_top = 2.0
+offset_right = 14.0
+offset_bottom = 5.0
+value = 45.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_health_under")
+texture_progress = SubResource("GradientTexture2D_health_under")
+script = ExtResource("7_health_bar")
+
+[node name="HealthBarBorder" type="TextureRect" parent="HealthBarDisplay"]
+offset_left = -21.0
+offset_top = -3.0
+offset_right = 363.0
+offset_bottom = 125.0
+scale = Vector2(0.109314, 0.102298)
+texture = ExtResource("6_border")
+
+[node name="HurtBox" type="Area2D" parent="."]
+scale = Vector2(0.753689, 1.07899)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtBox"]
+position = Vector2(0, -24.0966)
+scale = Vector2(1.33048, 1.41905)
+shape = SubResource("CapsuleShape2D_hurt")
+
+[node name="AttackBox" type="Area2D" parent="."]
+scale = Vector2(1.058, 1.14579)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackBox"]
+position = Vector2(0, -37.5287)
+scale = Vector2(1.93585, 1.30455)
+shape = SubResource("RectangleShape2D_attack")
+disabled = true
+
+[node name="TrackingArea" type="Area2D" parent="."]
+visible = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TrackingArea"]
+position = Vector2(0, -18)
+shape = SubResource("CircleShape2D_tracking")
+
+[node name="AttackRange" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackRange"]
+position = Vector2(-7.27596e-12, -30)
+rotation = 1.5708
+scale = Vector2(4.23782, 2.69804)
+shape = SubResource("CapsuleShape2D_og1wt")
+
+[node name="DialogueAnchor" type="Marker2D" parent="."]
+position = Vector2(0, -69)

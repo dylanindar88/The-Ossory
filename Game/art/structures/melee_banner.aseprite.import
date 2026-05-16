@@ -1,0 +1,25 @@
+[remap]
+
+importer="Aseprite AnimatedSprite2D Import"
+type="PackedScene"
+uid="uid://cptrdgt7df25v"
+path="res://.godot/imported/melee_banner.aseprite-2af1cfe96dddfd1f7b420bd7a5eb6adf.scn"
+
+[deps]
+
+source_file="res://art/structures/melee_banner.aseprite"
+dest_files=["res://.godot/imported/melee_banner.aseprite-2af1cfe96dddfd1f7b420bd7a5eb6adf.scn"]
+
+[params]
+
+spritesheet/layout=2
+spritesheet/fixed_rows_count=1
+spritesheet/fixed_columns_count=1
+spritesheet/border_type=0
+spritesheet/trim=false
+spritesheet/ignore_empty=false
+spritesheet/merge_duplicates=false
+animation/default/name="default"
+animation/default/direction=0
+animation/default/repeat_count=0
+animation/autoplay=""

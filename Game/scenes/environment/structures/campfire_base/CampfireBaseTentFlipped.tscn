@@ -1,0 +1,105 @@
+[gd_scene load_steps=11 format=3 uid="uid://bqevujpatxmlg"]
+
+[ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseTent.gd" id="1_jrimr"]
+[ext_resource type="Texture2D" uid="uid://denqr87skatn3" path="res://art/structures/tent.png" id="2_gvwbc"]
+[ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseComponentHealthBar.gd" id="3_abnia"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="4_48iq3"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="5_effects"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fe3gc"]
+atlas = ExtResource("2_gvwbc")
+region = Rect2(0, 0, 256, 224)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lgysq"]
+atlas = ExtResource("2_gvwbc")
+region = Rect2(0, 224, 256, 224)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_tent"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fe3gc")
+}],
+"loop": true,
+"name": &"alive",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lgysq")
+}],
+"loop": true,
+"name": &"alive_flipped",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": false,
+"name": &"destroyed",
+"speed": 5.0
+}, {
+"frames": [],
+"loop": true,
+"name": &"destroyed_flipped",
+"speed": 5.0
+}]
+
+[sub_resource type="Gradient" id="Gradient_health_under"]
+offsets = PackedFloat32Array(0)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_health_under"]
+gradient = SubResource("Gradient_health_under")
+width = 44
+
+[node name="CampfireBaseTent" type="StaticBody2D"]
+y_sort_enabled = true
+script = ExtResource("1_jrimr")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+y_sort_enabled = true
+scale = Vector2(0.5, 0.5)
+sprite_frames = SubResource("SpriteFrames_tent")
+animation = &"alive_flipped"
+offset = Vector2(0, -50)
+
+[node name="BodyCollision" type="CollisionPolygon2D" parent="."]
+position = Vector2(0, -6)
+polygon = PackedVector2Array(-58, 2, -56, 0, -49.7666, -3.37556, -40.1288, -7.87322, -29.4144, -12.8733, -20.1201, -17.2106, -14, -20, -12, -21, -10, -21, -5, -20, 10, -13, 21.9396, -7.83692, 59, 9, 60, 10, 60, 11, 59, 12, 57, 13, 48, 18, 39.8436, 22.3501, 33, 26, 23.9838, 30.7454, 17.5536, 34.1297, 15, 35, 12, 36, 9, 36, 6, 35, -8, 28, -44, 10, -57, 4, -58, 3)
+
+[node name="HealthBarDisplay" type="Node2D" parent="."]
+visible = false
+position = Vector2(0, 5)
+scale = Vector2(1.615, 1.615)
+
+[node name="HealthBar" type="TextureProgressBar" parent="HealthBarDisplay"]
+z_as_relative = false
+offset_left = -14.0
+offset_top = 2.0
+offset_right = 14.0
+offset_bottom = 5.0
+value = 24.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_health_under")
+texture_progress = SubResource("GradientTexture2D_health_under")
+script = ExtResource("3_abnia")
+
+[node name="HealthBarBorder" type="TextureRect" parent="HealthBarDisplay"]
+offset_left = -21.0
+offset_top = -3.0
+offset_right = 363.0
+offset_bottom = 125.0
+scale = Vector2(0.109314, 0.102298)
+texture = ExtResource("4_48iq3")
+
+[node name="HurtBox" type="Area2D" parent="."]
+visible = false
+
+[node name="CollisionShape2D" type="CollisionPolygon2D" parent="HurtBox"]
+position = Vector2(0, 31)
+scale = Vector2(2.00808, 2.88176)
+polygon = PackedVector2Array(5.47787, 0, 29.8793, -9.02226, 16.4336, -24.9847, -15.4376, -36.4361, -28.3853, -11.7983)
+
+[node name="Effects" parent="." instance=ExtResource("5_effects")]
+position = Vector2(0, -104)
+scale = Vector2(1.5, 1.5)

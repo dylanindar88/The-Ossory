@@ -9,6 +9,11 @@ const SUITES := [
 	"res://tests/test_level_contracts.gd",
 	"res://tests/test_save_schema_v2.gd",
 	"res://tests/test_ui_labels.gd",
+	"res://tests/test_starting_wilderness_patrols.gd",
+	"res://tests/test_banshee_respawn_restore.gd",
+	"res://tests/test_banshee_wolf_weakness_effect.gd",
+	"res://tests/test_effect_list_rendering.gd",
+	"res://tests/test_knight_camp_framework.gd",
 ]
 
 var assertions: TestAssertions

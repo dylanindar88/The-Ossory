@@ -8,9 +8,8 @@
 radius = 10.3697
 height = 36.0944
 
-[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_movement"]
-radius = 3.79308
-height = 22.1699
+[sub_resource type="CircleShape2D" id="CapsuleShape2D_movement"]
+radius = 6.0
 
 [resource]
 script = ExtResource("1_form")
@@ -40,7 +39,7 @@ transformation_duration_seconds = 0.0
 transformation_animation = &"transformation"
 movement_shape = SubResource("CapsuleShape2D_movement")
 movement_shape_position = Vector2(0.0420001, -4.332)
-movement_shape_rotation = 1.5708
+movement_shape_rotation = 0.0
 hurt_shape = SubResource("CapsuleShape2D_hurt")
 hurt_shape_position = Vector2(0, -20)
 hurt_shape_rotation = 0.0

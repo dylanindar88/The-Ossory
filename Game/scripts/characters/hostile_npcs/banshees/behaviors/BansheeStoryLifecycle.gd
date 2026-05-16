@@ -42,6 +42,19 @@ func hide_as_story_defeated(hidden_alpha: float):
 	if health_node != null:
 		health_node.set("dead", true)
 		health_node.set("health", 0)
+		if health_node.has_signal("health_changed"):
+			health_node.emit_signal("health_changed", 0, health_node.get("max_health"))
+
+	hide_health_bar_display()
+
+
+func hide_health_bar_display():
+	if banshee == null:
+		return
+
+	var health_bar_display: CanvasItem = banshee.get_node_or_null("HealthBarDisplay") as CanvasItem
+	if health_bar_display != null:
+		health_bar_display.visible = false
 
 
 func collect_story_save_state() -> Dictionary:
@@ -187,6 +200,10 @@ func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool,
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
+	if is_saved_defeated_state(state):
+		restore_dead_from_story_save(state, hidden_alpha)
+		return
+
 	begin_story_detection_suppression()
 	banshee.apply_saved_combat_variant(state)
 	var saved_position: Vector2 = data_to_vector(state.get("position", {}), banshee.global_position)
@@ -240,6 +257,21 @@ func restore_dead_from_story_save(state: Dictionary, hidden_alpha: float):
 	banshee.setup_villager_stalk_behavior()
 	banshee.villager_stalk_behavior.apply_save_data(state.get("villager_stalk", {}))
 	hide_as_story_defeated(hidden_alpha)
+
+
+static func is_saved_defeated_state(state: Dictionary) -> bool:
+	if bool(state.get("dead", false)):
+		return true
+
+	if state.has("health") and int(state.get("health", 1)) <= 0:
+		return true
+
+	var raw_health_state: Variant = state.get("health_state", {})
+	if raw_health_state is Dictionary:
+		var health_state: Dictionary = raw_health_state
+		return bool(health_state.get("dead", false)) or int(health_state.get("health", 1)) <= 0 or int(health_state.get("current", 1)) <= 0
+
+	return false
 
 
 func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:

@@ -1,0 +1,133 @@
+[gd_scene load_steps=16 format=3 uid="uid://w810ta712mw1"]
+
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightController.gd" id="1_script"]
+[ext_resource type="Resource" uid="uid://hflwkg33u51c" path="res://resources/characters/hostile_npcs/knights/basic_knight_ranged_tuning.tres" id="2_tuning"]
+[ext_resource type="SpriteFrames" path="res://resources/characters/hostile_npcs/knights/knight_ranged_animations.tres" id="3_frames"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightHealth.gd" id="4_health"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="5_effects"]
+[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="6_border"]
+[ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightHealthBar.gd" id="7_health_bar"]
+
+[sub_resource type="CircleShape2D" id="CapsuleShape2D_movement"]
+radius = 7.0
+
+[sub_resource type="Gradient" id="Gradient_health_under"]
+offsets = PackedFloat32Array(0)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_health_under"]
+gradient = SubResource("Gradient_health_under")
+width = 44
+
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_hurt"]
+radius = 12.0
+height = 34.0
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_attack"]
+size = Vector2(24, 24)
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_detection"]
+radius = 160.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_tracking"]
+radius = 340.0
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_attack_range"]
+radius = 240.0
+
+[node name="BasicKnightRanged" type="CharacterBody2D"]
+y_sort_enabled = true
+motion_mode = 1
+max_slides = 8
+wall_min_slide_angle = 0.0
+safe_margin = 0.04
+script = ExtResource("1_script")
+tuning = ExtResource("2_tuning")
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+y_sort_enabled = true
+sprite_frames = ExtResource("3_frames")
+animation = &"idle"
+offset = Vector2(0, -24)
+
+[node name="MovementBox" type="CollisionShape2D" parent="."]
+position = Vector2(0, -8)
+shape = SubResource("CapsuleShape2D_movement")
+
+[node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]
+path_desired_distance = 8.0
+target_desired_distance = 12.0
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("4_health")
+tuning = ExtResource("2_tuning")
+
+[node name="Effects" parent="." instance=ExtResource("5_effects")]
+position = Vector2(0, -58)
+scale = Vector2(1.5, 1.5)
+
+[node name="HealthBarDisplay" type="Node2D" parent="."]
+visible = false
+position = Vector2(0, -36)
+scale = Vector2(0.832062, 1)
+
+[node name="HealthBar" type="TextureProgressBar" parent="HealthBarDisplay"]
+z_as_relative = false
+offset_left = -14.0
+offset_top = 2.0
+offset_right = 14.0
+offset_bottom = 5.0
+value = 32.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_health_under")
+texture_progress = SubResource("GradientTexture2D_health_under")
+script = ExtResource("7_health_bar")
+
+[node name="HealthBarBorder" type="TextureRect" parent="HealthBarDisplay"]
+offset_left = -21.0
+offset_top = -3.0
+offset_right = 363.0
+offset_bottom = 125.0
+scale = Vector2(0.109314, 0.102298)
+texture = ExtResource("6_border")
+
+[node name="HurtBox" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtBox"]
+position = Vector2(0, -18)
+shape = SubResource("CapsuleShape2D_hurt")
+
+[node name="AttackBox" type="Area2D" parent="."]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackBox"]
+position = Vector2(20, -18)
+shape = SubResource("RectangleShape2D_attack")
+disabled = true
+
+[node name="DetectionArea" type="Area2D" parent="."]
+visible = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea"]
+position = Vector2(0, -18)
+shape = SubResource("CircleShape2D_detection")
+
+[node name="TrackingArea" type="Area2D" parent="."]
+visible = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="TrackingArea"]
+position = Vector2(0, -18)
+shape = SubResource("CircleShape2D_tracking")
+
+[node name="AttackRange" type="Area2D" parent="."]
+visible = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="AttackRange"]
+position = Vector2(0, -18)
+shape = SubResource("CircleShape2D_attack_range")
+
+[node name="ProjectileSpawn" type="Marker2D" parent="."]
+position = Vector2(20, -24)
+
+[node name="DialogueAnchor" type="Marker2D" parent="."]
+position = Vector2(0, -64)

@@ -1,10 +1,11 @@
-[gd_scene load_steps=14 format=3 uid="uid://dfjpsxet38xfl"]
+[gd_scene load_steps=15 format=3 uid="uid://dfjpsxet38xfl"]
 
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/stateMachine.gd" id="1_q8xm5"]
 [ext_resource type="SpriteFrames" uid="uid://db1m0u34k1o83" path="res://resources/characters/hostile_npcs/banshees/banshee_animations.tres" id="2_wpb6y"]
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/health/bansheeHealth.gd" id="3_7g3hi"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="4_border"]
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/health/bansheeHealthBar.gd" id="5_health_bar"]
+[ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="6_effects"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_k78ad"]
 radius = 3.82135
@@ -62,6 +63,10 @@ debug_color = Color(0, 0.466667, 0.286275, 0.419608)
 [node name="Health" type="Node2D" parent="."]
 script = ExtResource("3_7g3hi")
 
+[node name="Effects" parent="." instance=ExtResource("6_effects")]
+position = Vector2(0, -56)
+scale = Vector2(1.5, 1.5)
+
 [node name="HealthBarDisplay" type="Node2D" parent="."]
 visible = false
 texture_filter = 2
@@ -90,6 +95,7 @@ scale = Vector2(0.109314, 0.102298)
 texture = ExtResource("4_border")
 
 [node name="HurtBox" type="Area2D" parent="."]
+scale = Vector2(0.56904, 0.998945)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtBox"]
 position = Vector2(0, -17.489)
@@ -125,3 +131,6 @@ visible = false
 position = Vector2(0, -19.07)
 shape = SubResource("CircleShape2D_6bfd2")
 debug_color = Color(0, 0.627451, 0.501961, 0.419608)
+
+[node name="ProjectileSpawn" type="Marker2D" parent="."]
+position = Vector2(24, -20)

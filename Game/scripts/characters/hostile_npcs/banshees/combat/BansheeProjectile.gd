@@ -5,7 +5,7 @@ extends CharacterBody2D
 
 var owner_banshee: Node = null
 var direction: Vector2 = Vector2.RIGHT
-var speed: float = 210.0
+var speed: float = 400.0
 var lifetime: float = 2.0
 var combo_part: int = 1
 var hit_targets: Array[Node] = []

@@ -1,11 +1,14 @@
 class_name BansheeAttackBoxManager
 extends RefCounted
 
+const AttackHitboxShapeControllerScript := preload("res://scripts/characters/shared/combat/AttackHitboxShapeController.gd")
+
 var attack_box: Area2D
 var collision_shape: CollisionShape2D
 var current_combo_part: int = 0
 var banshee: Node
 var active_attack_targets: Array[Node2D] = []
+var shape_controller := AttackHitboxShapeControllerScript.new()
 
 
 func setup():
@@ -17,10 +20,8 @@ func setup():
 	attack_box.collision_layer = 0
 	attack_box.collision_mask = 2
 
-	collision_shape = get_attack_collision_shape()
-	if collision_shape:
-		collision_shape.set_deferred("disabled", true)
-		collision_shape.visible = false
+	shape_controller.setup(attack_box)
+	collision_shape = shape_controller.collision_shape
 
 	if not attack_box.area_entered.is_connected(_on_attack_hit):
 		attack_box.area_entered.connect(_on_attack_hit)
@@ -34,38 +35,24 @@ func activate_attack_hitbox(combo_part: int, facing_left: bool):
 	active_attack_targets.clear()
 	update_attackbox_facing(facing_left)
 
-	if collision_shape:
-		collision_shape.set_deferred("disabled", false)
-		collision_shape.visible = true
+	shape_controller.enable_shape()
 
 	call_deferred("_hit_current_overlaps")
 
 
 func deactivate_attack_hitbox():
-	if collision_shape:
-		collision_shape.set_deferred("disabled", true)
-		collision_shape.visible = false
+	shape_controller.disable_shape()
 
 	active_attack_targets.clear()
 	current_combo_part = 0
 
 
 func update_attackbox_facing(facing_left: bool):
-	if collision_shape == null:
-		return
-
-	collision_shape.position.x = -abs(collision_shape.position.x) if facing_left else abs(collision_shape.position.x)
+	shape_controller.apply_horizontal_flip(facing_left)
 
 
 func get_attack_collision_shape() -> CollisionShape2D:
-	if attack_box == null:
-		return null
-
-	for child in attack_box.get_children():
-		if child is CollisionShape2D:
-			return child
-
-	return null
+	return shape_controller.find_attack_collision_shape()
 
 
 func _on_attack_hit(area: Area2D):

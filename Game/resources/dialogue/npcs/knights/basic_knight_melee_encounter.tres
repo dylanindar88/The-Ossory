@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="DialogueBank" load_steps=5 format=3 uid="uid://br7vbgt3brukh"]
+
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueBank.gd" id="1_bank"]
+[ext_resource type="Script" path="res://scripts/dialogue/DialogueSequence.gd" id="2_sequence"]
+
+[sub_resource type="Resource" id="DialogueSequence_melee_1"]
+script = ExtResource("2_sequence")
+pages = Array[String](["Hold there."])
+
+[sub_resource type="Resource" id="DialogueSequence_melee_2"]
+script = ExtResource("2_sequence")
+pages = Array[String](["You picked the wrong road."])
+
+[resource]
+script = ExtResource("1_bank")
+selection_mode = 1
+fixed_sequence = SubResource("DialogueSequence_melee_1")
+random_sequences = Array[ExtResource("2_sequence")]([SubResource("DialogueSequence_melee_1"), SubResource("DialogueSequence_melee_2")])
+level_override_key = &"basic_knight_melee"

@@ -1,0 +1,11 @@
+# Campfire Base Scripts
+
+`CampfireBase.gd` owns layout variant application, aggregate destroyed state, and linked knight respawn eligibility. `CampfireBaseTent.gd` owns wolf-only damage, tent health, tent health-bar signaling, alive/destroyed tent visuals, and the per-tent `weak_to_wolf` effect.
+
+Campfire state should remain level-local. Shared helpers may collect and apply it through a level flow controller, but this structure should not add top-level save keys or global progression rules. Live bases preserve their variant; destroyed bases reroll on respawn.
+
+Layout scenes should stay script-light and editor-friendly. Compose them from `CampfireBaseTent.tscn` or `CampfireBaseTentFlipped.tscn`, `Campfire.tscn`, and `MeleeBanner.tscn`. `Campfire` and `MeleeBanner` are collision-bearing World props, while tents own damage/effects. When using Aseprite blueprint files for placement, treat the canvas center as the layout origin and place each component scene from its visible layer's center.
+
+Keep flipped tents as actual `CampfireBaseTentFlipped.tscn` instances so variant reloads preserve authoring. Camp variants may define a knight roster cap; use `tent_count` and hand-place linked knights under `KnightRoster` at their intended home/respawn positions. `KnightRoster` is an editor organization container; `CampfireBase` promotes its knight children into `CampNavigationRegion` at runtime so each knight y-sorts against tents individually. Layout `RespawnPoint` markers are not used for linked knight respawns.
+
+Each campfire layout variant owns its own `CampNavigationRegion`. Put tents, campfire props, and banner under that region so their collision shapes can be used as source geometry when baking or editing the `NavigationPolygon`; keep `KnightRoster` and `RespawnPoint` as direct layout children for editor organization. Draw the `NavigationPolygon` as walkable center-space for knights, leaving enough margin around tent bodies, trees, campfire props, banners, buildings, logs, and other blockers. Child collision shapes are source geometry, not automatic runtime avoidance, unless the polygon is baked or updated from them. Linked knights use navigation path points for aggro and return-home movement. Do not add `ReturnPaths`; knights return to their authored home positions through `NavigationAgent2D`.

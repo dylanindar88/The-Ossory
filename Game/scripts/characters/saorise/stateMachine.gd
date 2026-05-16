@@ -6,6 +6,7 @@ signal transformation_state_changed(active: bool)
 signal transformation_cooldown_changed(current: float, max: float, active: bool)
 
 const DEFAULT_TUNING: PlayerTuning = preload("res://resources/characters/saorise/player_tuning.tres")
+const TopDownMovement := preload("res://scripts/characters/shared/movement/TopDownMovement.gd")
 
 @export var tuning: PlayerTuning = DEFAULT_TUNING
 @export var initial_form_id: StringName = &"human"
@@ -178,6 +179,7 @@ func set_form(form_id: StringName) -> bool:
 		hold_dialogue_idle()
 
 	update_effects()
+	refresh_hostile_wolf_weakness_effects()
 	return true
 
 
@@ -651,7 +653,7 @@ func move_with_non_hostile_npc_blocking(delta: float):
 		velocity = Vector2.ZERO
 		return
 
-	move_and_slide()
+	TopDownMovement.move(self, velocity, delta)
 
 
 func should_stop_for_non_hostile_npc(motion: Vector2) -> bool:
@@ -691,6 +693,12 @@ func update_effects():
 		active_effects.append("transformation_delay")
 
 	effects.set_effects(active_effects)
+
+
+func refresh_hostile_wolf_weakness_effects():
+	for hostile in get_tree().get_nodes_in_group("hostile_npcs"):
+		if hostile != null and hostile.has_method("update_wolf_weakness_effect"):
+			hostile.update_wolf_weakness_effect()
 
 
 func should_show_transformation_delay_effect() -> bool:

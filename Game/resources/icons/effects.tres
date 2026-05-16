@@ -1,4 +1,4 @@
-[gd_resource type="SpriteFrames" load_steps=34 format=3 uid="uid://ci70t58v86wc6"]
+[gd_resource type="SpriteFrames" load_steps=38 format=3 uid="uid://ci70t58v86wc6"]
 
 [ext_resource type="Texture2D" uid="uid://crd6y5s5bmp4v" path="res://art/icons/effects.png" id="1_723sf"]
 
@@ -129,6 +129,22 @@ region = Rect2(96, 336, 48, 48)
 [sub_resource type="AtlasTexture" id="AtlasTexture_qlcnf"]
 atlas = ExtResource("1_723sf")
 region = Rect2(144, 336, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d6yxf"]
+atlas = ExtResource("1_723sf")
+region = Rect2(0, 384, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_ooni8"]
+atlas = ExtResource("1_723sf")
+region = Rect2(48, 384, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_g7qlk"]
+atlas = ExtResource("1_723sf")
+region = Rect2(96, 384, 48, 48)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_l1tgf"]
+atlas = ExtResource("1_723sf")
+region = Rect2(144, 384, 48, 48)
 
 [resource]
 animations = [{
@@ -266,5 +282,22 @@ animations = [{
 }],
 "loop": true,
 "name": &"transformation_delay",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d6yxf")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_ooni8")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_g7qlk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_l1tgf")
+}],
+"loop": true,
+"name": &"weak_to_wolf",
 "speed": 5.0
 }]

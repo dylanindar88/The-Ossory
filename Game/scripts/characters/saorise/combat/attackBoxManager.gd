@@ -1,6 +1,8 @@
 class_name AttackBoxManager
 extends RefCounted
 
+const AttackHitboxShapeControllerScript := preload("res://scripts/characters/shared/combat/AttackHitboxShapeController.gd")
+
 var attack_box: Area2D
 var collision_shape: CollisionShape2D
 var attack_damage: int
@@ -11,6 +13,7 @@ var damage_source: Node
 
 var active_attack_targets: Array[Node2D] = []
 var current_combo_part: int = 0
+var shape_controller := AttackHitboxShapeControllerScript.new()
 
 var attack_profiles: Dictionary = PlayerFormDefinition.DEFAULT_ATTACK_PROFILES.duplicate(true)
 
@@ -24,10 +27,8 @@ func setup():
 	attack_box.collision_layer = 0
 	attack_box.collision_mask = 4
 
-	collision_shape = get_attack_collision_shape()
-	if collision_shape:
-		collision_shape.set_deferred("disabled", true)
-		collision_shape.visible = false
+	shape_controller.setup(attack_box)
+	collision_shape = shape_controller.collision_shape
 
 	if not attack_box.area_entered.is_connected(_on_attack_hit):
 		attack_box.area_entered.connect(_on_attack_hit)
@@ -42,9 +43,7 @@ func activate_attack_hitbox(combo_part: int, direction: String):
 
 	update_attackbox_shape(combo_part, direction)
 
-	if collision_shape:
-		collision_shape.set_deferred("disabled", false)
-		collision_shape.visible = true
+	shape_controller.enable_shape()
 
 	call_deferred("_hit_current_overlaps")
 
@@ -61,9 +60,7 @@ func deactivate_attack_hitbox():
 	if attack_box == null:
 		return
 
-	if collision_shape:
-		collision_shape.set_deferred("disabled", true)
-		collision_shape.visible = false
+	shape_controller.disable_shape()
 
 	active_attack_targets.clear()
 	current_combo_part = 0
@@ -79,17 +76,8 @@ func update_attackbox_shape(combo_part: int, direction: String):
 		push_warning("AttackBox has no CollisionShape2D child.")
 		return
 
-	var shape = collision_shape.shape
-
-	if shape == null or not shape is RectangleShape2D:
-		push_warning("AttackBox CollisionShape2D must use RectangleShape2D.")
-		return
-
 	var profile := get_attack_profile(direction, combo_part)
-
-	shape.size = profile["size"]
-	collision_shape.position = profile["position"]
-	collision_shape.rotation = profile["rotation"]
+	shape_controller.apply_profile(profile)
 
 
 func get_attack_profile(direction: String, combo_part: int) -> Dictionary:
@@ -98,14 +86,7 @@ func get_attack_profile(direction: String, combo_part: int) -> Dictionary:
 
 
 func get_attack_collision_shape() -> CollisionShape2D:
-	if attack_box == null:
-		return null
-
-	for child in attack_box.get_children():
-		if child is CollisionShape2D:
-			return child
-
-	return null
+	return shape_controller.find_attack_collision_shape()
 
 
 func has_hit_target(target: Node2D) -> bool:

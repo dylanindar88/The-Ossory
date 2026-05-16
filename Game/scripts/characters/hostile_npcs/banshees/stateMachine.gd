@@ -5,6 +5,7 @@ signal player_detected_for_reveal(banshee: Node)
 
 const COMBAT_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const COMBAT_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
+const WEAK_TO_WOLF_EFFECT = "weak_to_wolf"
 const DEFAULT_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
 const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/hostile_npcs/banshees/banshee_projectile.tscn")
 
@@ -24,10 +25,12 @@ const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/h
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health = $Health
+@onready var effects: EffectList = $Effects
 @onready var hurt_box: Area2D = $HurtBox
 @onready var attack_box: Area2D = $AttackBox
 @onready var player_detection_area: Area2D = $PlayerDetectionArea
 @onready var attack_range: Area2D = $AttackRange
+@onready var projectile_spawn: Marker2D = get_node_or_null("ProjectileSpawn") as Marker2D
 @onready var tracking_range: Area2D = $TrackingRange
 @onready var tracking_range_shape_node: CollisionShape2D = $TrackingRange/CollisionShape2D
 
@@ -85,6 +88,8 @@ var player_stop_distance: float
 var facing_deadzone: float
 var combat_enabled: bool = false
 var damage_enabled: bool = false
+var wolf_weakness_effect_enabled: bool = false
+var wolf_weakness_effect_visible: bool = false
 var story_revealed: bool = false
 var story_spawn_position: Vector2
 var story_spawn_facing_left: bool = false
@@ -174,6 +179,8 @@ func _physics_process(delta):
 		attack_cooldown_timer -= delta
 	if ranged_cooldown_timer > 0:
 		ranged_cooldown_timer -= delta
+
+	update_wolf_weakness_effect()
 
 	if current_state:
 		current_state.physics_update(self, delta)
@@ -579,7 +586,11 @@ func get_ranged_projectile_spawn_position(launch_direction: Vector2) -> Vector2:
 	if abs(launch_direction.x) > facing_deadzone:
 		horizontal_sign = sign(launch_direction.x)
 
-	var offset := Vector2(abs(ranged_projectile_spawn_offset.x) * horizontal_sign, ranged_projectile_spawn_offset.y)
+	var authored_offset := ranged_projectile_spawn_offset
+	if projectile_spawn != null:
+		authored_offset = projectile_spawn.position
+
+	var offset := Vector2(abs(authored_offset.x) * horizontal_sign, authored_offset.y)
 	return global_position + offset
 
 
@@ -711,6 +722,7 @@ func enable_combat_areas():
 
 func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
 	combat_area_controller.set_story_combat_enabled(enabled, visible_alpha)
+	update_wolf_weakness_effect()
 
 
 func apply_unrevealed_opacity():
@@ -720,6 +732,7 @@ func apply_unrevealed_opacity():
 
 func set_damage_enabled(enabled: bool):
 	combat_area_controller.set_damage_enabled(enabled)
+	update_wolf_weakness_effect()
 
 
 func enable_story_combat(visible_alpha: float = 1.0):
@@ -797,22 +810,31 @@ func end_story_detection_suppression_after_physics():
 
 func restore_after_load():
 	story_lifecycle.restore_after_load()
+	update_wolf_weakness_effect()
 
 
 func respawn_for_story(hidden_alpha: float):
 	story_lifecycle.respawn_for_story(hidden_alpha)
+	update_wolf_weakness_effect()
 
 
 func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
 	story_lifecycle.restore_for_story_load(hidden_alpha, combat_should_be_enabled, should_be_revealed)
+	update_wolf_weakness_effect()
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
 	story_lifecycle.restore_from_story_save(state, hidden_alpha, combat_should_be_enabled, should_be_revealed)
+	update_wolf_weakness_effect()
 
 
 func restore_dead_from_story_save(state: Dictionary, hidden_alpha: float):
 	story_lifecycle.restore_dead_from_story_save(state, hidden_alpha)
+	update_wolf_weakness_effect()
+
+
+func is_saved_defeated_story_state(state: Dictionary) -> bool:
+	return BansheeStoryLifecycle.is_saved_defeated_state(state)
 
 
 func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
@@ -827,11 +849,51 @@ func get_story_respawn_position() -> Vector2:
 	return story_lifecycle.get_story_respawn_position()
 
 
+func set_wolf_weakness_effect_enabled(enabled: bool):
+	wolf_weakness_effect_enabled = enabled
+	update_wolf_weakness_effect()
+
+
+func update_wolf_weakness_effect():
+	var should_show := should_show_wolf_weakness_effect()
+	if effects == null:
+		wolf_weakness_effect_visible = should_show
+		return
+
+	if should_show == wolf_weakness_effect_visible:
+		return
+
+	wolf_weakness_effect_visible = should_show
+	if should_show:
+		effects.set_effects([WEAK_TO_WOLF_EFFECT])
+	else:
+		effects.clear_effects()
+
+
+func should_show_wolf_weakness_effect() -> bool:
+	if not wolf_weakness_effect_enabled:
+		return false
+	if dead or not visible or not combat_enabled or not damage_enabled:
+		return false
+
+	var wolf_player := get_wolf_effect_player()
+	return wolf_player != null and wolf_player.has_method("get_current_form_id") and wolf_player.get_current_form_id() == &"wolf"
+
+
+func get_wolf_effect_player() -> Node:
+	if player != null and is_instance_valid(player) and player.is_inside_tree():
+		return player
+
+	player = get_tree().get_first_node_in_group("player") as Node2D
+	return player
+
+
 func _on_died():
 	dead = true
 	clear_combat_engagement()
 	stop_health_regeneration()
 	notify_assigned_villager_banshee_defeated()
+	update_wolf_weakness_effect()
 	change_state("death")
 	defeated.emit(self)
 

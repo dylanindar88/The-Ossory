@@ -5,11 +5,15 @@ const SCENE_PATHS := [
 	"res://scenes/ui/PauseMenu.tscn",
 	"res://scenes/characters/saorise/Saorise.tscn",
 	"res://scenes/characters/hostile_npcs/banshees/Banshee.tscn",
+	"res://scenes/characters/hostile_npcs/knights/BasicKnightMelee.tscn",
+	"res://scenes/characters/hostile_npcs/knights/BasicKnightRanged.tscn",
+	"res://scenes/characters/hostile_npcs/knights/KnightArrowProjectile.tscn",
 	"res://scenes/characters/npcs/celtic_villagers/ElderVillager.tscn",
 	"res://scenes/characters/npcs/celtic_villagers/FemaleVillager.tscn",
 	"res://scenes/characters/npcs/celtic_villagers/MaleVillager.tscn",
 	"res://scenes/characters/npcs/dulluhan/Dulluhan.tscn",
 	"res://scenes/characters/npcs/vincent/Vincent.tscn",
+	"res://scenes/environment/structures/campfire_base/CampfireBase.tscn",
 ]
 
 

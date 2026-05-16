@@ -26,7 +26,7 @@ func apply_banshee_villager_presentation(combat_enabled: bool):
 		var permanent_clear: bool = flow.permanently_cleared_banshee_paths.has(banshee_path)
 		var temporary_clear: bool = flow.temporarily_cleared_banshee_paths.has(banshee_path)
 		var villager_is_clear: bool = permanent_clear or temporary_clear or flow.cleared_villager_paths.has(villager_path)
-		var saved_dead: bool = bool(saved_state.get("dead", false))
+		var saved_dead: bool = is_saved_banshee_defeated(banshee, saved_state)
 
 		if permanent_clear or temporary_clear or saved_dead or villager_is_clear:
 			flow.set_villager_clear_sequence(villager)
@@ -47,6 +47,7 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 	if banshee == null:
 		return
 
+	set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 	apply_story_variant_to_banshee(banshee)
 
 	var banshee_path: String = flow.get_relative_node_path(banshee)
@@ -61,10 +62,12 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 	if not saved_state.is_empty() and banshee.has_method("restore_from_story_save"):
 		sanitize_saved_banshee_variant(saved_state, banshee)
 		banshee.restore_from_story_save(saved_state, flow.hidden_banshee_alpha, combat_enabled, is_revealed)
+		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		return
 
 	if banshee.has_method("restore_for_story_load"):
 		banshee.restore_for_story_load(flow.hidden_banshee_alpha, combat_enabled, is_revealed)
+		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		return
 
 	if banshee.has_method("restore_after_load"):
@@ -82,12 +85,14 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 		banshee.set_story_revealed(is_revealed, flow.hidden_banshee_alpha)
 	if combat_enabled and banshee.has_method("begin_assigned_villager_catchup_if_needed"):
 		banshee.begin_assigned_villager_catchup_if_needed()
+	set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 
 
 func apply_cleared_banshee_state(banshee: Node, saved_state: Dictionary = {}):
 	if banshee == null:
 		return
 
+	set_banshee_wolf_weakness_effect_enabled(banshee, false)
 	apply_story_variant_to_banshee(banshee)
 
 	var banshee_path: String = flow.get_relative_node_path(banshee)
@@ -98,6 +103,25 @@ func apply_cleared_banshee_state(banshee: Node, saved_state: Dictionary = {}):
 		banshee.restore_dead_from_story_save(saved_state, flow.hidden_banshee_alpha)
 	elif banshee.has_method("hide_as_story_defeated"):
 		banshee.hide_as_story_defeated(flow.hidden_banshee_alpha)
+
+
+func is_saved_banshee_defeated(banshee: Node, saved_state: Dictionary) -> bool:
+	if saved_state.is_empty():
+		return false
+
+	if banshee != null and banshee.has_method("is_saved_defeated_story_state"):
+		return bool(banshee.call("is_saved_defeated_story_state", saved_state))
+
+	return bool(saved_state.get("dead", false)) or int(saved_state.get("health", 1)) <= 0
+
+
+func should_show_banshee_wolf_weakness_policy() -> bool:
+	return flow.transformed_banshee_clear_policy != flow.BANSHEE_CLEAR_RESPAWN
+
+
+func set_banshee_wolf_weakness_effect_enabled(banshee: Node, enabled: bool):
+	if banshee != null and banshee.has_method("set_wolf_weakness_effect_enabled"):
+		banshee.set_wolf_weakness_effect_enabled(enabled)
 
 
 func get_banshee_combat_variant_for_story() -> String:
@@ -194,9 +218,11 @@ func respawn_banshee(banshee: Node):
 
 	if banshee.has_method("respawn_for_story"):
 		apply_story_variant_to_banshee(banshee)
+		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		banshee.respawn_for_story(flow.hidden_banshee_alpha)
 	elif banshee.has_method("restore_after_load"):
 		apply_story_variant_to_banshee(banshee)
+		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		banshee.restore_after_load()
 		if banshee.has_method("enable_story_combat"):
 			banshee.enable_story_combat(flow.hidden_banshee_alpha)

@@ -7,13 +7,13 @@ const NO_EFFECTS: Array[String] = []
 @export var effect_sprite_frames: SpriteFrames = DEFAULT_EFFECT_SPRITE_FRAMES
 @export var icon_spacing: float = 18.0
 @export var icon_scale: Vector2 = Vector2(0.5, 0.5)
-@export var always_visible_z_index: int = 100
+@export var world_effect_z_index: int = 1
 
 var effect_sprites: Dictionary = {}
 
 
 func _ready():
-	apply_always_visible_rendering()
+	apply_world_effect_rendering()
 	set_effects(NO_EFFECTS)
 
 
@@ -70,23 +70,25 @@ func get_effect_sprite(anim_name: String) -> AnimatedSprite2D:
 
 	if effect_sprites.has(anim_name):
 		var existing_effect_sprite: AnimatedSprite2D = effect_sprites[anim_name]
-		apply_always_visible_rendering(existing_effect_sprite)
+		apply_world_effect_rendering(existing_effect_sprite, 0)
 		return existing_effect_sprite
 
 	var effect_sprite: AnimatedSprite2D = AnimatedSprite2D.new()
 	effect_sprite.sprite_frames = effect_sprite_frames
 	effect_sprite.scale = icon_scale
 	effect_sprite.visible = false
-	apply_always_visible_rendering(effect_sprite)
+	apply_world_effect_rendering(effect_sprite, 0)
 	add_child(effect_sprite)
 	effect_sprites[anim_name] = effect_sprite
 	return effect_sprite
 
 
-func apply_always_visible_rendering(canvas_item: CanvasItem = null):
+func apply_world_effect_rendering(canvas_item: CanvasItem = null, z_index_value: int = -1):
 	if canvas_item == null:
 		canvas_item = self
+	if z_index_value < 0:
+		z_index_value = world_effect_z_index
 
 	canvas_item.y_sort_enabled = false
-	canvas_item.z_as_relative = false
-	canvas_item.z_index = always_visible_z_index
+	canvas_item.z_as_relative = true
+	canvas_item.z_index = z_index_value
