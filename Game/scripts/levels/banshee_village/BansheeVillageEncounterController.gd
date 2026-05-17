@@ -4,6 +4,7 @@ class_name BansheeVillageEncounterController
 const STAGE_RULES = preload("res://scripts/levels/banshee_village/BansheeVillageStageRules.gd")
 const BANSHEE_VARIANT_CORRUPTED_MELEE = "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED = "corrupted_strong_ranged"
+const BANSHEE_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
 
 var flow
 
@@ -55,18 +56,18 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 	if saved_state.has("revealed"):
 		is_revealed = combat_enabled and bool(saved_state.get("revealed", false))
 
-	var alpha: float = flow.hidden_banshee_alpha
+	var alpha: float = get_hidden_banshee_alpha()
 	if is_revealed:
 		alpha = 1.0
 
 	if not saved_state.is_empty() and banshee.has_method("restore_from_story_save"):
 		sanitize_saved_banshee_variant(saved_state, banshee)
-		banshee.restore_from_story_save(saved_state, flow.hidden_banshee_alpha, combat_enabled, is_revealed)
+		banshee.restore_from_story_save(saved_state, get_hidden_banshee_alpha(), combat_enabled, is_revealed)
 		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		return
 
 	if banshee.has_method("restore_for_story_load"):
-		banshee.restore_for_story_load(flow.hidden_banshee_alpha, combat_enabled, is_revealed)
+		banshee.restore_for_story_load(get_hidden_banshee_alpha(), combat_enabled, is_revealed)
 		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		return
 
@@ -82,7 +83,7 @@ func apply_active_banshee_state(banshee: Node, combat_enabled: bool, saved_state
 			banshee.set_story_combat_enabled(combat_enabled, alpha)
 
 	if banshee.has_method("set_story_revealed"):
-		banshee.set_story_revealed(is_revealed, flow.hidden_banshee_alpha)
+		banshee.set_story_revealed(is_revealed, get_hidden_banshee_alpha())
 	if combat_enabled and banshee.has_method("begin_assigned_villager_catchup_if_needed"):
 		banshee.begin_assigned_villager_catchup_if_needed()
 	set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
@@ -100,9 +101,9 @@ func apply_cleared_banshee_state(banshee: Node, saved_state: Dictionary = {}):
 
 	if not saved_state.is_empty() and banshee.has_method("restore_dead_from_story_save"):
 		sanitize_saved_banshee_variant(saved_state, banshee)
-		banshee.restore_dead_from_story_save(saved_state, flow.hidden_banshee_alpha)
+		banshee.restore_dead_from_story_save(saved_state, get_hidden_banshee_alpha())
 	elif banshee.has_method("hide_as_story_defeated"):
-		banshee.hide_as_story_defeated(flow.hidden_banshee_alpha)
+		banshee.hide_as_story_defeated(get_hidden_banshee_alpha())
 
 
 func is_saved_banshee_defeated(banshee: Node, saved_state: Dictionary) -> bool:
@@ -178,7 +179,7 @@ func handle_banshee_detected_player_for_reveal(banshee: Node):
 
 	flow.revealed_banshee_paths[banshee_path] = true
 	if banshee.has_method("set_story_revealed"):
-		banshee.set_story_revealed(true, flow.hidden_banshee_alpha)
+		banshee.set_story_revealed(true, get_hidden_banshee_alpha())
 
 
 func schedule_banshee_respawn(banshee: Node):
@@ -186,7 +187,7 @@ func schedule_banshee_respawn(banshee: Node):
 		return
 
 	var scheduled_generation: int = flow.state_generation
-	await flow.get_tree().create_timer(flow.respawn_delay_seconds).timeout
+	await flow.get_tree().create_timer(get_story_respawn_delay_seconds()).timeout
 	if scheduled_generation != flow.state_generation:
 		return
 
@@ -219,14 +220,26 @@ func respawn_banshee(banshee: Node):
 	if banshee.has_method("respawn_for_story"):
 		apply_story_variant_to_banshee(banshee)
 		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
-		banshee.respawn_for_story(flow.hidden_banshee_alpha)
+		banshee.respawn_for_story(get_hidden_banshee_alpha())
 	elif banshee.has_method("restore_after_load"):
 		apply_story_variant_to_banshee(banshee)
 		set_banshee_wolf_weakness_effect_enabled(banshee, should_show_banshee_wolf_weakness_policy())
 		banshee.restore_after_load()
 		if banshee.has_method("enable_story_combat"):
-			banshee.enable_story_combat(flow.hidden_banshee_alpha)
+			banshee.enable_story_combat(get_hidden_banshee_alpha())
 		elif banshee.has_method("set_story_combat_enabled"):
-			banshee.set_story_combat_enabled(true, flow.hidden_banshee_alpha)
+			banshee.set_story_combat_enabled(true, get_hidden_banshee_alpha())
 		if banshee.has_method("begin_assigned_villager_catchup_if_needed"):
 			banshee.begin_assigned_villager_catchup_if_needed()
+
+
+func get_hidden_banshee_alpha() -> float:
+	if BANSHEE_TUNING == null:
+		return 0.2
+	return clampf(float(BANSHEE_TUNING.hidden_banshee_alpha), 0.0, 1.0)
+
+
+func get_story_respawn_delay_seconds() -> float:
+	if BANSHEE_TUNING == null:
+		return 10.0
+	return maxf(float(BANSHEE_TUNING.story_respawn_delay_seconds), 0.01)

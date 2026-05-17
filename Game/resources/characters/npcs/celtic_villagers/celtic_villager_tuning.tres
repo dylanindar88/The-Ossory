@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="VillagerTuning" load_steps=2 format=3 uid="uid://d0nwcjb6g8mhr"]
+
+[ext_resource type="Script" path="res://scripts/characters/npcs/celtic_villagers/VillagerTuning.gd" id="1_villager_tuning"]
+
+[resource]
+script = ExtResource("1_villager_tuning")
+walk_speed = 45.0
+arrival_distance = 6.0
+ambient_enabled = true
+ambient_check_interval_seconds = 1.25
+ambient_stop_chance = 0.05
+ambient_stop_cooldown_seconds = 7.0
+ambient_idle_min_seconds = 1.0
+ambient_idle_max_seconds = 2.25
+ambient_marker_stop_radius = 32.0
+ambient_marker_stop_multiplier = 2.0
+ambient_house_stop_radius = 38.0
+ambient_house_stop_multiplier = 4.0
+ambient_house_idle_min_seconds = 1.5
+ambient_house_idle_max_seconds = 3.5
+ambient_reverse_chance = 0.18
+ambient_social_chance = 0.14
+ambient_social_radius = 54.0
+ambient_social_cooldown_seconds = 12.0
+ambient_social_min_seconds = 1.5
+ambient_social_max_seconds = 3.25

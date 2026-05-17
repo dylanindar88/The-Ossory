@@ -1,7 +1,7 @@
-[gd_resource type="Resource" script_class="CampfireBaseVariant" load_steps=3 format=3]
+[gd_resource type="Resource" script_class="CampfireBaseVariant" load_steps=3 format=3 uid="uid://byginkl0n6tpc"]
 
 [ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseVariant.gd" id="1_variant"]
-[ext_resource type="PackedScene" path="res://scenes/environment/structures/campfire_base/layouts/CampfireBaseLayoutA.tscn" id="2_layout"]
+[ext_resource type="PackedScene" uid="uid://cgeh0foc62pic" path="res://scenes/environment/structures/campfire_base/layouts/CampfireBaseLayoutA.tscn" id="2_layout"]
 
 [resource]
 script = ExtResource("1_variant")
@@ -12,3 +12,4 @@ max_knight_count = 5
 allowed_knight_type_ids = Array[StringName]([&"basic_knight_melee", &"basic_knight_ranged"])
 spawn_interval_seconds = 10.0
 spawn_count = 2
+spawn_point_hints = Array[Vector2]([])

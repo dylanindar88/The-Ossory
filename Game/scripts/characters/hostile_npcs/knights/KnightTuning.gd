@@ -9,6 +9,8 @@ extends Resource
 @export var max_health: int = 35
 @export var invulnerability_time: float = 0.15
 @export var hurt_duration_seconds: float = 0.35
+@export var block_stun_duration: float = 1.0
+@export var block_stun_move_speed_modifier: float = 0.15
 
 @export_group("Movement")
 @export var walk_speed: float = 48.0

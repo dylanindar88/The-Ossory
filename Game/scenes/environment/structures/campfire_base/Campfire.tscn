@@ -74,6 +74,6 @@ animation = &"lit"
 offset = Vector2(0, -41.82)
 
 [node name="BodyCollision" type="CollisionShape2D" parent="."]
-position = Vector2(0, -18)
-scale = Vector2(2.2, 1.25)
+position = Vector2(0, -19)
+scale = Vector2(3, 3)
 shape = SubResource("CircleShape2D_oyov3")

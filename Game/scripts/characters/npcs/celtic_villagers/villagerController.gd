@@ -8,33 +8,13 @@ const ASSIGNED_BANSHEE_DEFEAT_COMPLETE_PAUSE: String = "complete_pause"
 const ASSIGNED_BANSHEE_DEFEAT_RESUME_PATROL: String = "resume_patrol"
 const BANSHEE_AGGRO_PAUSE_PAUSE: String = "pause"
 const BANSHEE_AGGRO_PAUSE_IGNORE: String = "ignore"
+const DEFAULT_TUNING: VillagerTuning = preload("res://resources/characters/npcs/celtic_villagers/celtic_villager_tuning.tres")
 
 @export var patrol_path: NodePath
 @export var patrol_ping_pong: bool = false
-@export var walk_speed: float = 45.0
-@export var arrival_distance: float = 6.0
+@export var tuning: VillagerTuning = DEFAULT_TUNING
 @export_enum("complete_pause", "resume_patrol") var assigned_banshee_defeat_behavior: String = ASSIGNED_BANSHEE_DEFEAT_COMPLETE_PAUSE
 @export_enum("pause", "ignore") var banshee_aggro_pause_behavior: String = BANSHEE_AGGRO_PAUSE_PAUSE
-@export_group("Ambient Patrol")
-@export var ambient_enabled: bool = false
-@export_range(0.1, 10.0, 0.1) var ambient_check_interval_seconds: float = 1.25
-@export_range(0.0, 1.0, 0.01) var ambient_stop_chance: float = 0.05
-@export var ambient_stop_cooldown_seconds: float = 7.0
-@export var ambient_idle_min_seconds: float = 1.0
-@export var ambient_idle_max_seconds: float = 2.25
-@export var ambient_marker_stop_radius: float = 32.0
-@export var ambient_marker_stop_multiplier: float = 2.0
-@export var ambient_house_stop_radius: float = 38.0
-@export var ambient_house_stop_multiplier: float = 4.0
-@export var ambient_house_idle_min_seconds: float = 1.5
-@export var ambient_house_idle_max_seconds: float = 3.5
-@export_range(0.0, 1.0, 0.01) var ambient_reverse_chance: float = 0.18
-@export_range(0.0, 1.0, 0.01) var ambient_social_chance: float = 0.14
-@export var ambient_social_radius: float = 54.0
-@export var ambient_social_cooldown_seconds: float = 12.0
-@export var ambient_social_min_seconds: float = 1.5
-@export var ambient_social_max_seconds: float = 3.25
-@export_group("")
 @export var dialogue_bank: DialogueBank
 @export var dialogue_override_sequence: DialogueSequence
 
@@ -53,14 +33,63 @@ var dialogue_active: bool = false
 var active_dialogue_bubble: DialogueBubble
 var current_dialogue_player: Node2D
 var ambient_behavior: VillagerAmbientPatrolBehavior = VillagerAmbientPatrolBehavior.new()
+var villager_index: int = -1
+var villager_group_index: int = -1
+var walk_speed: float = 45.0
+var arrival_distance: float = 6.0
+var ambient_enabled: bool = true
+var ambient_check_interval_seconds: float = 1.25
+var ambient_stop_chance: float = 0.05
+var ambient_stop_cooldown_seconds: float = 7.0
+var ambient_idle_min_seconds: float = 1.0
+var ambient_idle_max_seconds: float = 2.25
+var ambient_marker_stop_radius: float = 32.0
+var ambient_marker_stop_multiplier: float = 2.0
+var ambient_house_stop_radius: float = 38.0
+var ambient_house_stop_multiplier: float = 4.0
+var ambient_house_idle_min_seconds: float = 1.5
+var ambient_house_idle_max_seconds: float = 3.5
+var ambient_reverse_chance: float = 0.18
+var ambient_social_chance: float = 0.14
+var ambient_social_radius: float = 54.0
+var ambient_social_cooldown_seconds: float = 12.0
+var ambient_social_min_seconds: float = 1.5
+var ambient_social_max_seconds: float = 3.25
 
 
 func _ready():
+	apply_tuning()
 	add_to_group("non_hostile_npcs")
 	add_to_group("celtic_villagers")
 	connect_player_proximity_area()
 	refresh_patrol_points()
 	ambient_behavior.setup(self, patrol_path)
+
+
+func apply_tuning():
+	if tuning == null:
+		tuning = DEFAULT_TUNING
+
+	walk_speed = tuning.walk_speed
+	arrival_distance = tuning.arrival_distance
+	ambient_enabled = tuning.ambient_enabled
+	ambient_check_interval_seconds = tuning.ambient_check_interval_seconds
+	ambient_stop_chance = tuning.ambient_stop_chance
+	ambient_stop_cooldown_seconds = tuning.ambient_stop_cooldown_seconds
+	ambient_idle_min_seconds = tuning.ambient_idle_min_seconds
+	ambient_idle_max_seconds = tuning.ambient_idle_max_seconds
+	ambient_marker_stop_radius = tuning.ambient_marker_stop_radius
+	ambient_marker_stop_multiplier = tuning.ambient_marker_stop_multiplier
+	ambient_house_stop_radius = tuning.ambient_house_stop_radius
+	ambient_house_stop_multiplier = tuning.ambient_house_stop_multiplier
+	ambient_house_idle_min_seconds = tuning.ambient_house_idle_min_seconds
+	ambient_house_idle_max_seconds = tuning.ambient_house_idle_max_seconds
+	ambient_reverse_chance = tuning.ambient_reverse_chance
+	ambient_social_chance = tuning.ambient_social_chance
+	ambient_social_radius = tuning.ambient_social_radius
+	ambient_social_cooldown_seconds = tuning.ambient_social_cooldown_seconds
+	ambient_social_min_seconds = tuning.ambient_social_min_seconds
+	ambient_social_max_seconds = tuning.ambient_social_max_seconds
 
 
 func _physics_process(delta):

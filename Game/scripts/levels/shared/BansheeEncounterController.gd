@@ -3,12 +3,10 @@ class_name BansheeEncounterController
 
 const BANSHEE_VARIANT_CORRUPTED_MELEE: String = "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED: String = "corrupted_strong_ranged"
+const BANSHEE_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
 
 @export var state_root_path: NodePath
 @export var hostile_root_path: NodePath
-@export var hidden_banshee_alpha: float = 0.2
-@export var passive_banshee_alpha: float = 0.2
-@export var respawn_delay_seconds: float = 10.0
 
 var banshees: Array[Node] = []
 var temporarily_cleared_banshee_paths: Dictionary = {}
@@ -20,6 +18,7 @@ var state_generation: int = 0
 
 func _ready():
 	banshees = get_banshees()
+	assign_banshee_indexes()
 	connect_banshees()
 	apply_banshee_world_rules()
 
@@ -91,6 +90,13 @@ func get_banshees() -> Array[Node]:
 	return found_banshees
 
 
+func assign_banshee_indexes():
+	for index in range(banshees.size()):
+		var banshee := banshees[index]
+		if banshee != null:
+			banshee.set("banshee_index", index)
+
+
 func collect_banshees_from(root: Node, found_banshees: Array[Node]):
 	if root == null:
 		return
@@ -146,7 +152,7 @@ func apply_banshee_world_rules():
 
 		var restored_from_saved_state: bool = false
 		if not saved_state.is_empty() and banshee.has_method("restore_from_story_save"):
-			banshee.restore_from_story_save(saved_state, hidden_banshee_alpha, hostile_enabled, false)
+			banshee.restore_from_story_save(saved_state, get_hidden_banshee_alpha(), hostile_enabled, false)
 			restored_from_saved_state = true
 		elif banshee.has_method("restore_after_load"):
 			banshee.restore_after_load()
@@ -172,14 +178,32 @@ func get_banshee_world_rules() -> Dictionary:
 
 func apply_banshee_rules_to_actor(banshee: Node, hostile_enabled: bool, damage_enabled: bool):
 	if banshee.has_method("set_story_combat_enabled"):
-		banshee.set_story_combat_enabled(hostile_enabled, hidden_banshee_alpha if hostile_enabled else passive_banshee_alpha)
+		banshee.set_story_combat_enabled(hostile_enabled, get_hidden_banshee_alpha() if hostile_enabled else get_passive_banshee_alpha())
 	elif banshee.has_method("enable_story_combat") and hostile_enabled:
-		banshee.enable_story_combat(hidden_banshee_alpha)
+		banshee.enable_story_combat(get_hidden_banshee_alpha())
 	elif banshee.has_method("disable_story_combat") and not hostile_enabled:
-		banshee.disable_story_combat(passive_banshee_alpha)
+		banshee.disable_story_combat(get_passive_banshee_alpha())
 
 	if banshee.has_method("set_damage_enabled"):
 		banshee.set_damage_enabled(hostile_enabled and damage_enabled)
+
+
+func get_hidden_banshee_alpha() -> float:
+	if BANSHEE_TUNING == null:
+		return 0.2
+	return clampf(float(BANSHEE_TUNING.hidden_banshee_alpha), 0.0, 1.0)
+
+
+func get_passive_banshee_alpha() -> float:
+	if BANSHEE_TUNING == null:
+		return 0.2
+	return clampf(float(BANSHEE_TUNING.passive_banshee_alpha), 0.0, 1.0)
+
+
+func get_story_respawn_delay_seconds() -> float:
+	if BANSHEE_TUNING == null:
+		return 10.0
+	return maxf(float(BANSHEE_TUNING.story_respawn_delay_seconds), 0.01)
 
 
 func set_banshee_wolf_weakness_effect_enabled(banshee: Node, enabled: bool):
@@ -243,9 +267,9 @@ func was_banshee_killed_by_wolf(banshee: Node) -> bool:
 
 func apply_cleared_banshee_state(banshee: Node):
 	if banshee.has_method("apply_cleared_story_state"):
-		banshee.apply_cleared_story_state(hidden_banshee_alpha)
+		banshee.apply_cleared_story_state(get_hidden_banshee_alpha())
 	elif banshee.has_method("hide_as_story_defeated"):
-		banshee.hide_as_story_defeated(hidden_banshee_alpha)
+		banshee.hide_as_story_defeated(get_hidden_banshee_alpha())
 	else:
 		banshee.visible = false
 		banshee.set("dead", true)
@@ -255,9 +279,9 @@ func apply_cleared_banshee_state(banshee: Node):
 
 func apply_saved_defeated_banshee_state(banshee: Node, saved_state: Dictionary):
 	if banshee.has_method("restore_dead_from_story_save"):
-		banshee.restore_dead_from_story_save(saved_state, hidden_banshee_alpha)
+		banshee.restore_dead_from_story_save(saved_state, get_hidden_banshee_alpha())
 	elif banshee.has_method("hide_as_story_defeated"):
-		banshee.hide_as_story_defeated(hidden_banshee_alpha)
+		banshee.hide_as_story_defeated(get_hidden_banshee_alpha())
 	else:
 		apply_cleared_banshee_state(banshee)
 
@@ -274,7 +298,7 @@ func is_saved_banshee_defeated(banshee: Node, saved_state: Dictionary) -> bool:
 
 func schedule_banshee_respawn(banshee: Node):
 	var scheduled_generation: int = state_generation
-	await get_tree().create_timer(respawn_delay_seconds).timeout
+	await get_tree().create_timer(get_story_respawn_delay_seconds()).timeout
 	if scheduled_generation != state_generation:
 		return
 	if banshee == null or not is_instance_valid(banshee):
@@ -300,7 +324,7 @@ func respawn_banshee(banshee: Node):
 	apply_story_variant_to_banshee(banshee, upgrades_available)
 	set_banshee_wolf_weakness_effect_enabled(banshee, wolf_weakness_effect_enabled)
 	if banshee.has_method("respawn_for_story"):
-		banshee.respawn_for_story(hidden_banshee_alpha)
+		banshee.respawn_for_story(get_hidden_banshee_alpha())
 	elif banshee.has_method("restore_after_load"):
 		banshee.restore_after_load()
 		if banshee.has_method("begin_assigned_villager_catchup_if_needed"):

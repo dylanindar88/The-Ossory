@@ -31,8 +31,10 @@ const NAVIGATION_NEAR_SELF_DISTANCE := 1.0
 const NAVIGATION_PROGRESS_EPSILON := 1.0
 const NAVIGATION_STUCK_REPATH_SECONDS := 0.35
 const PREVIOUS_MELEE_ATTACK_BOX_HEIGHT := 28.0 * 1.06767
+const HORIZONTAL_ATTACK_BOX_OFFSET_RATIO := 24.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const UP_ATTACK_BOX_OFFSET_RATIO := 10.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const DOWN_ATTACK_BOX_OFFSET_RATIO := 25.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
+const BLOCK_STUN_HURT_FREEZE_FRAME := 1
 const HORIZONTAL_BASE_ANIMATIONS := {
 	"idle": true,
 	"walk": true,
@@ -107,6 +109,11 @@ var active_attack_animation: String = "attack"
 var active_attack_duration: float = 0.0
 var active_attack_hit_time: float = 0.0
 var hurt_timer: float = 0.0
+var hurt_duration_override: float = -1.0
+var hurt_speed_modifier_override: float = -1.0
+var hurt_animation_hold_active: bool = false
+var hurt_animation_finishing_after_hold: bool = false
+var hurt_animation_finish_timer: float = 0.0
 var state_before_hurt: String = "idle"
 var state: String = "idle"
 var last_facing_direction: String = FACING_RIGHT
@@ -120,6 +127,7 @@ var conversation_timer: float = 0.0
 var active_dialogue_is_encounter_bark: bool = false
 var last_chase_used_navigation: bool = false
 var current_movement_uses_navigation: bool = false
+var knight_index: int = -1
 var current_physics_delta: float = 0.0
 var navigation_progress_position: Vector2
 var navigation_stuck_timer: float = 0.0
@@ -691,8 +699,21 @@ func update_attack(delta: float):
 		change_state("chase" if should_chase_player() else get_default_state())
 
 
-func enter_hurt_state():
+func on_attack_blocked():
+	if dead:
+		return
+
+	if tuning != null:
+		attack_cooldown_timer = maxf(attack_cooldown_timer, tuning.attack_cooldown)
+	enter_hurt_state(get_block_stun_duration(), get_block_stun_speed_modifier())
+	start_block_stun_hurt_animation_hold()
+
+
+func enter_hurt_state(duration_override: float = -1.0, speed_modifier_override: float = -1.0):
 	state_before_hurt = state
+	clear_hurt_animation_hold()
+	hurt_duration_override = duration_override
+	hurt_speed_modifier_override = speed_modifier_override
 	cancel_active_attack()
 	clear_navigation_velocity()
 	velocity = Vector2.ZERO
@@ -702,29 +723,129 @@ func enter_hurt_state():
 
 
 func update_hurt(delta: float):
-	velocity = Vector2.ZERO
+	var hurt_speed_modifier := get_hurt_speed_modifier()
+	velocity = Vector2.ZERO * hurt_speed_modifier
 	clear_navigation_velocity()
-	if sprite != null and str(sprite.animation) != resolve_animation_name(STATE_HURT):
+	if hurt_animation_finishing_after_hold:
+		hurt_animation_finish_timer = maxf(hurt_animation_finish_timer - delta, 0.0)
+		if hurt_animation_finish_timer > 0.0:
+			return
+		hurt_animation_finishing_after_hold = false
+	elif sprite != null and str(sprite.animation) != resolve_animation_name(STATE_HURT):
 		play_animation(STATE_HURT)
+
+	if hurt_animation_hold_active:
+		maintain_block_stun_hurt_animation_hold()
 	hurt_timer = maxf(hurt_timer - delta, 0.0)
 	if hurt_timer > 0.0:
+		return
+
+	if hurt_animation_hold_active and begin_block_stun_hurt_animation_finish():
 		return
 
 	if dead:
 		return
 	if should_chase_player():
+		clear_hurt_state_overrides()
 		change_state("chase")
 	elif should_return_home_after_hurt():
+		clear_hurt_state_overrides()
 		change_state(STATE_RETURN_HOME)
 	else:
+		clear_hurt_state_overrides()
 		change_state(get_default_state())
 
 
 func get_hurt_duration() -> float:
 	var fallback := get_animation_duration(STATE_HURT, 0.35)
+	if hurt_duration_override > 0.0:
+		return hurt_duration_override
 	if tuning == null:
 		return fallback
 	return maxf(float(tuning.hurt_duration_seconds), 0.0) if float(tuning.hurt_duration_seconds) > 0.0 else fallback
+
+
+func get_hurt_speed_modifier() -> float:
+	if hurt_speed_modifier_override > 0.0:
+		return hurt_speed_modifier_override
+	return 0.0
+
+
+func clear_hurt_state_overrides():
+	hurt_duration_override = -1.0
+	hurt_speed_modifier_override = -1.0
+	clear_hurt_animation_hold()
+
+
+func start_block_stun_hurt_animation_hold():
+	if not has_hurt_animation():
+		return
+
+	hurt_animation_hold_active = true
+	hurt_animation_finishing_after_hold = false
+	hurt_animation_finish_timer = 0.0
+	play_animation(STATE_HURT)
+	maintain_block_stun_hurt_animation_hold()
+
+
+func maintain_block_stun_hurt_animation_hold():
+	if not has_hurt_animation():
+		clear_hurt_animation_hold()
+		return
+
+	var hurt_animation := resolve_animation_name(STATE_HURT)
+	if str(sprite.animation) != hurt_animation:
+		sprite.animation = StringName(hurt_animation)
+	sprite.frame = clampi(BLOCK_STUN_HURT_FREEZE_FRAME, 0, sprite.sprite_frames.get_frame_count(hurt_animation) - 1)
+	sprite.frame_progress = 0.0
+	sprite.speed_scale = 0.0
+	if not sprite.is_playing():
+		sprite.play()
+
+
+func begin_block_stun_hurt_animation_finish() -> bool:
+	hurt_animation_hold_active = false
+	if not has_hurt_animation():
+		clear_hurt_animation_hold()
+		return false
+
+	var hurt_animation := resolve_animation_name(STATE_HURT)
+	sprite.speed_scale = 1.0
+	sprite.animation = StringName(hurt_animation)
+	sprite.frame = clampi(BLOCK_STUN_HURT_FREEZE_FRAME, 0, sprite.sprite_frames.get_frame_count(hurt_animation) - 1)
+	sprite.frame_progress = 0.0
+	sprite.play()
+	hurt_animation_finish_timer = get_animation_duration_from_frame(hurt_animation, sprite.frame, 0.0)
+	if hurt_animation_finish_timer <= 0.0:
+		clear_hurt_animation_hold()
+		return false
+
+	hurt_animation_finishing_after_hold = true
+	return true
+
+
+func clear_hurt_animation_hold():
+	hurt_animation_hold_active = false
+	hurt_animation_finishing_after_hold = false
+	hurt_animation_finish_timer = 0.0
+	if sprite != null:
+		sprite.speed_scale = 1.0
+
+
+func has_hurt_animation() -> bool:
+	return has_animation_resource() and sprite.sprite_frames.has_animation(STATE_HURT)
+
+
+func get_block_stun_duration() -> float:
+	if tuning == null:
+		return get_animation_duration(STATE_HURT, 0.35)
+	return maxf(float(tuning.block_stun_duration), 0.0)
+
+
+func get_block_stun_speed_modifier() -> float:
+	if tuning == null:
+		return 0.0
+	return maxf(float(tuning.block_stun_move_speed_modifier), 0.0)
 
 
 func should_return_home_after_hurt() -> bool:
@@ -741,7 +862,7 @@ func cancel_active_attack():
 	attack_has_dealt_damage = true
 	set_attack_shape_enabled(false)
 	if attack_box != null:
-		attack_box.monitoring = false
+		attack_box.set_deferred("monitoring", false)
 
 
 func perform_attack():
@@ -780,14 +901,15 @@ func activate_melee_hitbox():
 	if attack_box == null:
 		return
 
-	attack_box.monitoring = true
+	attack_box.set_deferred("monitoring", true)
 	apply_directional_attack_shape_offset()
 	set_attack_shape_enabled(true)
-	call_deferred("hit_current_attack_overlaps")
-	await get_tree().process_frame
+	await get_tree().physics_frame
+	hit_current_attack_overlaps()
+	await get_tree().physics_frame
 	set_attack_shape_enabled(false)
 	if attack_box != null:
-		attack_box.monitoring = false
+		attack_box.set_deferred("monitoring", false)
 
 
 func set_attack_shape_enabled(enabled: bool):
@@ -808,7 +930,8 @@ func apply_directional_attack_shape_offset():
 		attack_shape_controller.apply_offset(Vector2(0.0, get_scaled_attack_box_offset(DOWN_ATTACK_BOX_OFFSET_RATIO)))
 		return
 
-	attack_shape_controller.restore_base_transform()
+	var horizontal_sign := -1.0 if last_horizontal_facing_direction == FACING_LEFT else 1.0
+	attack_shape_controller.apply_offset(Vector2(get_scaled_attack_box_offset(HORIZONTAL_ATTACK_BOX_OFFSET_RATIO) * horizontal_sign, 0.0))
 
 
 func get_scaled_attack_box_offset(offset_ratio: float) -> float:
@@ -833,7 +956,9 @@ func _on_attack_box_area_entered(area: Area2D):
 
 	var target := area.get_parent()
 	if target != null and target.has_method("take_damage"):
-		target.take_damage(tuning.attack_damage, false, self)
+		var hit_result: Variant = target.take_damage(0, false, self)
+		if hit_result == "blocked":
+			on_attack_blocked()
 
 
 func take_damage(amount: int, ignore_invulnerability: bool = false, _damage_source: Node = null):
@@ -849,6 +974,7 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, _damage_sour
 func _on_died():
 	dead = true
 	hurt_timer = 0.0
+	clear_hurt_state_overrides()
 	velocity = Vector2.ZERO
 	cancel_active_attack()
 	clear_active_dialogue_bubble()
@@ -902,6 +1028,7 @@ func respawn_at(respawn_position: Vector2):
 	restore_authored_navigation_distances()
 	velocity = Vector2.ZERO
 	hurt_timer = 0.0
+	clear_hurt_state_overrides()
 	if health != null:
 		health.heal_to_full()
 	dead = false
@@ -920,6 +1047,7 @@ func hide_as_defeated():
 	visible = false
 	velocity = Vector2.ZERO
 	hurt_timer = 0.0
+	clear_hurt_state_overrides()
 	clear_navigation_velocity()
 	reset_navigation_progress()
 	restore_authored_navigation_distances()
@@ -959,6 +1087,7 @@ func apply_story_save_state(saved_state: Dictionary):
 	dead = false
 	visible = true
 	hurt_timer = 0.0
+	clear_hurt_state_overrides()
 	set_body_collision_enabled(true)
 	set_combat_enabled(true)
 	if health != null:
@@ -974,6 +1103,7 @@ func reset_for_level_entry():
 	restore_authored_navigation_distances()
 	velocity = Vector2.ZERO
 	hurt_timer = 0.0
+	clear_hurt_state_overrides()
 	facing_left = spawn_facing_left
 	last_horizontal_facing_direction = FACING_LEFT if facing_left else FACING_RIGHT
 	last_facing_direction = last_horizontal_facing_direction
@@ -1211,6 +1341,23 @@ func get_animation_duration(animation_name: String, fallback: float) -> float:
 	var frame_count := sprite.sprite_frames.get_frame_count(animation_name)
 	for frame_index in range(frame_count):
 		duration += sprite.sprite_frames.get_frame_duration(animation_name, frame_index) / animation_speed
+
+	return duration if duration > 0.0 else fallback
+
+
+func get_animation_duration_from_frame(animation_name: String, frame_index: int, fallback: float) -> float:
+	if not has_animation_resource() or not sprite.sprite_frames.has_animation(animation_name):
+		return fallback
+
+	var animation_speed: float = sprite.sprite_frames.get_animation_speed(animation_name)
+	if animation_speed <= 0.0:
+		return fallback
+
+	var duration: float = 0.0
+	var frame_count := sprite.sprite_frames.get_frame_count(animation_name)
+	var starting_frame := clampi(frame_index, 0, frame_count - 1)
+	for current_frame in range(starting_frame, frame_count):
+		duration += sprite.sprite_frames.get_frame_duration(animation_name, current_frame) / animation_speed
 
 	return duration if duration > 0.0 else fallback
 

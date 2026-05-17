@@ -118,7 +118,7 @@ script = ExtResource("4_q0m2k")
 
 [node name="HurtBox" type="Area2D" parent="."]
 position = Vector2(0, 3)
-scale = Vector2(1.56309, 1.46698)
+scale = Vector2(1.27019, 1.40194)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HurtBox"]
 position = Vector2(0, -20)

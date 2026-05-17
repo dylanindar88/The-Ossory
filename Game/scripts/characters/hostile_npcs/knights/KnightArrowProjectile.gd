@@ -69,7 +69,9 @@ func _on_hit_box_area_entered(area: Area2D):
 
 	hit_targets.append(target)
 	if target.has_method("take_damage"):
-		target.take_damage(damage, false, source_knight)
+		var hit_result: Variant = target.take_damage(0, false, source_knight)
+		if hit_result == "blocked" and source_knight != null and is_instance_valid(source_knight) and source_knight.has_method("on_attack_blocked"):
+			source_knight.on_attack_blocked()
 	queue_free()
 
 

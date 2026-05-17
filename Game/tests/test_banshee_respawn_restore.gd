@@ -5,13 +5,17 @@ const BANSHEE_VILLAGE_PATH := "res://scenes/levels/BansheeVillage.tscn"
 const STARTING_WILDERNESS_BANSHEE_PATH := "PlayableWorld/Environment/Characters/HostileNPCs/Banshees/Banshee2"
 const BANSHEE_VILLAGE_BANSHEE_PATH := "PlayableWorld/Environment/Characters/HostileNPCs/Banshee2"
 const RESPAWN_DELAY := 0.05
+const BANSHEE_TUNING: BansheeTuning = preload("res://resources/characters/hostile_npcs/banshees/banshee_tuning.tres")
 
 
 func run(assertions: TestAssertions, tree: SceneTree, save_manager: Node):
+	var original_respawn_delay: float = BANSHEE_TUNING.story_respawn_delay_seconds
+	BANSHEE_TUNING.story_respawn_delay_seconds = RESPAWN_DELAY
 	await assert_starting_wilderness_saved_defeated_restore(assertions, tree, save_manager, true, 0, "dead snapshot")
 	await assert_starting_wilderness_saved_defeated_restore(assertions, tree, save_manager, false, 0, "zero-health snapshot")
 	await assert_banshee_village_saved_defeated_restore(assertions, tree, save_manager, true, 0, "dead snapshot")
 	await assert_banshee_village_saved_defeated_restore(assertions, tree, save_manager, false, 0, "zero-health snapshot")
+	BANSHEE_TUNING.story_respawn_delay_seconds = original_respawn_delay
 
 
 func assert_starting_wilderness_saved_defeated_restore(assertions: TestAssertions, tree: SceneTree, save_manager: Node, saved_dead: bool, saved_health: int, label: String):
@@ -31,8 +35,9 @@ func assert_starting_wilderness_saved_defeated_restore(assertions: TestAssertion
 	var flow: Node = level.get_node_or_null("StartingWildernessFlowController")
 	assertions.assert_true(provider != null, "Starting Wilderness should have a save provider.")
 	assertions.assert_true(flow != null, "Starting Wilderness should have a flow controller.")
+	assertions.assert_false(has_exported_property(flow, "respawn_delay_seconds"), "Starting Wilderness should not expose per-level Banshee respawn delay.")
 	if flow != null and flow.get("encounter_controller") != null:
-		flow.get("encounter_controller").set("respawn_delay_seconds", RESPAWN_DELAY)
+		assertions.assert_false(has_exported_property(flow.get("encounter_controller"), "respawn_delay_seconds"), "Banshee encounter controller should not expose per-controller respawn delay.")
 
 	var state: Dictionary = provider.call("collect_level_state")
 	var encounter_state: Dictionary = state.get("encounter", {})
@@ -72,8 +77,7 @@ func assert_banshee_village_saved_defeated_restore(assertions: TestAssertions, t
 
 	var provider: Node = save_manager.call("get_level_state_provider", level)
 	assertions.assert_true(provider != null, "Banshee Village should have a save provider.")
-	if provider != null:
-		provider.set("respawn_delay_seconds", RESPAWN_DELAY)
+	assertions.assert_false(has_exported_property(provider, "respawn_delay_seconds"), "Banshee Village should not expose per-level Banshee respawn delay.")
 
 	var state: Dictionary = provider.call("collect_level_state")
 	state["quest_stage"] = "combat_active"
@@ -174,3 +178,14 @@ func set_banshee_world_rules(save_manager: Node, enabled: bool):
 	save_manager.call("set_banshee_world_rule", "player_can_damage_banshees", enabled)
 	save_manager.call("set_banshee_world_rule", "wolf_permanent_clear_enabled", false)
 	save_manager.call("set_banshee_world_rule", "bishop_defeated", false)
+
+
+func has_exported_property(node: Object, property_name: String) -> bool:
+	if node == null:
+		return false
+
+	for property in node.get_property_list():
+		if str(property.get("name", "")) == property_name and (int(property.get("usage", 0)) & PROPERTY_USAGE_EDITOR) != 0:
+			return true
+
+	return false

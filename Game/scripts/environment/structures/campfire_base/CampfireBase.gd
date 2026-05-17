@@ -10,7 +10,7 @@ const DEFAULT_VARIANTS: Array[Resource] = [
 	preload("res://resources/environment/structures/campfire_base/campfire_base_variant_c.tres"),
 ]
 
-@export var campfire_id: StringName = &"campfire_base"
+@export var campfire_base_id: StringName = &"campfire_base"
 @export var available_variants: Array[Resource] = []
 @export var default_variant_id: StringName = &"campfire_base_a"
 
@@ -25,6 +25,7 @@ var tents: Array[Node] = []
 var campfire_sprite: AnimatedSprite2D
 var melee_banner_sprite: AnimatedSprite2D
 var camp_navigation_region: NavigationRegion2D
+var campfire_base_index: int = -1
 
 
 func _ready():
@@ -52,6 +53,24 @@ func _on_camp_aggro_body_entered(body: Node2D):
 		player_detected.emit(self, body)
 
 
+func refresh_player_detection():
+	if not is_inside_tree() or dead or camp_aggro_area == null:
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		return
+
+	await tree.physics_frame
+	if not is_inside_tree() or dead or camp_aggro_area == null or not camp_aggro_area.monitoring:
+		return
+
+	for body in camp_aggro_area.get_overlapping_bodies():
+		if body is Node2D and is_instance_valid(body) and body.is_in_group("player"):
+			player_detected.emit(self, body)
+			return
+
+
 func get_respawn_position() -> Vector2:
 	var respawn_point := get_layout_respawn_point()
 	if respawn_point != null:
@@ -61,7 +80,7 @@ func get_respawn_position() -> Vector2:
 
 func collect_story_save_state() -> Dictionary:
 	return {
-		"campfire_id": str(campfire_id),
+		"campfire_base_id": str(campfire_base_id),
 		"variant_id": str(current_variant_id),
 		"dead": dead,
 		"tents": collect_tent_states(),
@@ -79,6 +98,10 @@ func apply_story_save_state(state: Dictionary):
 		destroy_all_tents()
 	refresh_destroyed_state(false)
 	update_layout_visual_state()
+
+
+func set_campfire_base_index(index: int):
+	campfire_base_index = index
 
 
 func reset_for_level_entry():

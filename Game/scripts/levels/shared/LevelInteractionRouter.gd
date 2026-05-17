@@ -17,8 +17,12 @@ func _ready():
 
 func _exit_tree():
 	disconnect_player()
-	if get_tree() != null and get_tree().node_added.is_connected(_on_tree_node_added):
-		get_tree().node_added.disconnect(_on_tree_node_added)
+	player = null
+	level_controller = null
+	set_process(false)
+	var tree := get_tree() if is_inside_tree() else null
+	if tree != null and tree.node_added.is_connected(_on_tree_node_added):
+		tree.node_added.disconnect(_on_tree_node_added)
 
 
 func _process(_delta):
@@ -26,8 +30,23 @@ func _process(_delta):
 
 
 func refresh_connections():
+	if not is_inside_tree():
+		disconnect_player()
+		player = null
+		level_controller = null
+		set_process(false)
+		return
+
+	var tree := get_tree()
+	if tree == null:
+		disconnect_player()
+		player = null
+		level_controller = null
+		set_process(false)
+		return
+
 	resolve_level_controller()
-	var current_player: Node = get_tree().get_first_node_in_group(player_group)
+	var current_player: Node = tree.get_first_node_in_group(player_group)
 	if current_player == player and is_player_connected():
 		set_process(false)
 		return
@@ -47,7 +66,7 @@ func resolve_level_controller():
 
 
 func connect_player():
-	if player == null or not player.has_signal("interaction_requested"):
+	if not is_valid_player_reference() or not player.has_signal("interaction_requested"):
 		return
 
 	var callback := Callable(self, "_on_player_interaction_requested")
@@ -56,7 +75,7 @@ func connect_player():
 
 
 func disconnect_player():
-	if player == null or not player.has_signal("interaction_requested"):
+	if not is_valid_player_reference() or not player.has_signal("interaction_requested"):
 		return
 
 	var callback := Callable(self, "_on_player_interaction_requested")
@@ -65,10 +84,14 @@ func disconnect_player():
 
 
 func is_player_connected() -> bool:
-	if player == null or not player.has_signal("interaction_requested"):
+	if not is_valid_player_reference() or not player.has_signal("interaction_requested"):
 		return false
 
 	return player.is_connected("interaction_requested", Callable(self, "_on_player_interaction_requested"))
+
+
+func is_valid_player_reference() -> bool:
+	return player != null and is_instance_valid(player)
 
 
 func _on_player_interaction_requested(interactable: Node2D):
@@ -85,4 +108,6 @@ func _on_player_interaction_requested(interactable: Node2D):
 
 
 func _on_tree_node_added(_node: Node):
+	if not is_inside_tree():
+		return
 	call_deferred("refresh_connections")

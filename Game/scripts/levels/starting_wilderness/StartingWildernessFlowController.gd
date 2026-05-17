@@ -36,9 +36,6 @@ const VILLAGER_BANSHEE_AGGRO_IGNORE: String = "ignore"
 @export var patrol_path_from_villager: NodePath = NodePath("../../../../Markers/PatrolPaths/VillagerPath")
 @export var patrol_path_from_banshee: NodePath = NodePath("../../../../../Markers/PatrolPaths/VillagerPath")
 @export var assigned_villager_path_from_banshee: NodePath = NodePath("../../../NPCs/MaleVillager")
-@export var hidden_banshee_alpha: float = 0.2
-@export var passive_banshee_alpha: float = 0.2
-@export var respawn_delay_seconds: float = 10.0
 @export var story_dialogue_profile: DialogueProfile = DEFAULT_STORY_DIALOGUE_PROFILE
 
 var villager: Node
@@ -55,6 +52,7 @@ func _ready():
 	wire_patrol_nodes()
 	setup_encounter_controller()
 	setup_knight_camp_controller()
+	assign_villager_indexes()
 	apply_dev_start_preset()
 	apply_story_dialogue()
 
@@ -81,6 +79,7 @@ func apply_level_state(state: Dictionary):
 	wire_patrol_nodes()
 	ensure_encounter_controller()
 	ensure_knight_camp_controller()
+	assign_villager_indexes()
 	saved_villager_states = {}
 	if SaveManager != null:
 		saved_villager_states = SaveManager.parse_actor_snapshot_lookup(state.get("non_hostile_npcs", []))
@@ -230,7 +229,7 @@ func build_dev_level_state() -> Dictionary:
 		},
 		"knight_camps": {
 			"state_version": 1,
-			"destroyed_campfire_ids": [],
+			"destroyed_campfire_base_ids": [],
 			"campfires": [],
 			"knights": [],
 		},
@@ -269,9 +268,6 @@ func setup_encounter_controller():
 	encounter_controller.name = "BansheeEncounterController"
 	encounter_controller.state_root_path = NodePath("../..")
 	encounter_controller.hostile_root_path = NodePath("../../PlayableWorld/Environment/Characters/HostileNPCs")
-	encounter_controller.hidden_banshee_alpha = hidden_banshee_alpha
-	encounter_controller.passive_banshee_alpha = passive_banshee_alpha
-	encounter_controller.respawn_delay_seconds = respawn_delay_seconds
 	add_child(encounter_controller)
 
 
@@ -295,6 +291,43 @@ func setup_knight_camp_controller():
 func ensure_knight_camp_controller():
 	if knight_camp_controller == null:
 		setup_knight_camp_controller()
+
+
+func assign_villager_indexes():
+	var npc_root: Node = get_node_or_null(npc_root_path)
+	if npc_root == null:
+		return
+
+	var villagers: Array[Node] = []
+	collect_villagers_from(npc_root, villagers)
+	var next_group_index: Dictionary = {}
+	for index in range(villagers.size()):
+		var villager_node := villagers[index]
+		var group_name := get_villager_group_name(villager_node)
+		var group_index := int(next_group_index.get(group_name, 0))
+		villager_node.set("villager_index", index)
+		villager_node.set("villager_group_index", group_index)
+		next_group_index[group_name] = group_index + 1
+
+
+func collect_villagers_from(root: Node, villagers: Array[Node]):
+	if root == null:
+		return
+
+	for child in root.get_children():
+		if child.is_in_group("celtic_villagers"):
+			villagers.append(child)
+		collect_villagers_from(child, villagers)
+
+
+func get_villager_group_name(villager_node: Node) -> String:
+	var scene_path := str(villager_node.scene_file_path)
+	var node_name := str(villager_node.name).to_lower()
+	if scene_path.contains("MaleVillager") or node_name.contains("male"):
+		return "male"
+	if scene_path.contains("FemaleVillager") or node_name.contains("female"):
+		return "female"
+	return "villager"
 
 
 func collect_non_hostile_npc_states() -> Array:

@@ -30,6 +30,7 @@ const SAORISE_ATTACK_BOX_MANAGER_SCRIPT := preload("res://scripts/characters/sao
 const BANSHEE_ATTACK_BOX_MANAGER_SCRIPT := preload("res://scripts/characters/hostile_npcs/banshees/combat/bansheeAttackBoxManager.gd")
 const TOP_DOWN_MOVEMENT_SCRIPT := preload("res://scripts/characters/shared/movement/TopDownMovement.gd")
 const PREVIOUS_MELEE_ATTACK_BOX_HEIGHT := 28.0 * 1.06767
+const HORIZONTAL_ATTACK_BOX_OFFSET_RATIO := 24.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const UP_ATTACK_BOX_OFFSET_RATIO := 10.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const DOWN_ATTACK_BOX_OFFSET_RATIO := 25.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 
@@ -53,6 +54,7 @@ func run(assertions: TestAssertions, tree: SceneTree, _save_manager: Node):
 	await assert_projectile_spawn_marker_contracts(assertions, tree)
 	await assert_melee_knight_animation_contract(assertions, tree)
 	await assert_shared_attack_box_shape_convention(assertions, tree)
+	await assert_knight_player_combat_contract(assertions, tree)
 	await assert_campfire_component_scene_contracts(assertions, tree)
 	await assert_campfire_layout_contracts(assertions, tree)
 	await assert_campfire_variant_roster_contracts(assertions, tree)
@@ -62,6 +64,8 @@ func run(assertions: TestAssertions, tree: SceneTree, _save_manager: Node):
 	await assert_knight_home_default_and_aggro_contract(assertions, tree)
 	await assert_knight_runtime_stabilization_contract(assertions, tree)
 	await assert_knight_camp_encounter_helper(assertions, tree)
+	await assert_multi_camp_identity_isolation(assertions, tree)
+	await assert_starting_wilderness_campfire_identity_and_indexes(assertions, tree)
 	await assert_knight_camp_navigation_switching(assertions, tree)
 	await assert_starting_wilderness_knight_camp_wiring(assertions, tree)
 	await assert_level_navigation_authoring_contracts(assertions, tree)
@@ -94,6 +98,10 @@ func assert_knight_scene_contracts(assertions: TestAssertions, tree: SceneTree):
 			assertions.assert_ne(melee_tuning.resource_path, ranged_tuning.resource_path, "Melee and ranged knights should use separate tuning resources.")
 			assertions.assert_ne(melee_tuning.max_health, ranged_tuning.max_health, "Melee and ranged health should be independently tunable.")
 			assertions.assert_ne(melee_tuning.attack_range, ranged_tuning.attack_range, "Melee and ranged attack range should be independently tunable.")
+			assertions.assert_eq(float(melee_tuning.block_stun_duration), 1.0, "Melee knight block stun duration should default to banshee timing.")
+			assertions.assert_eq(float(ranged_tuning.block_stun_duration), 1.0, "Ranged knight block stun duration should default to banshee timing.")
+			assertions.assert_eq(float(melee_tuning.block_stun_move_speed_modifier), 0.15, "Melee knight block stun movement modifier should default to banshee timing.")
+			assertions.assert_eq(float(ranged_tuning.block_stun_move_speed_modifier), 0.15, "Ranged knight block stun movement modifier should default to banshee timing.")
 			assertions.assert_true(ranged_tuning.projectile_scene != null, "Ranged tuning should point to the arrow projectile scene.")
 
 	if melee != null:
@@ -336,13 +344,21 @@ func assert_knight_attack_box_shape_convention(assertions: TestAssertions, tree:
 	var base_area_position: Vector2 = attack_box.position
 	var base_shape_position: Vector2 = collision_shape.position
 	var base_shape_height := get_rectangle_shape_height(collision_shape)
+	var expected_horizontal_offset := base_shape_height * HORIZONTAL_ATTACK_BOX_OFFSET_RATIO
 	var expected_up_offset := base_shape_height * UP_ATTACK_BOX_OFFSET_RATIO
 	var expected_down_offset := base_shape_height * DOWN_ATTACK_BOX_OFFSET_RATIO
 
 	melee.set("last_facing_direction", "right")
+	melee.set("last_horizontal_facing_direction", "right")
 	melee.call("apply_directional_attack_shape_offset")
 	assertions.assert_eq(attack_box.position, base_area_position, "Knight horizontal attacks should keep the AttackBox area stable.")
-	assertions.assert_eq(collision_shape.position, base_shape_position, "Knight horizontal attacks should use the editor-authored child shape position.")
+	assertions.assert_true(is_vector_approx(collision_shape.position, base_shape_position + Vector2(expected_horizontal_offset, 0)), "Knight right attacks should project the child attack shape in front of the knight.")
+
+	melee.set("last_facing_direction", "left")
+	melee.set("last_horizontal_facing_direction", "left")
+	melee.call("apply_directional_attack_shape_offset")
+	assertions.assert_eq(attack_box.position, base_area_position, "Knight left attacks should keep the AttackBox area stable.")
+	assertions.assert_true(is_vector_approx(collision_shape.position, base_shape_position + Vector2(-expected_horizontal_offset, 0)), "Knight left attacks should project the child attack shape in front of the knight.")
 
 	melee.set("last_facing_direction", "up")
 	melee.call("apply_directional_attack_shape_offset")
@@ -362,6 +378,195 @@ func assert_knight_attack_box_shape_convention(assertions: TestAssertions, tree:
 
 	melee.queue_free()
 	await tree.process_frame
+
+
+func assert_knight_player_combat_contract(assertions: TestAssertions, tree: SceneTree):
+	await assert_melee_knight_damages_player(assertions, tree)
+	await assert_melee_knight_block_stun_contract(assertions, tree)
+	await assert_melee_knight_parry_bonus_contract(assertions, tree)
+	await assert_melee_knight_blocked_attack_deferred_cleanup(assertions, tree)
+	await assert_ranged_knight_projectile_damage_contract(assertions, tree)
+	await assert_ranged_knight_projectile_block_contract(assertions, tree)
+
+
+func assert_melee_knight_damages_player(assertions: TestAssertions, tree: SceneTree):
+	var melee := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	var player := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	if melee == null or player == null:
+		free_nodes([melee, player])
+		await tree.process_frame
+		return
+
+	var health := player.get_node_or_null("Health")
+	var hurt_box := player.get_node_or_null("HurtBox") as Area2D
+	assertions.assert_true(health != null and hurt_box != null, "Saorise should expose health and a player hurtbox for knight damage.")
+	if health != null and hurt_box != null:
+		var starting_health := int(health.get("health"))
+		await trigger_melee_overlap_hit(tree, melee, player)
+		assertions.assert_true(int(health.get("health")) < starting_health, "Melee knight hit should damage an unblocking player.")
+		assertions.assert_eq(str(melee.get("state")), "idle", "Melee knight should not stun itself on a normal damaging hit.")
+
+	free_nodes([melee, player])
+	await tree.process_frame
+
+
+func assert_melee_knight_block_stun_contract(assertions: TestAssertions, tree: SceneTree):
+	var melee := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	var player := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	if melee == null or player == null:
+		free_nodes([melee, player])
+		await tree.process_frame
+		return
+
+	var health := player.get_node_or_null("Health")
+	var hurt_box := player.get_node_or_null("HurtBox") as Area2D
+	var tuning: Resource = melee.get("tuning") as Resource
+	var sprite := melee.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	if health != null and hurt_box != null and tuning != null:
+		var starting_health := int(health.get("health"))
+		health.call("set_blocking", true)
+		melee.set("state", "attack")
+		await trigger_melee_overlap_hit(tree, melee, player)
+		assertions.assert_eq(int(health.get("health")), starting_health, "Blocking should prevent melee knight damage.")
+		assertions.assert_eq(str(melee.get("state")), "hurt", "Blocking a melee knight should put the knight in hurt stun.")
+		assertions.assert_true(absf(float(melee.get("hurt_timer")) - float(tuning.block_stun_duration)) <= 0.001, "Melee knight block stun should use knight tuning.")
+		assertions.assert_true(absf(float(melee.get("attack_cooldown_timer")) - float(tuning.attack_cooldown)) <= 0.001, "Blocked melee knight should reset attack cooldown from tuning.")
+		if sprite != null and sprite.sprite_frames != null and sprite.sprite_frames.has_animation("hurt"):
+			assertions.assert_eq(str(sprite.animation), "hurt", "Blocked melee knight should hold the hurt animation.")
+			assertions.assert_eq(sprite.frame, 1, "Blocked melee knight should freeze on the second hurt frame during stun.")
+			assertions.assert_eq(float(sprite.speed_scale), 0.0, "Blocked melee knight hurt animation should pause during stun.")
+			melee.call("update_hurt", float(tuning.block_stun_duration) * 0.5)
+			assertions.assert_eq(str(melee.get("state")), "hurt", "Blocked melee knight should stay hurt during block stun.")
+			assertions.assert_eq(sprite.frame, 1, "Blocked melee knight should keep holding the second hurt frame during stun.")
+			assertions.assert_eq(float(sprite.speed_scale), 0.0, "Blocked melee knight hurt animation should remain paused during stun.")
+			melee.call("update_hurt", float(tuning.block_stun_duration))
+			assertions.assert_eq(str(melee.get("state")), "hurt", "Blocked melee knight should finish hurt animation before leaving stun.")
+			assertions.assert_eq(float(sprite.speed_scale), 1.0, "Blocked melee knight hurt animation should resume after stun timer ends.")
+			assertions.assert_true(float(melee.get("hurt_animation_finish_timer")) > 0.0, "Blocked melee knight should track remaining hurt animation time after stun.")
+			melee.call("update_hurt", float(melee.get("hurt_animation_finish_timer")) + 0.01)
+			assertions.assert_ne(str(melee.get("state")), "hurt", "Blocked melee knight should leave hurt after the finishing animation completes.")
+
+	free_nodes([melee, player])
+	await tree.process_frame
+
+
+func assert_melee_knight_parry_bonus_contract(assertions: TestAssertions, tree: SceneTree):
+	var melee := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	var player := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	if melee == null or player == null:
+		free_nodes([melee, player])
+		await tree.process_frame
+		return
+
+	var health := player.get_node_or_null("Health")
+	var hurt_box := player.get_node_or_null("HurtBox") as Area2D
+	if health != null and hurt_box != null:
+		health.call("set_parry_window", true)
+		melee.set("state", "attack")
+		await trigger_melee_overlap_hit(tree, melee, player)
+		assertions.assert_eq(str(melee.get("state")), "hurt", "Parrying a melee knight should stun the knight.")
+		assertions.assert_true(bool(health.call("has_parry_bonus")), "Parrying a melee knight should grant Saorise's parry bonus.")
+
+	free_nodes([melee, player])
+	await tree.process_frame
+
+
+func assert_melee_knight_blocked_attack_deferred_cleanup(assertions: TestAssertions, tree: SceneTree):
+	var melee := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	if melee == null:
+		await tree.process_frame
+		return
+
+	var attack_box := melee.get_node_or_null("AttackBox") as Area2D
+	assertions.assert_true(attack_box != null, "Melee knight should have an AttackBox for blocked cleanup.")
+	if attack_box != null:
+		melee.set("state", "attack")
+		melee.set("attack_has_dealt_damage", true)
+		attack_box.set_deferred("monitoring", true)
+		melee.call("set_attack_shape_enabled", true)
+		await tree.physics_frame
+		assertions.assert_true(attack_box.monitoring, "Melee knight AttackBox should become active before blocked cleanup.")
+		melee.call("on_attack_blocked")
+		assertions.assert_eq(str(melee.get("state")), "hurt", "Blocked active attack cleanup should enter hurt.")
+		await tree.physics_frame
+		assertions.assert_false(attack_box.monitoring, "Blocked active attack cleanup should defer AttackBox monitoring off safely.")
+
+	free_nodes([melee])
+	await tree.process_frame
+
+
+func assert_ranged_knight_projectile_damage_contract(assertions: TestAssertions, tree: SceneTree):
+	var ranged := await instantiate_scene(assertions, tree, RANGED_SCENE)
+	var projectile := await instantiate_scene(assertions, tree, PROJECTILE_SCENE)
+	var player := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	if ranged == null or projectile == null or player == null:
+		free_nodes([ranged, projectile, player])
+		await tree.process_frame
+		return
+
+	var health := player.get_node_or_null("Health")
+	var hurt_box := player.get_node_or_null("HurtBox") as Area2D
+	if health != null and hurt_box != null:
+		var starting_health := int(health.get("health"))
+		await trigger_projectile_overlap_hit(tree, projectile, ranged, player)
+		assertions.assert_true(int(health.get("health")) < starting_health, "Ranged knight projectile should damage an unblocking player.")
+		assertions.assert_ne(str(ranged.get("state")), "hurt", "Ranged knight should not stun itself when an arrow damages the player.")
+
+	free_nodes([ranged, projectile, player])
+	await tree.process_frame
+
+
+func assert_ranged_knight_projectile_block_contract(assertions: TestAssertions, tree: SceneTree):
+	var ranged := await instantiate_scene(assertions, tree, RANGED_SCENE)
+	var projectile := await instantiate_scene(assertions, tree, PROJECTILE_SCENE)
+	var player := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	if ranged == null or projectile == null or player == null:
+		free_nodes([ranged, projectile, player])
+		await tree.process_frame
+		return
+
+	var health := player.get_node_or_null("Health")
+	var hurt_box := player.get_node_or_null("HurtBox") as Area2D
+	var tuning: Resource = ranged.get("tuning") as Resource
+	if health != null and hurt_box != null and tuning != null:
+		var starting_health := int(health.get("health"))
+		health.call("set_parry_window", true)
+		ranged.set("state", "attack")
+		await trigger_projectile_overlap_hit(tree, projectile, ranged, player)
+		assertions.assert_eq(int(health.get("health")), starting_health, "Blocking a ranged knight projectile should prevent player damage.")
+		assertions.assert_eq(str(ranged.get("state")), "hurt", "Blocking a ranged knight projectile should stun the ranged knight.")
+		assertions.assert_true(bool(health.call("has_parry_bonus")), "Parrying a ranged knight projectile should grant Saorise's parry bonus.")
+		assertions.assert_true(absf(float(ranged.get("hurt_timer")) - float(tuning.block_stun_duration)) <= 0.001, "Ranged knight projectile block stun should use ranged knight tuning.")
+
+	free_nodes([ranged, projectile, player])
+	await tree.process_frame
+
+
+func trigger_melee_overlap_hit(tree: SceneTree, melee: Node, player: Node):
+	melee.global_position = Vector2.ZERO
+	player.global_position = Vector2(40, 0)
+	melee.set("last_facing_direction", "right")
+	melee.set("last_horizontal_facing_direction", "right")
+	melee.set("facing_left", false)
+	melee.set("attack_has_dealt_damage", true)
+	await tree.physics_frame
+	await melee.call("activate_melee_hitbox")
+
+
+func trigger_projectile_overlap_hit(tree: SceneTree, projectile: Node, source_knight: Node, player: Node):
+	source_knight.global_position = Vector2.ZERO
+	player.global_position = Vector2(40, 0)
+	projectile.global_position = player.global_position
+	projectile.call("launch", source_knight, Vector2.RIGHT, 0.0, 1.0, 7)
+	await tree.physics_frame
+	projectile.call("hit_current_overlaps")
+	await tree.process_frame
+
+
+func free_nodes(nodes: Array):
+	for node in nodes:
+		if node != null and is_instance_valid(node):
+			node.queue_free()
 
 
 func assert_directional_animation(assertions: TestAssertions, knight: Node, facing: String, expected_animation: String, expected_flip: bool, label: String, base_animation: String = "attack"):
@@ -871,6 +1076,8 @@ func assert_knight_runtime_stabilization_contract(assertions: TestAssertions, tr
 	var applied: bool = bool(melee.call("take_damage", 1, true, player))
 	if sprite != null:
 		assertions.assert_eq(str(sprite.animation), "hurt", "Melee knight should play hurt animation immediately when stunned.")
+		assertions.assert_eq(float(sprite.speed_scale), 1.0, "Normal melee knight hurt should not use the block-stun animation hold.")
+		assertions.assert_false(bool(melee.get("hurt_animation_hold_active")), "Normal melee knight hurt should not freeze the hurt animation.")
 	await tree.process_frame
 	assertions.assert_true(applied, "Non-lethal knight damage should be applied.")
 	assertions.assert_eq(melee.get("state"), "hurt", "Non-lethal knight damage should enter hurt state.")
@@ -1097,14 +1304,28 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 	assertions.assert_true(knight.get("respawn_enabled") == true, "Knight respawn should start enabled while the linked campfire is alive.")
 	assertions.assert_eq(controller.call("get_camp_max_knight_count", campfire), 5, "Linked campfire variant should expose its max knight roster to the encounter helper.")
 	knight.call("_on_detection_body_entered", player)
-	assertions.assert_false(controller.get("camp_aggro_by_id").has(str(campfire.get("campfire_id"))), "Knight-only detection should not start camp aggro for linked camp knights.")
+	var campfire_base_id := str(campfire.get("campfire_base_id"))
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Knight-only detection should not start camp aggro for linked camp knights.")
 	knight.call("_on_tracking_body_entered", player)
 	assertions.assert_eq(knight.get("state"), "idle", "Camp-linked knight tracking should not start chase before camp aggro.")
 	assertions.assert_false(bool(knight.call("should_chase_player")), "Camp-linked knight tracking alone should not satisfy chase rules before camp aggro.")
 	var animated_sprite := knight.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
 	if animated_sprite != null:
 		assertions.assert_true(str(animated_sprite.animation).begins_with("idle"), "Camp-linked knight tracking should keep the idle animation before camp aggro.")
-	assertions.assert_false(controller.get("camp_aggro_by_id").has(str(campfire.get("campfire_id"))), "Camp-linked knight tracking should not start camp aggro before the campfire detects the player.")
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp-linked knight tracking should not start camp aggro before the campfire detects the player.")
+	player.global_position = campfire.global_position
+	knight.call("_on_tracking_body_exited", player)
+	second_knight.call("_on_tracking_body_exited", player)
+	await tree.physics_frame
+	knight.call("_on_died")
+	await tree.create_timer(0.05).timeout
+	assertions.assert_false(knight.get("dead") == true, "Linked knight should respawn while player is already inside the camp aggro area.")
+	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Respawn should refresh camp aggro when the player is already inside CampAggroArea.")
+	assertions.assert_eq(knight.get("state"), "chase", "Respawned linked knight should chase an already-overlapping camp player.")
+	controller.get("camp_aggro_by_id").erase(campfire_base_id)
+	controller.get("camp_barked_by_id").erase(campfire_base_id)
+	knight.call("return_to_camp")
+	second_knight.call("return_to_camp")
 	second_knight.call("_on_tracking_body_entered", player)
 	controller.call("_on_campfire_player_detected", campfire, player)
 	controller.call("_on_campfire_player_detected", campfire, player)
@@ -1115,9 +1336,9 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 	assertions.assert_false(bool(second_knight.get("current_movement_uses_navigation")) == false and (second_knight.get("velocity") as Vector2).length() > 0.0, "Camp detection should not start direct fallback movement for linked knights.")
 	assertions.assert_true(bool(knight.call("should_chase_player")), "Camp-linked knight tracking should maintain chase after camp aggro starts.")
 	knight.call("_on_tracking_body_exited", player)
-	assertions.assert_true(controller.get("camp_aggro_by_id").has(str(campfire.get("campfire_id"))), "Camp aggro should stay active while any linked live knight still tracks the player.")
+	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should stay active while any linked live knight still tracks the player.")
 	second_knight.call("_on_tracking_body_exited", player)
-	assertions.assert_false(controller.get("camp_aggro_by_id").has(str(campfire.get("campfire_id"))), "Camp aggro should clear after all linked live knights lose tracking.")
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should clear after all linked live knights lose tracking.")
 	knight.global_position = original_home + Vector2(48, 0)
 	if knight.has_method("clear_active_dialogue_bubble"):
 		knight.clear_active_dialogue_bubble()
@@ -1134,9 +1355,13 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 			tent.destroy()
 	await tree.process_frame
 	assertions.assert_false(knight.get("respawn_enabled") == true, "Destroyed campfire should disable linked knight respawn during the active visit.")
+	controller.get("camp_aggro_by_id").erase(campfire_base_id)
+	campfire.call("refresh_player_detection")
+	await tree.physics_frame
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Destroyed campfire should not refresh aggro from an already-overlapping player.")
 
 	var state: Dictionary = controller.call("collect_level_state")
-	assertions.assert_has_key(state, "destroyed_campfire_ids", "Knight camp state should track destroyed campfire ids locally.")
+	assertions.assert_has_key(state, "destroyed_campfire_base_ids", "Knight camp state should track destroyed campfire base ids locally.")
 	assertions.assert_has_key(state, "knights", "Knight camp state should include knight snapshots locally.")
 	assertions.assert_has_key(state, "campfires", "Knight camp state should include campfire snapshots locally.")
 	var campfire_states: Array = state.get("campfires", [])
@@ -1156,6 +1381,154 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 	assertions.assert_eq(str(campfire.get("current_variant_id")), starting_variant_id, "Campfire save restore should restore the saved variant id.")
 
 	root.queue_free()
+	await tree.process_frame
+
+
+func assert_multi_camp_identity_isolation(assertions: TestAssertions, tree: SceneTree):
+	var root := Node2D.new()
+	tree.root.add_child(root)
+
+	var campfire_packed: PackedScene = load(CAMPFIRE_SCENE)
+	var knight_packed: PackedScene = load(MELEE_SCENE)
+	var player := MockPlayer.new()
+	var campfire_a := campfire_packed.instantiate()
+	var campfire_b := campfire_packed.instantiate()
+	var knight_a := knight_packed.instantiate()
+	var knight_b := knight_packed.instantiate()
+	var controller := ENCOUNTER_CONTROLLER_SCRIPT.new()
+
+	campfire_a.set("campfire_base_id", &"campfire_base_a")
+	campfire_b.set("campfire_base_id", &"campfire_base_b")
+	campfire_b.global_position = Vector2(320, 0)
+	knight_a.global_position = Vector2(64, 0)
+	knight_b.global_position = Vector2(384, 0)
+	root.add_child(player)
+	root.add_child(campfire_a)
+	root.add_child(campfire_b)
+	root.add_child(controller)
+	root.add_child(knight_a)
+	root.add_child(knight_b)
+	knight_a.set("campfire_base_path", knight_a.get_path_to(campfire_a))
+	knight_b.set("campfire_base_path", knight_b.get_path_to(campfire_b))
+	await tree.process_frame
+	var knight_b_tuning: Resource = knight_b.get("tuning") as Resource
+	if knight_b_tuning != null:
+		var fast_tuning := knight_b_tuning.duplicate()
+		fast_tuning.respawn_delay_seconds = 0.01
+		knight_b.set("tuning", fast_tuning)
+
+	controller.call("refresh_members")
+	controller.call("connect_campfires")
+	controller.call("connect_knights")
+	controller.call("apply_campfire_rules")
+	assertions.assert_eq(int(campfire_a.get("campfire_base_index")), 0, "First discovered campfire base should receive index 0.")
+	assertions.assert_eq(int(campfire_b.get("campfire_base_index")), 1, "Second discovered campfire base should receive index 1.")
+	assertions.assert_eq(int(knight_a.get("knight_index")), 0, "First camp's linked knight should receive local index 0.")
+	assertions.assert_eq(int(knight_b.get("knight_index")), 0, "Second camp's linked knight should receive its own local index 0.")
+	assertions.assert_eq(controller.call("get_campfire_base_by_index", 1), campfire_b, "Camp controller should look up campfire bases by friendly index.")
+	assertions.assert_eq(controller.call("get_linked_knight_by_index", campfire_b, 0), knight_b, "Camp controller should look up linked knights by local friendly index.")
+
+	for tent in campfire_a.get("tents"):
+		if tent != null and tent.has_method("destroy"):
+			tent.destroy()
+	await tree.process_frame
+	assertions.assert_false(knight_a.get("respawn_enabled") == true, "Destroying campfire base A should disable only camp A knight respawn.")
+	assertions.assert_true(knight_b.get("respawn_enabled") == true, "Destroying campfire base A should not disable camp B knight respawn.")
+
+	controller.call("_on_campfire_player_detected", campfire_b, player)
+	assertions.assert_eq(knight_b.get("state"), "chase", "Active campfire base B should still aggro its linked knight after camp A is destroyed.")
+	knight_b.call("_on_died")
+	await tree.create_timer(0.05).timeout
+	assertions.assert_false(knight_b.get("dead") == true, "Active campfire base B should still respawn linked knights after camp A is destroyed.")
+
+	var state: Dictionary = controller.call("collect_level_state")
+	assertions.assert_has_key(state, "destroyed_campfire_base_ids", "Knight camp state should write campfire base destroyed ids.")
+	assertions.assert_true((state.get("destroyed_campfire_base_ids", []) as Array).has("campfire_base_a"), "Destroyed campfire base state should use campfire_base_id.")
+	assertions.assert_false((state.get("destroyed_campfire_base_ids", []) as Array).has("campfire_base_b"), "Destroyed campfire base state should not include the active campfire base.")
+
+	var duplicate_campfire := campfire_packed.instantiate()
+	var duplicate_knight := knight_packed.instantiate()
+	duplicate_campfire.set("campfire_base_id", &"campfire_base_b")
+	root.add_child(duplicate_campfire)
+	root.add_child(duplicate_knight)
+	duplicate_knight.set("campfire_base_path", duplicate_knight.get_path_to(duplicate_campfire))
+	await tree.process_frame
+	controller.call("refresh_members")
+	var duplicate_messages: Array = controller.call("validate_unique_campfire_base_ids")
+	assertions.assert_true(not duplicate_messages.is_empty(), "Duplicate campfire_base_id values in one level should be detected as authoring errors.")
+
+	root.queue_free()
+	await tree.process_frame
+
+	var level_a := Node2D.new()
+	var level_b := Node2D.new()
+	var scoped_campfire_a := campfire_packed.instantiate()
+	var scoped_campfire_b := campfire_packed.instantiate()
+	var scoped_controller_a := ENCOUNTER_CONTROLLER_SCRIPT.new()
+	var scoped_controller_b := ENCOUNTER_CONTROLLER_SCRIPT.new()
+	scoped_campfire_a.set("campfire_base_id", &"campfire_base_1")
+	scoped_campfire_b.set("campfire_base_id", &"campfire_base_1")
+	tree.root.add_child(level_a)
+	tree.root.add_child(level_b)
+	level_a.add_child(scoped_campfire_a)
+	level_a.add_child(scoped_controller_a)
+	level_b.add_child(scoped_campfire_b)
+	level_b.add_child(scoped_controller_b)
+	await tree.process_frame
+	scoped_controller_a.call("refresh_members")
+	scoped_controller_b.call("refresh_members")
+	assertions.assert_true((scoped_controller_a.call("validate_unique_campfire_base_ids") as Array).is_empty(), "A campfire_base_id should be valid when unique inside its own level scope.")
+	assertions.assert_true((scoped_controller_b.call("validate_unique_campfire_base_ids") as Array).is_empty(), "The same campfire_base_id should be valid in a different level scope.")
+	level_a.queue_free()
+	level_b.queue_free()
+	await tree.process_frame
+
+
+func assert_starting_wilderness_campfire_identity_and_indexes(assertions: TestAssertions, tree: SceneTree):
+	var packed: PackedScene = load(STARTING_WILDERNESS_SCENE)
+	assertions.assert_true(packed != null, "Starting Wilderness should load for campfire identity/index coverage.")
+	if packed == null:
+		return
+
+	var level := packed.instantiate()
+	assertions.assert_true(level != null, "Starting Wilderness should instantiate for campfire identity/index coverage.")
+	if level == null:
+		return
+
+	tree.root.add_child(level)
+	await tree.process_frame
+	await tree.process_frame
+	var flow := level.get_node_or_null("StartingWildernessFlowController")
+	var controller: Node = flow.get("knight_camp_controller") if flow != null else null
+	assertions.assert_true(controller != null, "Starting Wilderness should expose a knight camp controller for identity/index coverage.")
+	if controller != null:
+		controller.call("refresh_members")
+		var campfire_0: Node = controller.call("get_campfire_base_by_index", 0)
+		var campfire_1: Node = controller.call("get_campfire_base_by_index", 1)
+		assertions.assert_true(campfire_0 != null and campfire_1 != null, "Starting Wilderness should expose two indexed campfire bases.")
+		if campfire_0 != null and campfire_1 != null:
+			assertions.assert_ne(str(campfire_0.get("campfire_base_id")), str(campfire_1.get("campfire_base_id")), "Starting Wilderness campfire bases should have unique campfire_base_id values.")
+			assertions.assert_eq(str(campfire_0.get("campfire_base_id")), "campfire_base_1", "Starting Wilderness first campfire base should use the authored readable id.")
+			assertions.assert_eq(str(campfire_1.get("campfire_base_id")), "campfire_base_2", "Starting Wilderness second campfire base should use the authored readable id.")
+		assertions.assert_true((controller.call("validate_unique_campfire_base_ids") as Array).is_empty(), "Starting Wilderness campfire_base_id values should validate as unique within the level.")
+
+	var banshee_root := level.get_node_or_null("PlayableWorld/Environment/Characters/HostileNPCs/Banshees")
+	if banshee_root != null:
+		var expected_banshee_index := 0
+		for child in banshee_root.get_children():
+			if child.is_in_group("hostile_npcs") and child.has_method("set_combat_variant"):
+				assertions.assert_eq(int(child.get("banshee_index")), expected_banshee_index, "Starting Wilderness banshees should receive deterministic per-level indexes.")
+				expected_banshee_index += 1
+
+	var male_villager := level.get_node_or_null("PlayableWorld/Environment/Characters/NPCs/MaleVillager")
+	var female_villager := level.get_node_or_null("PlayableWorld/Environment/Characters/NPCs/FemaleVillager")
+	if male_villager != null and female_villager != null:
+		assertions.assert_eq(int(male_villager.get("villager_index")), 0, "Starting Wilderness male villager should receive deterministic villager index 0.")
+		assertions.assert_eq(int(female_villager.get("villager_index")), 1, "Starting Wilderness female villager should receive deterministic villager index 1.")
+		assertions.assert_eq(int(male_villager.get("villager_group_index")), 0, "Starting Wilderness male villager should receive male group index 0.")
+		assertions.assert_eq(int(female_villager.get("villager_group_index")), 0, "Starting Wilderness female villager should receive female group index 0.")
+
+	level.queue_free()
 	await tree.process_frame
 
 

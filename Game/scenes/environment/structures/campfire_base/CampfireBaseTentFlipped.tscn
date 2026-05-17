@@ -54,6 +54,7 @@ width = 44
 [node name="CampfireBaseTent" type="StaticBody2D"]
 y_sort_enabled = true
 script = ExtResource("1_jrimr")
+max_health = 120
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 y_sort_enabled = true
@@ -63,8 +64,8 @@ animation = &"alive_flipped"
 offset = Vector2(0, -50)
 
 [node name="BodyCollision" type="CollisionPolygon2D" parent="."]
-position = Vector2(0, -6)
-polygon = PackedVector2Array(-58, 2, -56, 0, -49.7666, -3.37556, -40.1288, -7.87322, -29.4144, -12.8733, -20.1201, -17.2106, -14, -20, -12, -21, -10, -21, -5, -20, 10, -13, 21.9396, -7.83692, 59, 9, 60, 10, 60, 11, 59, 12, 57, 13, 48, 18, 39.8436, 22.3501, 33, 26, 23.9838, 30.7454, 17.5536, 34.1297, 15, 35, 12, 36, 9, 36, 6, 35, -8, 28, -44, 10, -57, 4, -58, 3)
+position = Vector2(0, -8.00573)
+polygon = PackedVector2Array(-58, 2, -57.1558, 0.835911, -56, 0, -49.7666, -3.37556, -40.1288, -7.87322, -29.4144, -12.8733, -20.1201, -17.2106, -14.0548, -20.0464, -12.3393, -20.8402, -10.894, -21.0762, -9.47816, -21.0172, -7.56881, -20.6789, -5, -20, 10, -13, 21.9396, -7.83692, 58.7877, 9.02137, 59.6136, 9.53755, 60, 10, 60, 11, 59.6136, 11.5433, 59, 12, 57, 13, 48, 18, 39.8436, 22.3501, 33, 26, 23.9838, 30.7454, 17.5536, 34.1297, 15.0848, 35.3142, 12.3457, 36.6018, 10.6133, 36.7189, 9.11498, 36.555, 7.52303, 35.8058, 6, 35, -8, 28, -44, 10, -56.9184, 3.88647, -58, 3)
 
 [node name="HealthBarDisplay" type="Node2D" parent="."]
 visible = false
@@ -101,5 +102,5 @@ scale = Vector2(2.00808, 2.88176)
 polygon = PackedVector2Array(5.47787, 0, 29.8793, -9.02226, 16.4336, -24.9847, -15.4376, -36.4361, -28.3853, -11.7983)
 
 [node name="Effects" parent="." instance=ExtResource("5_effects")]
-position = Vector2(0, -104)
+position = Vector2(-0.00421572, -80.0446)
 scale = Vector2(1.5, 1.5)

@@ -49,8 +49,7 @@ villager_reversal_front_buffer = 0.0
 y_sort_enabled = true
 scale = Vector2(0.45, 0.45)
 sprite_frames = ExtResource("2_wpb6y")
-animation = &"ranged1"
-frame_progress = 0.394021
+animation = &"hurt"
 offset = Vector2(0, -48.21)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]

@@ -2,8 +2,7 @@
 
 [ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBase.gd" id="1_script"]
 
-[sub_resource type="CircleShape2D" id="CircleShape2D_aggro"]
-radius = 240.0
+[sub_resource type="CapsuleShape2D" id="CapsuleShape2D_gu6fo"]
 
 [node name="CampfireBase" type="StaticBody2D"]
 y_sort_enabled = true
@@ -14,7 +13,9 @@ collision_layer = 0
 collision_mask = 2
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CampAggroArea"]
-shape = SubResource("CircleShape2D_aggro")
+rotation = 1.5708
+scale = Vector2(25.7897, 22.1976)
+shape = SubResource("CapsuleShape2D_gu6fo")
 
 [node name="LayoutRoot" type="Node2D" parent="."]
 y_sort_enabled = true

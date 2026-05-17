@@ -39,3 +39,8 @@ extends Resource
 @export var max_health: int = 50
 @export var strong_ranged_max_health_multiplier: float = 1.5
 @export var invulnerability_time: float = 0.1
+
+@export_group("Story")
+@export_range(0.0, 1.0, 0.01) var hidden_banshee_alpha: float = 0.2
+@export_range(0.0, 1.0, 0.01) var passive_banshee_alpha: float = 0.2
+@export var story_respawn_delay_seconds: float = 10.0

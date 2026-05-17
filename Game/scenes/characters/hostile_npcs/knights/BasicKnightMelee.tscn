@@ -46,13 +46,13 @@ tuning = ExtResource("2_tuning")
 y_sort_enabled = true
 scale = Vector2(0.45, 0.45)
 sprite_frames = ExtResource("3_frames")
-animation = &"attack"
-frame = 8
+animation = &"hurt"
+frame = 2
 frame_progress = 1.0
 offset = Vector2(0, -65.2)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]
-position = Vector2(0, -2)
+position = Vector2(0, -7)
 shape = SubResource("CapsuleShape2D_movement")
 
 [node name="NavigationAgent2D" type="NavigationAgent2D" parent="."]

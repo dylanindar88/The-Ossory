@@ -21,7 +21,6 @@ const BANSHEE_PROJECTILE_SCENE: PackedScene = preload("res://scenes/characters/h
 @export_enum("corrupted_melee", "corrupted_strong_ranged") var base_combat_variant: String = COMBAT_VARIANT_CORRUPTED_MELEE
 @export_enum("corrupted_melee", "corrupted_strong_ranged") var upgraded_combat_variant: String = COMBAT_VARIANT_CORRUPTED_STRONG_RANGED
 @export var upgrade_after_vincent: bool = true
-@export var undetected_alpha: float = 0.2
 
 @onready var sprite: AnimatedSprite2D = $AnimatedSprite2D
 @onready var health = $Health
@@ -91,11 +90,13 @@ var damage_enabled: bool = false
 var wolf_weakness_effect_enabled: bool = false
 var wolf_weakness_effect_visible: bool = false
 var story_revealed: bool = false
+var story_unrevealed_alpha: float = 0.2
 var story_spawn_position: Vector2
 var story_spawn_facing_left: bool = false
 var suppress_story_detection: bool = true
 var last_damage_source: Node = null
 var last_killer_form_id: StringName = &""
+var banshee_index: int = -1
 
 
 # Scene setup and state-machine entrypoints.
@@ -109,7 +110,7 @@ func _ready():
 	aggro_sensor.setup(self)
 	story_lifecycle.setup(self)
 	configure_collision()
-	set_story_combat_enabled(combat_enabled, undetected_alpha)
+	set_story_combat_enabled(combat_enabled, story_unrevealed_alpha)
 	connect_ranges()
 	setup_villager_stalk_behavior()
 
@@ -721,13 +722,14 @@ func enable_combat_areas():
 
 
 func set_story_combat_enabled(enabled: bool, visible_alpha: float = 1.0):
+	story_unrevealed_alpha = clampf(visible_alpha, 0.0, 1.0)
 	combat_area_controller.set_story_combat_enabled(enabled, visible_alpha)
 	update_wolf_weakness_effect()
 
 
 func apply_unrevealed_opacity():
 	if not story_revealed and not dead:
-		modulate.a = undetected_alpha
+		modulate.a = story_unrevealed_alpha
 
 
 func set_damage_enabled(enabled: bool):

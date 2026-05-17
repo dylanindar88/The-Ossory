@@ -10,14 +10,7 @@ func setup(owner_banshee):
 
 
 func get_unrevealed_alpha(fallback_alpha: float = 0.2) -> float:
-	if banshee == null:
-		return fallback_alpha
-
-	var alpha: Variant = banshee.get("undetected_alpha")
-	if alpha == null:
-		return fallback_alpha
-
-	return float(alpha)
+	return clampf(fallback_alpha, 0.0, 1.0)
 
 
 func set_story_revealed(revealed: bool, hidden_alpha: float):
@@ -132,7 +125,7 @@ func restore_after_load():
 	banshee.player_in_attack_range = false
 	banshee.player_in_tracking = false
 	banshee.story_revealed = false
-	set_story_revealed(false, get_unrevealed_alpha())
+	set_story_revealed(false, banshee.story_unrevealed_alpha)
 	banshee.clear_hurt_state_overrides()
 	banshee.set_physics_process(true)
 

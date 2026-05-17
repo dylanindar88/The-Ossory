@@ -7,7 +7,7 @@ extends Node
 
 var knights: Array[Node] = []
 var campfires: Array[Node] = []
-var destroyed_campfire_ids: Dictionary = {}
+var destroyed_campfire_base_ids: Dictionary = {}
 var camp_aggro_by_id: Dictionary = {}
 var camp_barked_by_id: Dictionary = {}
 var route_exit_save_pending: bool = false
@@ -24,12 +24,14 @@ func _ready():
 func refresh_members():
 	knights = get_knights()
 	campfires = get_campfires()
+	assign_campfire_base_indexes()
+	assign_knight_indexes()
 
 
 func collect_level_state() -> Dictionary:
 	return {
 		"state_version": 1,
-		"destroyed_campfire_ids": [] if route_exit_save_pending else destroyed_campfire_ids.keys(),
+		"destroyed_campfire_base_ids": [] if route_exit_save_pending else destroyed_campfire_base_ids.keys(),
 		"campfires": collect_campfire_states(),
 		"knights": [] if route_exit_save_pending else collect_knight_states(),
 	}
@@ -38,15 +40,17 @@ func collect_level_state() -> Dictionary:
 func apply_level_state(state: Dictionary):
 	state_generation += 1
 	route_exit_save_pending = false
-	destroyed_campfire_ids.clear()
+	destroyed_campfire_base_ids.clear()
 	camp_aggro_by_id.clear()
 	camp_barked_by_id.clear()
 	refresh_members()
 
-	var saved_destroyed: Variant = state.get("destroyed_campfire_ids", [])
+	var saved_destroyed: Variant = state.get("destroyed_campfire_base_ids", state.get("destroyed_campfire_ids", []))
 	if saved_destroyed is Array:
-		for campfire_id in saved_destroyed:
-			destroyed_campfire_ids[str(campfire_id)] = true
+		for campfire_base_id in saved_destroyed:
+			var resolved_id := resolve_saved_campfire_base_id(str(campfire_base_id))
+			if resolved_id != "":
+				destroyed_campfire_base_ids[resolved_id] = true
 
 	apply_campfire_states(state.get("campfires", []))
 	refresh_members()
@@ -54,16 +58,20 @@ func apply_level_state(state: Dictionary):
 	connect_campfires()
 	connect_knights()
 	apply_campfire_rules()
+	refresh_camp_player_detection()
 
 
 func validate_level_state(state: Dictionary) -> Array:
 	var messages: Array = []
-	if not (state.get("destroyed_campfire_ids", []) is Array):
-		messages.append("%s has malformed destroyed_campfire_ids." % name)
+	if state.has("destroyed_campfire_base_ids") and not (state.get("destroyed_campfire_base_ids", []) is Array):
+		messages.append("%s has malformed destroyed_campfire_base_ids." % name)
+	if state.has("destroyed_campfire_ids") and not (state.get("destroyed_campfire_ids", []) is Array):
+		messages.append("%s has malformed legacy destroyed_campfire_ids." % name)
 	if not (state.get("campfires", []) is Array):
 		messages.append("%s has malformed campfire state." % name)
 	if not (state.get("knights", []) is Array):
 		messages.append("%s has malformed knight state." % name)
+	messages.append_array(validate_unique_campfire_base_ids())
 	return messages
 
 
@@ -73,7 +81,7 @@ func uses_level_owned_hostile_state() -> bool:
 
 func prepare_for_route_exit():
 	route_exit_save_pending = true
-	destroyed_campfire_ids.clear()
+	destroyed_campfire_base_ids.clear()
 	camp_aggro_by_id.clear()
 	camp_barked_by_id.clear()
 	state_generation += 1
@@ -88,7 +96,7 @@ func prepare_for_route_exit():
 
 func reset_for_level_entry():
 	route_exit_save_pending = false
-	destroyed_campfire_ids.clear()
+	destroyed_campfire_base_ids.clear()
 	camp_aggro_by_id.clear()
 	camp_barked_by_id.clear()
 	state_generation += 1
@@ -99,6 +107,7 @@ func reset_for_level_entry():
 		if knight != null and knight.has_method("reset_for_level_entry"):
 			knight.reset_for_level_entry()
 	apply_campfire_rules()
+	refresh_camp_player_detection()
 
 
 func connect_campfires():
@@ -132,12 +141,15 @@ func connect_knight_signal(knight: Node, signal_name: StringName, method_name: S
 
 
 func _on_campfire_destroyed(campfire: Node):
-	var campfire_id := get_campfire_id(campfire)
-	if campfire_id == "":
+	var campfire_base_id := get_campfire_base_id(campfire)
+	if campfire_base_id == "":
 		return
-	destroyed_campfire_ids[campfire_id] = true
-	camp_aggro_by_id.erase(campfire_id)
-	camp_barked_by_id.erase(campfire_id)
+	if not is_unique_campfire_base_id(campfire_base_id):
+		push_warning("%s ignored destroyed campfire base state for duplicate campfire_base_id '%s'." % [name, campfire_base_id])
+		return
+	destroyed_campfire_base_ids[campfire_base_id] = true
+	camp_aggro_by_id.erase(campfire_base_id)
+	camp_barked_by_id.erase(campfire_base_id)
 	apply_campfire_rules()
 
 
@@ -148,13 +160,16 @@ func _on_knight_defeated(knight: Node):
 func _on_campfire_player_detected(campfire: Node, detected_player: Node):
 	if campfire == null:
 		return
-	var campfire_id := get_campfire_id(campfire)
-	if campfire_id == "" or destroyed_campfire_ids.has(campfire_id):
+	var campfire_base_id := get_campfire_base_id(campfire)
+	if campfire_base_id == "" or destroyed_campfire_base_ids.has(campfire_base_id):
+		return
+	if not is_unique_campfire_base_id(campfire_base_id):
+		push_warning("%s ignored camp aggro for duplicate campfire_base_id '%s'." % [name, campfire_base_id])
 		return
 
-	camp_aggro_by_id[campfire_id] = true
-	if not camp_barked_by_id.has(campfire_id):
-		camp_barked_by_id[campfire_id] = true
+	camp_aggro_by_id[campfire_base_id] = true
+	if not camp_barked_by_id.has(campfire_base_id):
+		camp_barked_by_id[campfire_base_id] = true
 		var bark_knight := get_first_live_linked_knight(campfire)
 		if bark_knight != null and bark_knight.has_method("try_start_encounter_dialogue"):
 			bark_knight.try_start_encounter_dialogue()
@@ -167,15 +182,15 @@ func _on_knight_tracking_changed(knight: Node):
 	var campfire := get_linked_campfire(knight)
 	if campfire == null:
 		return
-	var campfire_id := get_campfire_id(campfire)
-	if campfire_id == "" or not camp_aggro_by_id.has(campfire_id):
+	var campfire_base_id := get_campfire_base_id(campfire)
+	if campfire_base_id == "" or not camp_aggro_by_id.has(campfire_base_id):
 		return
 
 	if any_linked_knight_tracking_player(campfire):
 		return
 
-	camp_aggro_by_id.erase(campfire_id)
-	camp_barked_by_id.erase(campfire_id)
+	camp_aggro_by_id.erase(campfire_base_id)
+	camp_barked_by_id.erase(campfire_base_id)
 	for linked_knight in get_linked_knights(campfire):
 		if linked_knight != null and linked_knight.has_method("clear_active_dialogue_bubble"):
 			linked_knight.clear_active_dialogue_bubble()
@@ -194,6 +209,22 @@ func schedule_knight_respawn(knight: Node):
 		return
 	if can_respawn_knight(knight) and knight.has_method("respawn_at"):
 		knight.respawn_at(get_knight_home_position(knight))
+		var campfire := get_linked_campfire(knight)
+		if campfire != null:
+			refresh_camp_player_detection_for(campfire)
+
+
+func refresh_camp_player_detection():
+	for campfire in campfires:
+		refresh_camp_player_detection_for(campfire)
+
+
+func refresh_camp_player_detection_for(campfire: Node):
+	if campfire == null or not campfire.has_method("refresh_player_detection"):
+		return
+	if not is_inside_tree() or not campfire.is_inside_tree():
+		return
+	campfire.call_deferred("refresh_player_detection")
 
 
 func apply_campfire_rules():
@@ -202,7 +233,8 @@ func apply_campfire_rules():
 			continue
 
 		var campfire := get_linked_campfire(knight)
-		var respawn_enabled := campfire == null or not destroyed_campfire_ids.has(get_campfire_id(campfire))
+		var campfire_base_id := get_campfire_base_id(campfire)
+		var respawn_enabled := campfire == null or not is_unique_campfire_base_id(campfire_base_id) or not destroyed_campfire_base_ids.has(campfire_base_id)
 		if knight.has_method("set_respawn_enabled"):
 			knight.set_respawn_enabled(respawn_enabled)
 
@@ -214,8 +246,10 @@ func can_respawn_knight(knight: Node) -> bool:
 	var campfire := get_linked_campfire(knight)
 	if campfire == null:
 		return true
-	var campfire_id := get_campfire_id(campfire)
-	if destroyed_campfire_ids.has(campfire_id):
+	var campfire_base_id := get_campfire_base_id(campfire)
+	if not is_unique_campfire_base_id(campfire_base_id):
+		return true
+	if destroyed_campfire_base_ids.has(campfire_base_id):
 		return false
 
 	var max_count := get_camp_max_knight_count(campfire)
@@ -262,6 +296,39 @@ func get_linked_knights(campfire: Node) -> Array[Node]:
 		if knight != null and get_linked_campfire(knight) == campfire:
 			linked.append(knight)
 	return linked
+
+
+func get_campfire_base_by_index(index: int) -> Node:
+	for campfire in campfires:
+		if campfire != null and int(campfire.get("campfire_base_index")) == index:
+			return campfire
+	return null
+
+
+func get_linked_knight_by_index(campfire: Node, index: int) -> Node:
+	for knight in get_linked_knights(campfire):
+		if knight != null and int(knight.get("knight_index")) == index:
+			return knight
+	return null
+
+
+func assign_campfire_base_indexes():
+	for index in range(campfires.size()):
+		var campfire := campfires[index]
+		if campfire != null:
+			campfire.set("campfire_base_index", index)
+
+
+func assign_knight_indexes():
+	var next_index_by_campfire: Dictionary = {}
+	for knight in knights:
+		if knight == null:
+			continue
+		var campfire := get_linked_campfire(knight)
+		var campfire_key := get_campfire_base_id(campfire) if campfire != null else ""
+		var next_index := int(next_index_by_campfire.get(campfire_key, 0))
+		knight.set("knight_index", next_index)
+		next_index_by_campfire[campfire_key] = next_index + 1
 
 
 func any_linked_knight_tracking_player(campfire: Node) -> bool:
@@ -316,7 +383,9 @@ func apply_campfire_states(states: Variant):
 		if lookup.has(path) and campfire.has_method("apply_story_save_state"):
 			campfire.apply_story_save_state(lookup[path])
 			if bool(campfire.get("dead")):
-				destroyed_campfire_ids[get_campfire_id(campfire)] = true
+				var campfire_base_id := get_campfire_base_id(campfire)
+				if is_unique_campfire_base_id(campfire_base_id):
+					destroyed_campfire_base_ids[campfire_base_id] = true
 
 
 func parse_snapshot_lookup(states: Variant) -> Dictionary:
@@ -368,10 +437,63 @@ func get_linked_campfire(knight: Node) -> Node:
 	return null
 
 
-func get_campfire_id(campfire: Node) -> String:
+func get_campfire_base_id(campfire: Node) -> String:
 	if campfire == null:
 		return ""
-	return str(campfire.get("campfire_id"))
+	return str(campfire.get("campfire_base_id"))
+
+
+func resolve_saved_campfire_base_id(saved_id: String) -> String:
+	if saved_id == "":
+		return ""
+	if get_campfire_base_id_count(saved_id) == 1:
+		return saved_id
+	if get_legacy_campfire_base_id_count(saved_id) == 1:
+		for campfire in campfires:
+			if get_legacy_campfire_base_id(campfire) == saved_id:
+				return get_campfire_base_id(campfire)
+	return ""
+
+
+func get_campfire_base_id_count(campfire_base_id: String) -> int:
+	var count := 0
+	for campfire in campfires:
+		if get_campfire_base_id(campfire) == campfire_base_id:
+			count += 1
+	return count
+
+
+func get_legacy_campfire_base_id_count(campfire_id: String) -> int:
+	var count := 0
+	for campfire in campfires:
+		if get_legacy_campfire_base_id(campfire) == campfire_id:
+			count += 1
+	return count
+
+
+func get_legacy_campfire_base_id(campfire: Node) -> String:
+	if campfire == null:
+		return ""
+	var state: Dictionary = campfire.collect_story_save_state() if campfire.has_method("collect_story_save_state") else {}
+	return str(state.get("campfire_id", ""))
+
+
+func validate_unique_campfire_base_ids() -> Array:
+	var messages: Array = []
+	var seen: Dictionary = {}
+	for campfire in campfires:
+		var campfire_base_id := get_campfire_base_id(campfire)
+		if campfire_base_id == "":
+			messages.append("%s has a CampfireBase without a campfire_base_id." % name)
+			continue
+		if seen.has(campfire_base_id):
+			messages.append("%s has duplicate campfire_base_id '%s'." % [name, campfire_base_id])
+		seen[campfire_base_id] = true
+	return messages
+
+
+func is_unique_campfire_base_id(campfire_base_id: String) -> bool:
+	return campfire_base_id != "" and get_campfire_base_id_count(campfire_base_id) == 1
 
 
 func get_configured_root(path: NodePath) -> Node:
