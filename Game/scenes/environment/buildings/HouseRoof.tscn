@@ -1,8 +1,9 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=2 format=3 uid="uid://bjstxkeww2x8j"]
 
 [ext_resource type="Texture2D" uid="uid://bub3x6h563nc3" path="res://art/buildings/banshee_village/house/roof.aseprite" id="1_roof"]
 
 [node name="HouseRoof" type="Node2D"]
+scale = Vector2(0.45, 0.45)
 
 [node name="House-roof" type="Sprite2D" parent="."]
 position = Vector2(0, 97)

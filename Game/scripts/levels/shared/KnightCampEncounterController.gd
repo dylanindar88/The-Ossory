@@ -15,6 +15,10 @@ var state_generation: int = 0
 
 
 func _ready():
+	refresh_wiring()
+
+
+func refresh_wiring():
 	refresh_members()
 	connect_campfires()
 	connect_knights()
@@ -72,6 +76,7 @@ func validate_level_state(state: Dictionary) -> Array:
 	if not (state.get("knights", []) is Array):
 		messages.append("%s has malformed knight state." % name)
 	messages.append_array(validate_unique_campfire_base_ids())
+	messages.append_array(validate_campfire_linked_knights())
 	return messages
 
 
@@ -122,6 +127,10 @@ func connect_campfires():
 			var detected_callback := Callable(self, "_on_campfire_player_detected")
 			if not campfire.is_connected("player_detected", detected_callback):
 				campfire.connect("player_detected", detected_callback)
+		if campfire.has_signal("player_tracking_exited"):
+			var tracking_exited_callback := Callable(self, "_on_campfire_player_tracking_exited")
+			if not campfire.is_connected("player_tracking_exited", tracking_exited_callback):
+				campfire.connect("player_tracking_exited", tracking_exited_callback)
 
 
 func connect_knights():
@@ -129,7 +138,6 @@ func connect_knights():
 		if knight == null:
 			continue
 		connect_knight_signal(knight, "defeated", "_on_knight_defeated")
-		connect_knight_signal(knight, "player_tracking_changed", "_on_knight_tracking_changed")
 
 
 func connect_knight_signal(knight: Node, signal_name: StringName, method_name: String):
@@ -179,6 +187,8 @@ func _on_campfire_player_detected(campfire: Node, detected_player: Node):
 
 
 func _on_knight_tracking_changed(knight: Node):
+	if knight != null and knight.has_method("is_camp_linked") and bool(knight.call("is_camp_linked")):
+		return
 	var campfire := get_linked_campfire(knight)
 	if campfire == null:
 		return
@@ -187,6 +197,23 @@ func _on_knight_tracking_changed(knight: Node):
 		return
 
 	if any_linked_knight_tracking_player(campfire):
+		return
+
+	camp_aggro_by_id.erase(campfire_base_id)
+	camp_barked_by_id.erase(campfire_base_id)
+	for linked_knight in get_linked_knights(campfire):
+		if linked_knight != null and linked_knight.has_method("clear_active_dialogue_bubble"):
+			linked_knight.clear_active_dialogue_bubble()
+		if linked_knight != null and linked_knight.has_method("return_to_camp"):
+			linked_knight.return_to_camp()
+	refresh_camp_player_detection_for(campfire)
+
+
+func _on_campfire_player_tracking_exited(campfire: Node, _player: Node):
+	if campfire == null:
+		return
+	var campfire_base_id := get_campfire_base_id(campfire)
+	if campfire_base_id == "" or not camp_aggro_by_id.has(campfire_base_id):
 		return
 
 	camp_aggro_by_id.erase(campfire_base_id)
@@ -489,6 +516,16 @@ func validate_unique_campfire_base_ids() -> Array:
 		if seen.has(campfire_base_id):
 			messages.append("%s has duplicate campfire_base_id '%s'." % [name, campfire_base_id])
 		seen[campfire_base_id] = true
+	return messages
+
+
+func validate_campfire_linked_knights() -> Array:
+	var messages: Array = []
+	for campfire in campfires:
+		if campfire == null:
+			continue
+		if get_linked_knights(campfire).is_empty():
+			messages.append("%s has CampfireBase '%s' without linked knights." % [name, get_campfire_base_id(campfire)])
 	return messages
 
 

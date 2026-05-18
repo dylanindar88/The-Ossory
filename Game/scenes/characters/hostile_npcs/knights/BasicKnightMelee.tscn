@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://dtm57amql3svl"]
+[gd_scene load_steps=16 format=3 uid="uid://dtm57amql3svl"]
 
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightController.gd" id="1_script"]
 [ext_resource type="Resource" uid="uid://drtfbtc8aodyo" path="res://resources/characters/hostile_npcs/knights/basic_knight_melee_tuning.tres" id="2_tuning"]
@@ -28,6 +28,9 @@ size = Vector2(36, 28)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_tracking"]
 radius = 321.002
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_v83dc"]
+radius = 160.0
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_og1wt"]
 
@@ -116,6 +119,13 @@ visible = false
 [node name="CollisionShape2D" type="CollisionShape2D" parent="TrackingArea"]
 position = Vector2(0, -18)
 shape = SubResource("CircleShape2D_tracking")
+
+[node name="DetectionArea" type="Area2D" parent="."]
+visible = false
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="DetectionArea"]
+position = Vector2(0, -18)
+shape = SubResource("CircleShape2D_v83dc")
 
 [node name="AttackRange" type="Area2D" parent="."]
 

@@ -8,6 +8,7 @@ signal player_tracking_changed(knight: Node)
 const DIALOGUE_BUBBLE_SCENE: PackedScene = preload("res://scenes/ui/DialogueBubble.tscn")
 const AttackHitboxShapeControllerScript := preload("res://scripts/characters/shared/combat/AttackHitboxShapeController.gd")
 const TopDownMovement := preload("res://scripts/characters/shared/movement/TopDownMovement.gd")
+const CHARACTER_NAVIGATION_SETTINGS := preload("res://scripts/levels/shared/CharacterNavigationSettings.gd")
 const FACING_RIGHT := "right"
 const FACING_LEFT := "left"
 const FACING_UP := "up"
@@ -30,11 +31,13 @@ const CHASE_TARGET_SPREAD_SLOTS := 6
 const NAVIGATION_NEAR_SELF_DISTANCE := 1.0
 const NAVIGATION_PROGRESS_EPSILON := 1.0
 const NAVIGATION_STUCK_REPATH_SECONDS := 0.35
+const RETURN_HOME_STUCK_RESET_SECONDS := 3.0
 const PREVIOUS_MELEE_ATTACK_BOX_HEIGHT := 28.0 * 1.06767
 const HORIZONTAL_ATTACK_BOX_OFFSET_RATIO := 24.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const UP_ATTACK_BOX_OFFSET_RATIO := 10.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const DOWN_ATTACK_BOX_OFFSET_RATIO := 25.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const BLOCK_STUN_HURT_FREEZE_FRAME := 1
+const FORM_CHANGE_SETTLE_PHYSICS_FRAMES := 2
 const HORIZONTAL_BASE_ANIMATIONS := {
 	"idle": true,
 	"walk": true,
@@ -123,6 +126,7 @@ var spawn_facing_left: bool = false
 var home_position: Vector2
 var pace_target_index: int = 0
 var camp_aggro_active: bool = false
+var personal_aggro_active: bool = false
 var conversation_timer: float = 0.0
 var active_dialogue_is_encounter_bark: bool = false
 var last_chase_used_navigation: bool = false
@@ -131,9 +135,14 @@ var knight_index: int = -1
 var current_physics_delta: float = 0.0
 var navigation_progress_position: Vector2
 var navigation_stuck_timer: float = 0.0
+var return_home_stuck_timer: float = 0.0
 var authored_navigation_path_desired_distance: float = 0.0
 var authored_navigation_target_desired_distance: float = 0.0
 var alive_body_collision_enabled: bool = true
+var refreshing_player_ranges_after_transform: bool = false
+var was_engaged_before_transform_refresh: bool = false
+var pending_form_settle_physics_frames: int = 0
+var tracked_transform_signal_player: Node = null
 var attack_shape_controller := AttackHitboxShapeControllerScript.new()
 
 
@@ -157,12 +166,17 @@ func _ready():
 	change_state(get_default_state())
 
 
+func _exit_tree():
+	untrack_player_transform_signal()
+
+
 func _physics_process(delta: float):
 	current_physics_delta = delta
 	if attack_cooldown_timer > 0.0:
 		attack_cooldown_timer -= delta
 	if dead:
 		return
+	refresh_personal_detection_enabled()
 
 	if state == STATE_HURT:
 		update_hurt(delta)
@@ -236,18 +250,24 @@ func configure_collision():
 		attack_shape_controller.setup(attack_box)
 		set_attack_shape_enabled(false)
 
-	for area in [detection_area, tracking_area, attack_range_area]:
+	for area in [tracking_area, attack_range_area]:
 		if area is Area2D:
 			area.monitoring = true
 			area.monitorable = true
 			area.collision_layer = 0
 			area.collision_mask = 2
+	if detection_area != null:
+		detection_area.monitorable = true
+		detection_area.collision_layer = 0
+		detection_area.collision_mask = 2
+		refresh_personal_detection_enabled()
 
 
 func configure_navigation_agent():
 	if navigation_agent == null:
 		return
 
+	navigation_agent.navigation_layers = get_navigation_layer_for_current_role()
 	authored_navigation_path_desired_distance = navigation_agent.path_desired_distance
 	authored_navigation_target_desired_distance = navigation_agent.target_desired_distance
 	navigation_agent.avoidance_enabled = false
@@ -257,6 +277,10 @@ func configure_navigation_agent():
 	navigation_agent.time_horizon_agents = DEFAULT_AVOIDANCE_TIME_HORIZON
 	navigation_agent.time_horizon_obstacles = DEFAULT_AVOIDANCE_TIME_HORIZON
 	navigation_agent.max_speed = get_max_navigation_speed()
+
+
+func get_navigation_layer_for_current_role() -> int:
+	return CHARACTER_NAVIGATION_SETTINGS.CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER if is_camp_linked() else CHARACTER_NAVIGATION_SETTINGS.DEFAULT_CHARACTER_NAVIGATION_LAYER
 
 
 func get_navigation_avoidance_radius() -> float:
@@ -332,15 +356,29 @@ func should_chase_player() -> bool:
 
 
 func chase_player(delta: float = -1.0):
-	if tuning == null or navigation_agent == null or not has_player_target():
+	if tuning == null or not has_player_target():
 		return
 
 	change_state("chase")
 	last_chase_used_navigation = false
 	var chase_target := get_chase_target_position()
 	var movement_delta := current_physics_delta if delta < 0.0 else delta
+	if should_direct_chase_outside_camp_navigation(chase_target):
+		move_toward_position(chase_target, tuning.run_speed, false, movement_delta)
+		return
+	if navigation_agent == null:
+		return
 	if move_with_navigation_target(chase_target, tuning.run_speed, movement_delta):
 		last_chase_used_navigation = true
+
+
+func should_direct_chase_outside_camp_navigation(chase_target: Vector2) -> bool:
+	if not is_camp_linked() or not camp_aggro_active:
+		return false
+	var campfire := get_linked_campfire_base()
+	if campfire == null or not campfire.has_method("is_position_inside_camp_navigation"):
+		return false
+	return not bool(campfire.is_position_inside_camp_navigation(chase_target))
 
 
 func get_chase_target_position() -> Vector2:
@@ -363,7 +401,7 @@ func should_use_navigation_for_chase(_chase_target: Variant = null) -> bool:
 
 
 func should_return_home() -> bool:
-	if not has_camp_default_behavior() or camp_aggro_active:
+	if not has_camp_default_behavior() or camp_aggro_active or personal_aggro_active:
 		return false
 	if state == STATE_RETURN_HOME:
 		return not is_at_home()
@@ -382,11 +420,25 @@ func move_home(_delta: float = 0.0):
 		finish_return_home()
 		return
 
+	if should_direct_return_until_camp_navigation():
+		move_toward_position(home_position, tuning.walk_speed, false, _delta)
+		update_navigation_progress(false, home_position, _delta)
+		return
+
 	if navigation_agent == null:
 		velocity = Vector2.ZERO
 		return
 
 	move_with_navigation_target(home_position, tuning.walk_speed, _delta)
+
+
+func should_direct_return_until_camp_navigation() -> bool:
+	if not is_camp_linked():
+		return false
+	var campfire := get_linked_campfire_base()
+	if campfire == null or not campfire.has_method("is_position_inside_camp_navigation"):
+		return false
+	return not bool(campfire.is_position_inside_camp_navigation(global_position))
 
 
 func move_with_navigation_target(target_position: Vector2, speed: float, delta: float = 0.0) -> bool:
@@ -400,6 +452,9 @@ func move_with_navigation_target(target_position: Vector2, speed: float, delta: 
 		refresh_navigation_path(target_position)
 
 	var next_position := navigation_agent.get_next_path_position()
+	if global_position.distance_to(next_position) <= NAVIGATION_NEAR_SELF_DISTANCE and target_distance > get_navigation_target_arrival_distance():
+		refresh_navigation_path(target_position)
+		next_position = navigation_agent.get_next_path_position()
 	if global_position.distance_to(next_position) <= NAVIGATION_NEAR_SELF_DISTANCE and target_distance > get_navigation_target_arrival_distance():
 		register_blocked_movement()
 		update_navigation_progress(false, target_position, delta)
@@ -422,11 +477,17 @@ func update_navigation_progress(moved: bool, target_position: Vector2, delta: fl
 	if moved or global_position.distance_to(navigation_progress_position) > NAVIGATION_PROGRESS_EPSILON:
 		navigation_progress_position = global_position
 		navigation_stuck_timer = 0.0
+		return_home_stuck_timer = 0.0
 		return
 	if delta <= 0.0:
 		return
 
 	navigation_stuck_timer += delta
+	if state == STATE_RETURN_HOME:
+		return_home_stuck_timer += delta
+		if return_home_stuck_timer >= RETURN_HOME_STUCK_RESET_SECONDS:
+			finish_return_home()
+			return
 	if navigation_stuck_timer >= NAVIGATION_STUCK_REPATH_SECONDS:
 		refresh_navigation_path(target_position)
 		navigation_stuck_timer = 0.0
@@ -441,16 +502,19 @@ func refresh_navigation_path(target_position: Vector2):
 func reset_navigation_progress():
 	navigation_progress_position = global_position
 	navigation_stuck_timer = 0.0
+	return_home_stuck_timer = 0.0
 
 
 func finish_return_home():
 	global_position = home_position
 	velocity = Vector2.ZERO
+	clear_personal_aggro()
 	clear_navigation_velocity()
 	reset_navigation_progress()
 	apply_home_facing()
 	change_state(get_default_state())
 	update_default_behavior(0.0)
+	refresh_personal_detection_enabled()
 
 
 func update_default_behavior(delta: float):
@@ -616,7 +680,7 @@ func can_start_attack() -> bool:
 		return false
 	if not (combat_enabled and has_player_target() and attack_cooldown_timer <= 0.0 and tuning != null):
 		return false
-	if is_camp_linked() and not camp_aggro_active:
+	if is_camp_linked() and not (camp_aggro_active or personal_aggro_active):
 		return false
 	if should_launch_projectile():
 		var distance := global_position.distance_to(player.global_position)
@@ -670,6 +734,7 @@ func is_player_close_enough_for_melee_attack() -> bool:
 
 
 func start_attack():
+	clear_hurt_animation_hold()
 	change_state("attack")
 	velocity = Vector2.ZERO
 	attack_windup_timer = tuning.attack_windup_seconds
@@ -695,8 +760,16 @@ func update_attack(delta: float):
 
 	attack_recover_timer -= delta
 	if attack_recover_timer <= 0.0:
-		attack_cooldown_timer = tuning.attack_cooldown
-		change_state("chase" if should_chase_player() else get_default_state())
+		finish_attack()
+
+
+func finish_attack():
+	cancel_active_attack()
+	clear_hurt_animation_hold()
+	if sprite != null:
+		sprite.speed_scale = 1.0
+	attack_cooldown_timer = tuning.attack_cooldown if tuning != null else attack_cooldown_timer
+	change_state("chase" if should_chase_player() else get_default_state())
 
 
 func on_attack_blocked():
@@ -976,6 +1049,9 @@ func _on_died():
 	hurt_timer = 0.0
 	clear_hurt_state_overrides()
 	velocity = Vector2.ZERO
+	clear_transform_range_refresh()
+	untrack_player_transform_signal()
+	clear_personal_aggro()
 	cancel_active_attack()
 	clear_active_dialogue_bubble()
 	set_body_collision_enabled(false)
@@ -987,13 +1063,16 @@ func _on_died():
 func set_combat_enabled(enabled: bool):
 	combat_enabled = enabled
 	damage_enabled = enabled
+	if not enabled:
+		clear_personal_aggro()
 	set_navigation_avoidance_enabled(enabled)
 	if hurt_box != null:
 		hurt_box.set_deferred("monitoring", enabled)
 		hurt_box.set_deferred("monitorable", enabled)
-	for area in [attack_box, detection_area, tracking_area, attack_range_area]:
+	for area in [attack_box, tracking_area, attack_range_area]:
 		if area is Area2D:
 			(area as Area2D).set_deferred("monitoring", enabled)
+	refresh_personal_detection_enabled()
 	set_attack_shape_enabled(false)
 
 
@@ -1029,6 +1108,8 @@ func respawn_at(respawn_position: Vector2):
 	velocity = Vector2.ZERO
 	hurt_timer = 0.0
 	clear_hurt_state_overrides()
+	clear_transform_range_refresh()
+	untrack_player_transform_signal()
 	if health != null:
 		health.heal_to_full()
 	dead = false
@@ -1037,9 +1118,11 @@ func respawn_at(respawn_position: Vector2):
 	set_combat_enabled(true)
 	set_navigation_avoidance_enabled(true)
 	camp_aggro_active = false
+	clear_personal_aggro()
 	clear_active_dialogue_bubble()
 	change_state(get_default_state())
 	play_directional_animation("idle")
+	refresh_personal_detection_enabled()
 
 
 func hide_as_defeated():
@@ -1048,9 +1131,12 @@ func hide_as_defeated():
 	velocity = Vector2.ZERO
 	hurt_timer = 0.0
 	clear_hurt_state_overrides()
+	clear_transform_range_refresh()
+	untrack_player_transform_signal()
 	clear_navigation_velocity()
 	reset_navigation_progress()
 	restore_authored_navigation_distances()
+	clear_personal_aggro()
 	cancel_active_attack()
 	clear_active_dialogue_bubble()
 	set_body_collision_enabled(false)
@@ -1088,6 +1174,9 @@ func apply_story_save_state(saved_state: Dictionary):
 	visible = true
 	hurt_timer = 0.0
 	clear_hurt_state_overrides()
+	clear_transform_range_refresh()
+	untrack_player_transform_signal()
+	clear_personal_aggro()
 	set_body_collision_enabled(true)
 	set_combat_enabled(true)
 	if health != null:
@@ -1104,6 +1193,8 @@ func reset_for_level_entry():
 	velocity = Vector2.ZERO
 	hurt_timer = 0.0
 	clear_hurt_state_overrides()
+	clear_transform_range_refresh()
+	untrack_player_transform_signal()
 	facing_left = spawn_facing_left
 	last_horizontal_facing_direction = FACING_LEFT if facing_left else FACING_RIGHT
 	last_facing_direction = last_horizontal_facing_direction
@@ -1117,11 +1208,13 @@ func reset_for_level_entry():
 	set_combat_enabled(true)
 	set_navigation_avoidance_enabled(true)
 	camp_aggro_active = false
+	clear_personal_aggro()
 	clear_active_dialogue_bubble()
 	player_in_detection = false
 	player_in_tracking = false
 	player_in_attack_range = false
 	change_state(get_default_state())
+	refresh_personal_detection_enabled()
 
 
 func set_encounter_dialogue_override(sequence: Resource):
@@ -1182,23 +1275,80 @@ func get_encounter_dialogue_sequence() -> Resource:
 func has_player_target() -> bool:
 	if player == null or not is_instance_valid(player) or not player.is_inside_tree():
 		player = get_tree().get_first_node_in_group("player") as Node2D
+	if player != null:
+		track_player_transform_signal(player)
 	return player != null and player.visible
+
+
+func refresh_personal_detection_enabled():
+	if not is_camp_linked():
+		set_personal_detection_enabled(combat_enabled and not dead)
+		set_personal_tracking_enabled(combat_enabled and not dead)
+		return
+
+	set_personal_detection_enabled(false)
+	set_personal_tracking_enabled(false)
+
+
+func set_personal_detection_enabled(enabled: bool):
+	if detection_area == null:
+		return
+	detection_area.set_deferred("monitoring", enabled)
+
+
+func set_personal_tracking_enabled(enabled: bool):
+	if tracking_area == null:
+		return
+	tracking_area.set_deferred("monitoring", enabled)
+
+
+func is_outside_linked_camp_bounds() -> bool:
+	var campfire := get_linked_campfire_base()
+	if campfire == null or not campfire.has_method("is_position_inside_camp_bounds"):
+		return false
+	return not bool(campfire.is_position_inside_camp_bounds(global_position))
+
+
+func start_personal_aggro(target: Node):
+	if dead or not combat_enabled or camp_aggro_active or is_camp_linked():
+		return
+	player = target as Node2D
+	if player == null:
+		return
+	track_player_transform_signal(player)
+	personal_aggro_active = true
+	player_in_tracking = true
+	clear_navigation_velocity()
+	reset_navigation_progress()
+	change_state("chase")
+	chase_player()
+	player_tracking_changed.emit(self)
+
+
+func clear_personal_aggro():
+	personal_aggro_active = false
 
 
 func force_aggro(target: Node):
 	if dead or not combat_enabled:
 		return
 	player = target as Node2D
+	track_player_transform_signal(player)
+	clear_personal_aggro()
 	camp_aggro_active = player != null
 	if camp_aggro_active:
+		player_in_tracking = true
 		clear_navigation_velocity()
 		reset_navigation_progress()
 		change_state("chase")
 		chase_player()
+	refresh_personal_detection_enabled()
 
 
 func return_to_camp():
+	clear_transform_range_refresh()
 	camp_aggro_active = false
+	clear_personal_aggro()
 	player_in_tracking = false
 	player_in_attack_range = false
 	cancel_active_attack()
@@ -1207,10 +1357,144 @@ func return_to_camp():
 		return
 	reset_navigation_progress()
 	change_state(STATE_RETURN_HOME)
+	refresh_personal_detection_enabled()
 
 
 func has_active_player_tracking() -> bool:
 	return player_in_tracking
+
+
+func is_currently_engaging_player() -> bool:
+	return camp_aggro_active or personal_aggro_active or state == "chase" or state == "attack"
+
+
+func should_defer_player_range_change(body: Node) -> bool:
+	if body == null:
+		return false
+	if refreshing_player_ranges_after_transform and body == player:
+		return true
+	if body.has_method("is_transforming_forms") and bool(body.call("is_transforming_forms")):
+		return true
+	return body.has_method("is_life_respawn_pending") and bool(body.call("is_life_respawn_pending"))
+
+
+func refresh_player_ranges_after_transform():
+	was_engaged_before_transform_refresh = was_engaged_before_transform_refresh or is_currently_engaging_player() or player_in_tracking
+	pending_form_settle_physics_frames = maxi(pending_form_settle_physics_frames, FORM_CHANGE_SETTLE_PHYSICS_FRAMES)
+	if refreshing_player_ranges_after_transform:
+		return
+
+	refreshing_player_ranges_after_transform = true
+	call_deferred("refresh_player_ranges_after_transform_deferred")
+
+
+func refresh_player_ranges_after_transform_deferred():
+	if not is_inside_tree():
+		clear_transform_range_refresh()
+		return
+
+	await get_tree().physics_frame
+
+	if not is_inside_tree():
+		clear_transform_range_refresh()
+		return
+
+	if dead or not combat_enabled:
+		player_in_detection = false
+		player_in_tracking = false
+		player_in_attack_range = false
+		clear_transform_range_refresh()
+		return
+
+	if player == null or not is_instance_valid(player) or not player.is_inside_tree():
+		player_in_detection = false
+		player_in_tracking = false
+		player_in_attack_range = false
+		clear_transform_range_refresh()
+		player_tracking_changed.emit(self)
+		return
+
+	var player_is_still_transforming: bool = player.has_method("is_transforming_forms") and bool(player.call("is_transforming_forms"))
+	var player_respawn_pending: bool = player.has_method("is_life_respawn_pending") and bool(player.call("is_life_respawn_pending"))
+	if player_is_still_transforming or player_respawn_pending:
+		if player_is_still_transforming:
+			player_in_tracking = player_in_tracking or was_engaged_before_transform_refresh
+		call_deferred("refresh_player_ranges_after_transform_deferred")
+		return
+
+	if pending_form_settle_physics_frames > 0:
+		pending_form_settle_physics_frames -= 1
+		player_in_tracking = player_in_tracking or was_engaged_before_transform_refresh
+		call_deferred("refresh_player_ranges_after_transform_deferred")
+		return
+
+	var was_tracking := player_in_tracking
+	var was_personal := personal_aggro_active
+	var was_camp := camp_aggro_active
+	var was_engaged := was_engaged_before_transform_refresh or is_currently_engaging_player()
+	var overlapping_detection := is_player_overlapping_area(detection_area)
+	var overlapping_tracking := is_player_overlapping_area(tracking_area)
+	var overlapping_attack := is_player_overlapping_area(attack_range_area)
+
+	clear_transform_range_refresh()
+	player_in_detection = overlapping_detection
+	player_in_attack_range = overlapping_attack
+	player_in_tracking = overlapping_tracking and (was_engaged or overlapping_detection or overlapping_attack or not is_camp_linked())
+
+	if player_in_tracking and (was_camp or was_personal):
+		clear_navigation_velocity()
+		reset_navigation_progress()
+		change_state("chase")
+	elif was_personal and not player_in_tracking:
+		return_to_camp()
+	elif was_tracking != player_in_tracking:
+		player_tracking_changed.emit(self)
+
+
+func is_player_overlapping_area(area: Area2D) -> bool:
+	if area == null or not area.monitoring:
+		return false
+
+	for body in area.get_overlapping_bodies():
+		if body == player:
+			return true
+	return false
+
+
+func track_player_transform_signal(player_node: Node):
+	if player_node == null or not player_node.has_signal("transformation_state_changed"):
+		return
+
+	var callback := Callable(self, "_on_player_transformation_state_changed")
+	if tracked_transform_signal_player == player_node:
+		if not player_node.is_connected("transformation_state_changed", callback):
+			player_node.connect("transformation_state_changed", callback)
+		return
+
+	untrack_player_transform_signal()
+	tracked_transform_signal_player = player_node
+	if not player_node.is_connected("transformation_state_changed", callback):
+		player_node.connect("transformation_state_changed", callback)
+
+
+func untrack_player_transform_signal():
+	var callback := Callable(self, "_on_player_transformation_state_changed")
+	if tracked_transform_signal_player != null and is_instance_valid(tracked_transform_signal_player):
+		if tracked_transform_signal_player.is_connected("transformation_state_changed", callback):
+			tracked_transform_signal_player.disconnect("transformation_state_changed", callback)
+	tracked_transform_signal_player = null
+
+
+func clear_transform_range_refresh():
+	refreshing_player_ranges_after_transform = false
+	was_engaged_before_transform_refresh = false
+	pending_form_settle_physics_frames = 0
+
+
+func _on_player_transformation_state_changed(_active: bool):
+	if player == null or not is_instance_valid(player):
+		return
+	refresh_player_ranges_after_transform()
 
 
 func get_home_position() -> Vector2:
@@ -1220,6 +1504,8 @@ func get_home_position() -> Vector2:
 func set_campfire_base_path_if_empty(path: NodePath):
 	if str(campfire_base_path) == "":
 		campfire_base_path = path
+		configure_navigation_agent()
+		refresh_personal_detection_enabled()
 
 
 func get_linked_campfire_base() -> Node:
@@ -1286,13 +1572,19 @@ func play_animation(animation_name: String):
 		return
 
 	var resolved_animation := resolve_animation_name(animation_name)
+	if not hurt_animation_hold_active:
+		sprite.speed_scale = 1.0
 	apply_animation_flip(resolved_animation)
 	if sprite.sprite_frames.has_animation(resolved_animation):
 		var resolved_name := StringName(resolved_animation)
 		if sprite.animation != resolved_name:
 			sprite.animation = resolved_name
+			sprite.frame = 0
+			sprite.frame_progress = 0.0
 			sprite.play()
 		elif not sprite.is_playing():
+			sprite.frame = 0
+			sprite.frame_progress = 0.0
 			sprite.play()
 
 
@@ -1411,23 +1703,44 @@ func data_to_vector(value: Variant, fallback: Vector2) -> Vector2:
 
 func _on_detection_body_entered(body: Node2D):
 	if body.is_in_group("player"):
+		if is_camp_linked():
+			return
 		player = body
+		track_player_transform_signal(body)
+		if should_defer_player_range_change(body):
+			player_in_detection = true
+			refresh_player_ranges_after_transform()
+			return
 		player_in_detection = true
 		if not is_camp_linked():
 			try_start_encounter_dialogue()
 			player_detected.emit(self, body)
+		elif not camp_aggro_active and is_outside_linked_camp_bounds():
+			start_personal_aggro(body)
 		elif not camp_aggro_active and state == DEFAULT_BEHAVIOR_IDLE:
 			play_directional_animation("idle")
 
 
 func _on_detection_body_exited(body: Node2D):
 	if body == player:
+		if is_camp_linked():
+			return
+		if should_defer_player_range_change(body):
+			refresh_player_ranges_after_transform()
+			return
 		player_in_detection = false
 
 
 func _on_tracking_body_entered(body: Node2D):
 	if body.is_in_group("player"):
+		if is_camp_linked():
+			return
 		player = body
+		track_player_transform_signal(body)
+		if should_defer_player_range_change(body):
+			player_in_tracking = true
+			refresh_player_ranges_after_transform()
+			return
 		player_in_tracking = true
 		if not is_camp_linked():
 			player_detected.emit(self, body)
@@ -1438,16 +1751,32 @@ func _on_tracking_body_entered(body: Node2D):
 
 func _on_tracking_body_exited(body: Node2D):
 	if body == player:
+		if is_camp_linked():
+			return
+		if should_defer_player_range_change(body):
+			refresh_player_ranges_after_transform()
+			return
 		player_in_tracking = false
+		if personal_aggro_active:
+			clear_personal_aggro()
+			return_to_camp()
 		player_tracking_changed.emit(self)
 
 
 func _on_attack_range_body_entered(body: Node2D):
 	if body.is_in_group("player"):
 		player = body
+		track_player_transform_signal(body)
+		if should_defer_player_range_change(body):
+			player_in_attack_range = true
+			refresh_player_ranges_after_transform()
+			return
 		player_in_attack_range = true
 
 
 func _on_attack_range_body_exited(body: Node2D):
 	if body == player:
+		if should_defer_player_range_change(body):
+			refresh_player_ranges_after_transform()
+			return
 		player_in_attack_range = false

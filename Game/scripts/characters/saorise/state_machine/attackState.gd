@@ -62,7 +62,7 @@ func physics_update(player, delta):
 			finish_combo(player)
 
 
-func exit(player):
+func exit(_player):
 	if hitbox_manager:
 		hitbox_manager.deactivate_attack_hitbox()
 

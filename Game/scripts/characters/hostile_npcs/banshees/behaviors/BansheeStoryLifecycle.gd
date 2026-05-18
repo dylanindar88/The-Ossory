@@ -193,7 +193,7 @@ func restore_for_story_load(hidden_alpha: float, combat_should_be_enabled: bool,
 
 
 func restore_from_story_save(state: Dictionary, hidden_alpha: float, combat_should_be_enabled: bool, should_be_revealed: bool):
-	if is_saved_defeated_state(state):
+	if BansheeStoryLifecycle.is_saved_defeated_state(state):
 		restore_dead_from_story_save(state, hidden_alpha)
 		return
 

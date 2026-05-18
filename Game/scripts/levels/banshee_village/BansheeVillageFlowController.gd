@@ -27,6 +27,7 @@ const STORY_PROMPT_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_vil
 const PRESENTATION_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillagePresentationController.gd")
 const ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageEncounterController.gd")
 const SAVE_ADAPTER_SCRIPT = preload("res://scripts/levels/banshee_village/BansheeVillageSaveAdapter.gd")
+const KNIGHT_CAMP_LEVEL_SUPPORT_SCRIPT = preload("res://scripts/levels/shared/KnightCampLevelSupport.gd")
 const BISHOP_CHOICE_PROMPT_TEXT = "Confront the bishop?"
 const STORY_TRANSFORM_PROMPT_TEXT = "Press Q to transform."
 const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own transformations last 30 seconds.\nPress Tab to view transformation stats."
@@ -48,7 +49,7 @@ const FINAL_WOLF_INSTRUCTION_TEXT = "You cannot hold the form forever.\nYour own
 @export var elder_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs/ElderVillager")
 @export var dulluhan_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs/Dulluhan")
 @export var exterior_vincent_path: NodePath = NodePath("../PlayableWorld/Environment/Characters/NPCs/Vincent")
-@export var vincent_house_path: NodePath = NodePath("../PlayableWorld/Environment/Buildings/Houses/VincentHouse")
+@export var vincent_house_path: NodePath = NodePath("../PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion/NavigationSourceGeometry/Buildings/Houses/VincentHouse")
 @export var west_route_exit_path: NodePath = NodePath("../PlayableWorld/Environment/Interactables/RouteExits/WestExit")
 @export var south_route_exit_path: NodePath = NodePath("../PlayableWorld/Environment/Interactables/RouteExits/SouthExit")
 @export var east_route_exit_path: NodePath = NodePath("../PlayableWorld/Environment/Interactables/RouteExits/EastExit")
@@ -117,6 +118,8 @@ var story_prompt_controller
 var presentation_controller
 var encounter_controller
 var save_adapter
+var knight_camp_support: KnightCampLevelSupport
+var knight_camp_controller: KnightCampEncounterController
 var location_exit_save_pending: bool = false
 
 
@@ -156,6 +159,7 @@ func _ready():
 	encounter_controller.setup(self)
 	save_adapter = SAVE_ADAPTER_SCRIPT.new()
 	save_adapter.setup(self)
+	setup_knight_camp_controller()
 
 	connect_player_story_signals()
 	connect_elder_dialogue()
@@ -200,6 +204,45 @@ func append_missing_assigned_villager_warnings(messages: Array):
 
 func apply_level_state(state: Dictionary):
 	save_adapter.apply_level_state(state)
+
+
+func collect_knight_camp_state() -> Dictionary:
+	if knight_camp_controller == null:
+		return {}
+	return knight_camp_controller.collect_level_state()
+
+
+func apply_knight_camp_state(state: Dictionary):
+	ensure_knight_camp_controller()
+	if knight_camp_controller != null:
+		knight_camp_controller.apply_level_state(state)
+
+
+func validate_knight_camp_state(state: Dictionary) -> Array:
+	ensure_knight_camp_controller()
+	if knight_camp_controller == null:
+		return []
+	return knight_camp_controller.validate_level_state(state)
+
+
+func setup_knight_camp_controller():
+	if knight_camp_controller != null:
+		return
+
+	if knight_camp_support == null:
+		knight_camp_support = KNIGHT_CAMP_LEVEL_SUPPORT_SCRIPT.new()
+		knight_camp_support.name = "KnightCampLevelSupport"
+		add_child(knight_camp_support)
+
+	var level_root := get_parent()
+	var hostile_root := get_node_or_null(hostile_root_path)
+	knight_camp_support.configure(level_root, hostile_root, hostile_root)
+	knight_camp_controller = knight_camp_support.get_knight_camp_controller()
+
+
+func ensure_knight_camp_controller():
+	if knight_camp_controller == null:
+		setup_knight_camp_controller()
 
 
 func normalize_level_state(state: Dictionary) -> Dictionary:
@@ -927,6 +970,8 @@ func should_make_banshee_clears_permanent() -> bool:
 
 func prepare_for_route_exit():
 	location_exit_save_pending = true
+	if knight_camp_controller != null:
+		knight_camp_controller.prepare_for_route_exit()
 	if story_wolf_lock_active and is_wolf_hunt_stage():
 		story_wolf_lock_active = false
 		story_transform_prompt_consumed = true

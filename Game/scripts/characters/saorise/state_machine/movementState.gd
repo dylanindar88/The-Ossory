@@ -1,6 +1,6 @@
 extends RefCounted
 
-func enter(player):
+func enter(_player):
 	pass
 
 func exit(player):

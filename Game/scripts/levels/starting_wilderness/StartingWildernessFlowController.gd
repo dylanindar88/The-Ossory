@@ -2,7 +2,7 @@ extends Node
 
 const LEVEL_STATE_VERSION: int = 1
 const BANSHEE_ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/shared/BansheeEncounterController.gd")
-const KNIGHT_CAMP_ENCOUNTER_CONTROLLER_SCRIPT = preload("res://scripts/levels/shared/KnightCampEncounterController.gd")
+const KNIGHT_CAMP_LEVEL_SUPPORT_SCRIPT = preload("res://scripts/levels/shared/KnightCampLevelSupport.gd")
 const DEFAULT_STORY_DIALOGUE_PROFILE: DialogueProfile = preload("res://resources/dialogue/levels/starting_wilderness/starting_wilderness_villager_story_profile.tres")
 
 const DIALOGUE_KEY_INTRO := &"intro"
@@ -41,6 +41,7 @@ const VILLAGER_BANSHEE_AGGRO_IGNORE: String = "ignore"
 var villager: Node
 var banshee: Node
 var encounter_controller: BansheeEncounterController
+var knight_camp_support: KnightCampLevelSupport
 var knight_camp_controller: KnightCampEncounterController
 var saved_villager_states: Dictionary = {}
 var location_exit_save_pending: bool = false
@@ -280,12 +281,15 @@ func setup_knight_camp_controller():
 	if knight_camp_controller != null:
 		return
 
-	knight_camp_controller = KNIGHT_CAMP_ENCOUNTER_CONTROLLER_SCRIPT.new()
-	knight_camp_controller.name = "KnightCampEncounterController"
-	knight_camp_controller.state_root_path = NodePath("../..")
-	knight_camp_controller.hostile_root_path = NodePath("../../PlayableWorld/Environment/Characters/HostileNPCs")
-	knight_camp_controller.campfire_root_path = NodePath("../../PlayableWorld/Environment/Characters/HostileNPCs")
-	add_child(knight_camp_controller)
+	if knight_camp_support == null:
+		knight_camp_support = KNIGHT_CAMP_LEVEL_SUPPORT_SCRIPT.new()
+		knight_camp_support.name = "KnightCampLevelSupport"
+		add_child(knight_camp_support)
+
+	var level_root := get_parent()
+	var hostile_root := get_node_or_null(hostile_root_path)
+	knight_camp_support.configure(level_root, hostile_root, hostile_root)
+	knight_camp_controller = knight_camp_support.get_knight_camp_controller()
 
 
 func ensure_knight_camp_controller():

@@ -7,6 +7,13 @@ const BANSHEE_TUNING: BansheeTuning = preload("res://resources/characters/hostil
 
 @export var state_root_path: NodePath
 @export var hostile_root_path: NodePath
+@export var use_save_manager_world_rules: bool = true
+@export var default_banshees_hostile_enabled: bool = false
+@export var default_player_can_damage_banshees: bool = false
+@export var default_wolf_permanent_clear_enabled: bool = false
+@export var default_bishop_defeated: bool = false
+@export var default_combat_variant: String = BANSHEE_VARIANT_CORRUPTED_MELEE
+@export var default_vincent_upgrades_enabled: bool = false
 
 var banshees: Array[Node] = []
 var temporarily_cleared_banshee_paths: Dictionary = {}
@@ -17,10 +24,18 @@ var state_generation: int = 0
 
 
 func _ready():
+	refresh_wiring()
+
+
+func refresh_wiring():
+	refresh_members()
+	apply_banshee_world_rules()
+
+
+func refresh_members():
 	banshees = get_banshees()
 	assign_banshee_indexes()
 	connect_banshees()
-	apply_banshee_world_rules()
 
 
 func collect_level_state() -> Dictionary:
@@ -42,6 +57,7 @@ func apply_level_state(state: Dictionary):
 	temporarily_cleared_banshee_paths.clear()
 	permanently_cleared_banshee_paths.clear()
 	saved_banshee_states = {}
+	refresh_members()
 	if SaveManager != null:
 		saved_banshee_states = SaveManager.parse_actor_snapshot_lookup(state.get("banshees", []))
 
@@ -163,16 +179,16 @@ func apply_banshee_world_rules():
 
 
 func get_banshee_world_rules() -> Dictionary:
-	if SaveManager != null and SaveManager.has_method("get_banshee_world_rules"):
+	if use_save_manager_world_rules and SaveManager != null and SaveManager.has_method("get_banshee_world_rules"):
 		return SaveManager.get_banshee_world_rules()
 
 	return {
-		"banshees_hostile_enabled": false,
-		"player_can_damage_banshees": false,
-		"wolf_permanent_clear_enabled": false,
-		"bishop_defeated": false,
-		"combat_variant": BANSHEE_VARIANT_CORRUPTED_MELEE,
-		"vincent_upgrades_enabled": false,
+		"banshees_hostile_enabled": default_banshees_hostile_enabled,
+		"player_can_damage_banshees": default_player_can_damage_banshees,
+		"wolf_permanent_clear_enabled": default_wolf_permanent_clear_enabled,
+		"bishop_defeated": default_bishop_defeated,
+		"combat_variant": default_combat_variant,
+		"vincent_upgrades_enabled": default_vincent_upgrades_enabled,
 	}
 
 
@@ -261,6 +277,8 @@ func was_banshee_killed_by_wolf(banshee: Node) -> bool:
 	if killer_form_id == &"wolf":
 		return true
 
+	if not is_inside_tree():
+		return false
 	var player: Node = get_tree().get_first_node_in_group("player")
 	return player != null and player.has_method("get_current_form_id") and player.get_current_form_id() == &"wolf"
 
@@ -298,7 +316,14 @@ func is_saved_banshee_defeated(banshee: Node, saved_state: Dictionary) -> bool:
 
 func schedule_banshee_respawn(banshee: Node):
 	var scheduled_generation: int = state_generation
-	await get_tree().create_timer(get_story_respawn_delay_seconds()).timeout
+	if not is_inside_tree():
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.create_timer(get_story_respawn_delay_seconds()).timeout
+	if not is_inside_tree():
+		return
 	if scheduled_generation != state_generation:
 		return
 	if banshee == null or not is_instance_valid(banshee):

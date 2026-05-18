@@ -18,6 +18,8 @@ const BASE_PLAYER_LIVES := 3
 const MAX_PLAYER_LIVES := 6
 const LIFE_LOSS_EXTRA_INVULNERABILITY_TIME := 0.5
 const PENDING_SCENE_LOAD_AUTOSAVE_BLOCKER := "pending_scene_load"
+const SCENE_TRANSITION_GATE_NAME := "SceneTransitionGate"
+const SCENE_TRANSITION_GATE_LAYER := 4096
 const NEW_GAME_AUTOSAVE_BLOCKER := "new_game"
 const QUEST_BANSHEE_WORLD := "banshee_world"
 const QUEST_BANSHEE_VILLAGE_BISHOP := "banshee_village_bishop"
@@ -127,6 +129,8 @@ var pending_new_game_slot: int = -1
 var pending_dev_start_scene_path: String = ""
 var pending_dev_start_preset: String = ""
 var pending_dev_switch_slot: int = -1
+var scene_transition_gate: CanvasLayer
+var scene_transition_gate_rect: ColorRect
 var upgrade_state: Dictionary = {
 	"unlocked": {
 		"attack": true,
@@ -472,10 +476,12 @@ func change_scene_to_file_and_load(scene_path: String, slot: int = AUTOSAVE_SLOT
 	pending_scene_load_entry_marker_path = entry_marker_path
 	set_autosave_blocked(PENDING_SCENE_LOAD_AUTOSAVE_BLOCKER, true)
 	set_tree_paused_safely(false)
+	show_scene_transition_gate()
 
 	var error: Error = get_tree().change_scene_to_file(scene_path)
 	if error != OK:
 		clear_pending_scene_load()
+		hide_scene_transition_gate()
 		last_error = "Could not change scene to %s. Error: %s" % [scene_path, error_string(error)]
 		return error
 
@@ -496,11 +502,13 @@ func is_respawn_load_pending() -> bool:
 
 
 func apply_pending_scene_load():
+	show_scene_transition_gate()
 	await get_tree().process_frame
 	await get_tree().process_frame
 
 	if pending_scene_load_slot < 0:
 		clear_pending_scene_load()
+		hide_scene_transition_gate()
 		return
 
 	var preserved_story_flags: Dictionary = story_flags.duplicate(true)
@@ -514,6 +522,8 @@ func apply_pending_scene_load():
 		clear_pending_scene_load()
 		respawn_load_pending = false
 		set_tree_paused_safely(false)
+		await settle_scene_transition_gate()
+		hide_scene_transition_gate()
 		return
 	if pending_scene_load_preserve_story_flags:
 		for flag_name in preserved_story_flags.keys():
@@ -526,10 +536,12 @@ func apply_pending_scene_load():
 	apply_pending_scene_entry_marker(get_current_level())
 	apply_pending_player_travel_state(get_current_level())
 	set_tree_paused_safely(false)
+	await settle_scene_transition_gate()
 
 	var save_reason: String = pending_scene_load_save_reason
 	clear_pending_scene_load()
 	respawn_load_pending = false
+	hide_scene_transition_gate()
 	if save_reason != "":
 		save_game(save_reason, get_current_level())
 
@@ -558,6 +570,64 @@ func clear_pending_scene_load():
 	pending_scene_load_save_reason = ""
 	pending_scene_load_entry_marker_path = NodePath("")
 	set_autosave_blocked(PENDING_SCENE_LOAD_AUTOSAVE_BLOCKER, false)
+
+
+func show_scene_transition_gate():
+	if not is_inside_tree():
+		return
+	ensure_scene_transition_gate()
+	if scene_transition_gate != null:
+		scene_transition_gate.visible = true
+	if scene_transition_gate_rect != null:
+		scene_transition_gate_rect.visible = true
+
+
+func hide_scene_transition_gate():
+	if scene_transition_gate != null and is_instance_valid(scene_transition_gate):
+		scene_transition_gate.visible = false
+	if scene_transition_gate_rect != null and is_instance_valid(scene_transition_gate_rect):
+		scene_transition_gate_rect.visible = false
+
+
+func is_scene_transition_gate_visible() -> bool:
+	return scene_transition_gate != null and is_instance_valid(scene_transition_gate) and scene_transition_gate.visible
+
+
+func ensure_scene_transition_gate():
+	if scene_transition_gate != null and is_instance_valid(scene_transition_gate):
+		return
+
+	var root := get_tree().root
+	var existing := root.get_node_or_null(SCENE_TRANSITION_GATE_NAME) as CanvasLayer
+	if existing != null:
+		scene_transition_gate = existing
+		scene_transition_gate_rect = existing.get_node_or_null("Blocker") as ColorRect
+	else:
+		scene_transition_gate = CanvasLayer.new()
+		scene_transition_gate.name = SCENE_TRANSITION_GATE_NAME
+		scene_transition_gate.layer = SCENE_TRANSITION_GATE_LAYER
+		scene_transition_gate.process_mode = Node.PROCESS_MODE_ALWAYS
+		root.add_child(scene_transition_gate)
+
+	if scene_transition_gate_rect == null or not is_instance_valid(scene_transition_gate_rect):
+		scene_transition_gate_rect = ColorRect.new()
+		scene_transition_gate_rect.name = "Blocker"
+		scene_transition_gate_rect.color = Color.BLACK
+		scene_transition_gate_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		scene_transition_gate_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		scene_transition_gate.add_child(scene_transition_gate_rect)
+		scene_transition_gate_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+
+
+func settle_scene_transition_gate():
+	if not is_inside_tree():
+		return
+	await get_tree().process_frame
+
+
+func hide_scene_transition_gate_after_scene_settle():
+	await settle_scene_transition_gate()
+	hide_scene_transition_gate()
 
 
 func capture_pending_player_travel_state():
@@ -648,10 +718,12 @@ func start_new_game(slot: int, start_scene_path: String) -> bool:
 
 	set_autosave_blocked(NEW_GAME_AUTOSAVE_BLOCKER, true)
 	set_tree_paused_safely(false)
+	show_scene_transition_gate()
 	var error: Error = get_tree().change_scene_to_file(start_scene_path)
 	if error != OK:
 		pending_new_game_slot = -1
 		set_autosave_blocked(NEW_GAME_AUTOSAVE_BLOCKER, false)
+		hide_scene_transition_gate()
 		last_error = "Could not start new game at %s. Error: %s" % [start_scene_path, error_string(error)]
 		return false
 
@@ -668,9 +740,12 @@ func apply_pending_new_game_save():
 	pending_new_game_slot = -1
 	set_autosave_blocked(NEW_GAME_AUTOSAVE_BLOCKER, false)
 	if not is_manual_save_slot(slot):
+		hide_scene_transition_gate()
 		return
 
 	var level: Node = get_current_level()
+	await settle_scene_transition_gate()
+	hide_scene_transition_gate()
 	save_game_to_slot(slot, "new_game", level)
 	save_game("new_game", level)
 
@@ -749,12 +824,15 @@ func start_dev_scene(scene_path: String, preset: String = "") -> bool:
 
 	set_pending_dev_start(scene_path, preset)
 	set_tree_paused_safely(false)
+	show_scene_transition_gate()
 	var error: Error = get_tree().change_scene_to_file(scene_path)
 	if error != OK:
 		set_pending_dev_start("", "")
+		hide_scene_transition_gate()
 		last_error = "Could not start dev scene %s. Error: %s" % [scene_path, error_string(error)]
 		return false
 
+	call_deferred("hide_scene_transition_gate_after_scene_settle")
 	last_error = ""
 	return true
 
@@ -776,10 +854,12 @@ func dev_switch_active_save_to_level(scene_path: String, preset: String = "") ->
 	set_pending_dev_start(scene_path, preset)
 	pending_dev_switch_slot = active_slot
 	set_tree_paused_safely(false)
+	show_scene_transition_gate()
 	var error: Error = get_tree().change_scene_to_file(scene_path)
 	if error != OK:
 		pending_dev_switch_slot = -1
 		set_pending_dev_start("", "")
+		hide_scene_transition_gate()
 		last_error = "Could not dev travel to %s. Error: %s" % [scene_path, error_string(error)]
 		return false
 
@@ -795,11 +875,14 @@ func complete_pending_dev_switch_save():
 	var slot: int = pending_dev_switch_slot
 	pending_dev_switch_slot = -1
 	if not is_manual_save_slot(slot):
+		hide_scene_transition_gate()
 		return
 
 	var level: Node = get_current_level()
 	apply_pending_player_travel_state(level)
 	set_autosave_blocked("banshee_village_dev_preset", false)
+	await settle_scene_transition_gate()
+	hide_scene_transition_gate()
 	save_game_to_slot(slot, "dev_travel", level)
 	save_game("dev_travel", level)
 

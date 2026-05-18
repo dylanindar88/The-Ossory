@@ -29,6 +29,7 @@ func collect_level_state() -> Dictionary:
 		"bishop_confrontation_accepted_for_level": flow.bishop_confrontation_accepted_for_level,
 		"dulluhan": collect_dulluhan_state(),
 		"banshees": collect_banshee_states(),
+		"knight_camps": flow.collect_knight_camp_state(),
 		"non_hostile_npcs": collect_non_hostile_npc_states(),
 	}
 
@@ -49,6 +50,12 @@ func validate_level_state(state: Dictionary) -> Array:
 		messages.append("BansheeVillage save has malformed non-hostile NPC snapshot data.")
 	if not (state.get("temporarily_cleared_banshee_paths", []) is Array):
 		messages.append("BansheeVillage save has malformed temporarily_cleared_banshee_paths.")
+	var raw_knight_camp_state: Variant = state.get("knight_camps", {})
+	if state.has("knight_camps") and not (raw_knight_camp_state is Dictionary):
+		messages.append("BansheeVillage save has malformed knight camp state.")
+	if raw_knight_camp_state is Dictionary:
+		var knight_camp_state: Dictionary = raw_knight_camp_state
+		messages.append_array(flow.validate_knight_camp_state(knight_camp_state))
 
 	append_missing_node_warnings(messages)
 	append_missing_actor_path_warnings(messages, state.get("banshees", []), "banshee")
@@ -96,6 +103,11 @@ func apply_level_state(state: Dictionary):
 		flow.story_transform_prompt_consumed = true
 
 	flow.restore_saved_villager_states()
+	var raw_knight_camp_state: Variant = normalized_state.get("knight_camps", {})
+	var knight_camp_state: Dictionary = {}
+	if raw_knight_camp_state is Dictionary:
+		knight_camp_state = raw_knight_camp_state
+	flow.apply_knight_camp_state(knight_camp_state)
 	flow.restore_stage_world_state()
 	flow.restore_story_transformation_state()
 	flow.sync_story_wolf_transformation_lock()

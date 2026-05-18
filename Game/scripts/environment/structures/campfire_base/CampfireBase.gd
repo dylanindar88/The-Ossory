@@ -3,6 +3,10 @@ extends StaticBody2D
 
 signal destroyed(campfire: Node)
 signal player_detected(campfire: Node, player: Node)
+signal player_tracking_exited(campfire: Node, player: Node)
+signal active_layout_changed(campfire: Node)
+
+const CHARACTER_NAVIGATION_SETTINGS = preload("res://scripts/levels/shared/CharacterNavigationSettings.gd")
 
 const DEFAULT_VARIANTS: Array[Resource] = [
 	preload("res://resources/environment/structures/campfire_base/campfire_base_variant_a.tres"),
@@ -16,6 +20,7 @@ const DEFAULT_VARIANTS: Array[Resource] = [
 
 @onready var layout_root: Node2D = get_node_or_null("LayoutRoot") as Node2D
 @onready var camp_aggro_area: Area2D = get_node_or_null("CampAggroArea") as Area2D
+@onready var camp_tracking_area: Area2D = get_node_or_null("CampTrackingArea") as Area2D
 
 var dead: bool = false
 var current_variant_id: StringName = &""
@@ -31,6 +36,7 @@ var campfire_base_index: int = -1
 func _ready():
 	add_to_group("campfire_bases")
 	connect_camp_aggro_area()
+	connect_camp_tracking_area()
 	ensure_variant_selected()
 	apply_current_variant()
 
@@ -51,6 +57,59 @@ func connect_camp_aggro_area():
 func _on_camp_aggro_body_entered(body: Node2D):
 	if body != null and body.is_in_group("player"):
 		player_detected.emit(self, body)
+
+
+func connect_camp_tracking_area():
+	if camp_tracking_area == null:
+		return
+
+	camp_tracking_area.monitoring = true
+	camp_tracking_area.monitorable = true
+	camp_tracking_area.collision_layer = 0
+	camp_tracking_area.collision_mask = 2
+	var callback := Callable(self, "_on_camp_tracking_body_exited")
+	if not camp_tracking_area.body_exited.is_connected(callback):
+		camp_tracking_area.body_exited.connect(callback)
+
+
+func _on_camp_tracking_body_exited(body: Node2D):
+	if body != null and body.is_in_group("player"):
+		if should_defer_player_tracking_exit(body):
+			call_deferred("refresh_player_tracking_after_deferred_exit", body)
+			return
+		player_tracking_exited.emit(self, body)
+
+
+func should_defer_player_tracking_exit(body: Node) -> bool:
+	if body == null:
+		return false
+	if body.has_method("is_transforming_forms") and bool(body.call("is_transforming_forms")):
+		return true
+	return body.has_method("is_life_respawn_pending") and bool(body.call("is_life_respawn_pending"))
+
+
+func refresh_player_tracking_after_deferred_exit(body: Node):
+	if not is_inside_tree():
+		return
+	var tree := get_tree()
+	if tree == null:
+		return
+	await tree.physics_frame
+	await tree.physics_frame
+	if not is_inside_tree() or dead:
+		return
+	if body != null and is_instance_valid(body) and body is Node2D and is_player_in_tracking_area(body as Node2D):
+		return
+	player_tracking_exited.emit(self, body)
+
+
+func is_player_in_tracking_area(player_node: Node2D) -> bool:
+	if player_node == null or camp_tracking_area == null or not camp_tracking_area.monitoring:
+		return false
+	for body in camp_tracking_area.get_overlapping_bodies():
+		if body == player_node:
+			return true
+	return is_position_inside_camp_tracking_area(player_node.global_position)
 
 
 func refresh_player_detection():
@@ -192,6 +251,7 @@ func apply_current_variant():
 	discover_layout_members()
 	connect_tents()
 	update_layout_visual_state()
+	active_layout_changed.emit(self)
 
 
 func clear_layout():
@@ -220,6 +280,9 @@ func discover_layout_members():
 	campfire_sprite = find_component_sprite(current_layout, "Campfire")
 	melee_banner_sprite = find_component_sprite(current_layout, "MeleeBanner")
 	camp_navigation_region = current_layout.find_child("CampNavigationRegion", true, false) as NavigationRegion2D
+	if camp_navigation_region != null:
+		camp_navigation_region.enabled = true
+		camp_navigation_region.navigation_layers = CHARACTER_NAVIGATION_SETTINGS.CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER
 
 
 func promote_knight_roster_children():
@@ -321,6 +384,10 @@ func get_active_camp_navigation_region() -> NavigationRegion2D:
 	return camp_navigation_region
 
 
+func get_active_layout() -> Node:
+	return current_layout
+
+
 func is_position_inside_camp_navigation(world_position: Vector2) -> bool:
 	if camp_navigation_region == null or camp_navigation_region.navigation_polygon == null:
 		return false
@@ -341,6 +408,42 @@ func is_position_inside_camp_navigation(world_position: Vector2) -> bool:
 			return true
 
 	return false
+
+
+func is_position_inside_camp_aggro_area(world_position: Vector2) -> bool:
+	return is_position_inside_area_shape(camp_aggro_area, world_position)
+
+
+func is_position_inside_camp_tracking_area(world_position: Vector2) -> bool:
+	return is_position_inside_area_shape(camp_tracking_area, world_position)
+
+
+func is_position_inside_area_shape(area: Area2D, world_position: Vector2) -> bool:
+	if area == null:
+		return false
+
+	var shape_node := area.get_node_or_null("CollisionShape2D") as CollisionShape2D
+	if shape_node == null or shape_node.shape == null or shape_node.disabled:
+		return false
+
+	var local_position := shape_node.to_local(world_position)
+	var shape := shape_node.shape
+	if shape is CircleShape2D:
+		return local_position.length() <= (shape as CircleShape2D).radius
+	if shape is RectangleShape2D:
+		var half_size := (shape as RectangleShape2D).size * 0.5
+		return absf(local_position.x) <= half_size.x and absf(local_position.y) <= half_size.y
+	if shape is CapsuleShape2D:
+		var capsule := shape as CapsuleShape2D
+		var half_segment := maxf(capsule.height * 0.5 - capsule.radius, 0.0)
+		var closest_point := Vector2(0.0, clampf(local_position.y, -half_segment, half_segment))
+		return local_position.distance_to(closest_point) <= capsule.radius
+
+	return false
+
+
+func is_position_inside_camp_bounds(world_position: Vector2) -> bool:
+	return is_position_inside_camp_navigation(world_position) or is_position_inside_camp_aggro_area(world_position)
 
 
 func get_tent_count() -> int:

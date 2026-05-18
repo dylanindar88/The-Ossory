@@ -10,6 +10,7 @@ const SAORISE_WOLF_FORM := "res://resources/characters/saorise/forms/wolf_form.t
 const CAMPFIRE_SCENE := "res://scenes/environment/structures/campfire_base/CampfireBase.tscn"
 const STARTING_WILDERNESS_SCENE := "res://scenes/levels/StartingWilderness.tscn"
 const WEEPING_WOODS_SCENE := "res://scenes/levels/WeepingWoods.tscn"
+const BANSHEE_VILLAGE_SCENE := "res://scenes/levels/BansheeVillage.tscn"
 const CAMPFIRE_TENT_SCENE := "res://scenes/environment/structures/campfire_base/CampfireBaseTent.tscn"
 const CAMPFIRE_TENT_FLIPPED_SCENE := "res://scenes/environment/structures/campfire_base/CampfireBaseTentFlipped.tscn"
 const CAMPFIRE_COMPONENT_SCENE := "res://scenes/environment/structures/campfire_base/Campfire.tscn"
@@ -26,6 +27,8 @@ const CAMPFIRE_VARIANT_RESOURCES := {
 	"C": "res://resources/environment/structures/campfire_base/campfire_base_variant_c.tres",
 }
 const ENCOUNTER_CONTROLLER_SCRIPT := preload("res://scripts/levels/shared/KnightCampEncounterController.gd")
+const LEVEL_SUPPORT_SCRIPT := preload("res://scripts/levels/shared/KnightCampLevelSupport.gd")
+const CHARACTER_NAVIGATION_SETTINGS := preload("res://scripts/levels/shared/CharacterNavigationSettings.gd")
 const SAORISE_ATTACK_BOX_MANAGER_SCRIPT := preload("res://scripts/characters/saorise/combat/attackBoxManager.gd")
 const BANSHEE_ATTACK_BOX_MANAGER_SCRIPT := preload("res://scripts/characters/hostile_npcs/banshees/combat/bansheeAttackBoxManager.gd")
 const TOP_DOWN_MOVEMENT_SCRIPT := preload("res://scripts/characters/shared/movement/TopDownMovement.gd")
@@ -33,18 +36,36 @@ const PREVIOUS_MELEE_ATTACK_BOX_HEIGHT := 28.0 * 1.06767
 const HORIZONTAL_ATTACK_BOX_OFFSET_RATIO := 24.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const UP_ATTACK_BOX_OFFSET_RATIO := 10.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const DOWN_ATTACK_BOX_OFFSET_RATIO := 25.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
+const DEFAULT_CHARACTER_NAVIGATION_LAYER := CHARACTER_NAVIGATION_SETTINGS.DEFAULT_CHARACTER_NAVIGATION_LAYER
+const CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER := CHARACTER_NAVIGATION_SETTINGS.CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER
 
 
 class MockPlayer:
-	extends Node2D
+	extends CharacterBody2D
+
+	signal transformation_state_changed(active: bool)
 
 	var form_id: StringName = &"human"
+	var transforming_forms: bool = false
 
 	func _ready():
 		add_to_group("player")
+		collision_layer = 2
+		collision_mask = 0
+		var shape := CollisionShape2D.new()
+		var circle := CircleShape2D.new()
+		circle.radius = 8.0
+		shape.shape = circle
+		add_child(shape)
 
 	func get_current_form_id() -> StringName:
 		return form_id
+
+	func is_transforming_forms() -> bool:
+		return transforming_forms
+
+	func is_life_respawn_pending() -> bool:
+		return false
 
 
 func run(assertions: TestAssertions, tree: SceneTree, _save_manager: Node):
@@ -62,12 +83,17 @@ func run(assertions: TestAssertions, tree: SceneTree, _save_manager: Node):
 	await assert_campfire_roster_y_sort_promotion(assertions, tree)
 	await assert_campfire_wolf_damage_contract(assertions, tree)
 	await assert_knight_home_default_and_aggro_contract(assertions, tree)
+	await assert_knight_transform_aggro_contract(assertions, tree)
 	await assert_knight_runtime_stabilization_contract(assertions, tree)
 	await assert_knight_camp_encounter_helper(assertions, tree)
+	await assert_knight_camp_level_support(assertions, tree)
+	await assert_split_knight_navigation_support(assertions, tree)
 	await assert_multi_camp_identity_isolation(assertions, tree)
 	await assert_starting_wilderness_campfire_identity_and_indexes(assertions, tree)
 	await assert_knight_camp_navigation_switching(assertions, tree)
 	await assert_starting_wilderness_knight_camp_wiring(assertions, tree)
+	await assert_weeping_woods_knight_camp_wiring(assertions, tree)
+	await assert_banshee_village_knight_camp_support_is_available(assertions, tree)
 	await assert_level_navigation_authoring_contracts(assertions, tree)
 
 
@@ -124,6 +150,22 @@ func assert_knight_scene_contracts(assertions: TestAssertions, tree: SceneTree):
 			assertions.assert_eq(navigation_agent.path_desired_distance, 8.0, "Basic Melee Knight should use circular-footprint path tolerance.")
 			assertions.assert_eq(navigation_agent.target_desired_distance, 10.0, "Basic Melee Knight should use circular-footprint target tolerance.")
 			assertions.assert_eq(navigation_agent.path_max_distance, 32.0, "Basic Melee Knight should repath after being pushed too far from its current navigation path.")
+		var patrol_root := Node2D.new()
+		patrol_root.name = "TestPatrolRoute"
+		var patrol_stop_a := Marker2D.new()
+		patrol_stop_a.name = "StopA"
+		patrol_stop_a.position = Vector2.ZERO
+		var patrol_stop_b := Marker2D.new()
+		patrol_stop_b.name = "StopB"
+		patrol_stop_b.position = Vector2(96, 0)
+		patrol_root.add_child(patrol_stop_a)
+		patrol_root.add_child(patrol_stop_b)
+		melee.add_child(patrol_root)
+		melee.set("patrol_path", NodePath("TestPatrolRoute"))
+		melee.call("refresh_patrol_points")
+		assertions.assert_true(bool(melee.call("has_patrol_route")), "Non-camp patrol knights should be able to load a scene-authored patrol path.")
+		assertions.assert_eq(melee.call("get_default_state"), "patrol", "A non-camp knight with a patrol route should default to patrol, not camp behavior.")
+		assertions.assert_false(bool(melee.call("is_camp_linked")), "A patrol knight should not need a campfire_base_path.")
 
 	if ranged != null:
 		assertions.assert_eq((ranged as CharacterBody2D).motion_mode, CharacterBody2D.MOTION_MODE_FLOATING, "Basic Ranged Knight should use floating/top-down CharacterBody2D motion.")
@@ -600,6 +642,7 @@ func assert_attack_timing(assertions: TestAssertions, knight: Node, facing: Stri
 	assertions.assert_eq(str(knight.get("active_attack_animation")), expected_animation, "%s should be the active attack animation." % expected_animation)
 	assertions.assert_true(abs(float(knight.get("active_attack_duration")) - expected_duration) <= 0.001, "%s attack duration should come from SpriteFrames." % expected_animation)
 	assertions.assert_true(abs(float(knight.get("active_attack_hit_time")) - expected_duration * 0.5) <= 0.001, "%s hit time should be at the animation midpoint." % expected_animation)
+	assertions.assert_eq(float(sprite.speed_scale), 1.0, "%s attack should restore sprite playback speed when it starts." % expected_animation)
 
 	knight.set("attack_has_dealt_damage", false)
 	knight.set("attack_windup_timer", 0.01)
@@ -607,6 +650,13 @@ func assert_attack_timing(assertions: TestAssertions, knight: Node, facing: Stri
 	assertions.assert_true(knight.get("attack_has_dealt_damage") == true, "%s should trigger exactly one damage window when the midpoint passes." % expected_animation)
 	knight.call("update_attack", 0.02)
 	assertions.assert_true(knight.get("attack_has_dealt_damage") == true, "%s should not reset the damage window during the same attack." % expected_animation)
+	if sprite != null:
+		sprite.speed_scale = 0.0
+	knight.set("attack_recover_timer", 0.01)
+	knight.call("update_attack", 0.02)
+	assertions.assert_ne(str(knight.get("state")), "attack", "%s should leave attack when recovery finishes." % expected_animation)
+	if sprite != null:
+		assertions.assert_eq(float(sprite.speed_scale), 1.0, "%s should restore sprite playback speed after attack recovery." % expected_animation)
 
 
 func get_animation_duration(frames: SpriteFrames, animation_name: String) -> float:
@@ -669,7 +719,7 @@ func assert_knight_contract(assertions: TestAssertions, knight: Node, label: Str
 		return
 
 	assertions.assert_true(knight.is_in_group("hostile_npcs"), "%s should join hostile_npcs." % label)
-	for node_path in ["Health", "HealthBarDisplay/HealthBar", "HurtBox", "AttackBox", "NavigationAgent2D", "TrackingArea", "AttackRange", "Effects", "DialogueAnchor"]:
+	for node_path in ["Health", "HealthBarDisplay/HealthBar", "HurtBox", "AttackBox", "NavigationAgent2D", "DetectionArea", "TrackingArea", "AttackRange", "Effects", "DialogueAnchor"]:
 		assertions.assert_true(knight.get_node_or_null(node_path) != null, "%s should have %s." % [label, node_path])
 
 	assertions.assert_eq((knight as CharacterBody2D).collision_layer, 4, "%s should use the HostileNPC body collision layer." % label)
@@ -677,9 +727,49 @@ func assert_knight_contract(assertions: TestAssertions, knight: Node, label: Str
 	assertions.assert_false(((knight as CharacterBody2D).collision_mask & 4) != 0, "%s should not hard-collide with other HostileNPC bodies." % label)
 	var navigation_agent := knight.get_node_or_null("NavigationAgent2D") as NavigationAgent2D
 	assertions.assert_true(navigation_agent != null and not navigation_agent.avoidance_enabled, "%s should use navigation path points without actor avoidance steering." % label)
+	if navigation_agent != null:
+		assertions.assert_eq(navigation_agent.navigation_layers, DEFAULT_CHARACTER_NAVIGATION_LAYER, "%s NavigationAgent2D should use the shared character navigation layer." % label)
 	assertions.assert_true(knight.has_method("collect_story_save_state"), "%s should expose story save collection." % label)
 	assertions.assert_true(knight.has_method("apply_story_save_state"), "%s should expose story save restore." % label)
 	assertions.assert_true(knight.has_method("set_respawn_enabled"), "%s should expose respawn policy control." % label)
+
+
+func assert_knight_transform_aggro_contract(assertions: TestAssertions, tree: SceneTree):
+	var knight := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	var player := MockPlayer.new()
+	tree.root.add_child(player)
+	player.global_position = knight.global_position
+	await tree.physics_frame
+
+	knight.call("_on_tracking_body_entered", player)
+	await tree.physics_frame
+	assertions.assert_true(bool(knight.get("player_in_tracking")), "Non-camp knight should track the player before transformation.")
+	assertions.assert_true(player.is_connected("transformation_state_changed", Callable(knight, "_on_player_transformation_state_changed")), "Knight should track Saorise's transformation signal once engaged.")
+
+	player.transforming_forms = true
+	player.transformation_state_changed.emit(true)
+	knight.call("_on_tracking_body_exited", player)
+	knight.call("_on_attack_range_body_exited", player)
+	assertions.assert_true(bool(knight.get("player_in_tracking")), "Transform-caused tracking exit should not clear non-camp knight aggro immediately.")
+	assertions.assert_true(bool(knight.get("refreshing_player_ranges_after_transform")), "Knight should schedule a post-transform range refresh.")
+
+	player.transforming_forms = false
+	player.transformation_state_changed.emit(false)
+	await tree.physics_frame
+	await tree.physics_frame
+	await tree.physics_frame
+	await tree.physics_frame
+	assertions.assert_true(bool(knight.get("player_in_tracking")), "Non-camp knight should preserve aggro after transformation settles while Saorise still overlaps tracking range.")
+	assertions.assert_false(bool(knight.get("refreshing_player_ranges_after_transform")), "Knight transform range refresh should finish after the settle frames.")
+
+	player.global_position = knight.global_position + Vector2(10000, 0)
+	await tree.physics_frame
+	knight.call("_on_tracking_body_exited", player)
+	await tree.physics_frame
+	assertions.assert_false(bool(knight.get("player_in_tracking")), "Knight should still lose aggro from a real tracking exit after transformation has settled.")
+
+	free_nodes([knight, player])
+	await tree.process_frame
 
 
 func assert_campfire_layout_contracts(assertions: TestAssertions, tree: SceneTree):
@@ -719,6 +809,7 @@ func assert_campfire_layout_contracts(assertions: TestAssertions, tree: SceneTre
 		assertions.assert_true(camp_navigation_region != null, "Campfire layout %s should own a variant-specific CampNavigationRegion." % layout_key)
 		if camp_navigation_region != null:
 			assertions.assert_true(camp_navigation_region.navigation_polygon != null, "Campfire layout %s CampNavigationRegion should have an editable NavigationPolygon." % layout_key)
+			assertions.assert_eq(camp_navigation_region.navigation_layers, CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER, "Campfire layout %s CampNavigationRegion should use the campfire-base knight navigation layer." % layout_key)
 		for node_name in expected.keys():
 			var node := camp_navigation_region.get_node_or_null(node_name) if camp_navigation_region != null else null
 			assertions.assert_true(node != null, "Campfire layout %s should have %s." % [layout_key, node_name])
@@ -737,6 +828,7 @@ func assert_campfire_layout_contracts(assertions: TestAssertions, tree: SceneTre
 		assertions.assert_true(camp_navigation_region != null and camp_navigation_region.get_node_or_null("MeleeBanner") is StaticBody2D, "Campfire layout %s should keep a collision-ready banner component under CampNavigationRegion." % layout_key)
 		var return_paths := camp_navigation_region.get_node_or_null("ReturnPaths") if camp_navigation_region != null else null
 		assertions.assert_true(return_paths == null, "Campfire layout %s should not keep obsolete ReturnPaths; knight return-home uses navigation only." % layout_key)
+		assertions.assert_true(layout.get_node_or_null("NavigationLinks") == null, "Campfire layout %s should not use forced NavigationLink2D exits; camp and level navigation stay separate." % layout_key)
 		assertions.assert_true(layout.get_node_or_null("KnightRoster") is Node2D, "Campfire layout %s should have a KnightRoster container for authored linked knights." % layout_key)
 		var respawn_point := layout.get_node_or_null("RespawnPoint") as Marker2D
 		assertions.assert_true(respawn_point is Marker2D, "Campfire layout %s should keep a respawn marker as a direct layout child." % layout_key)
@@ -1090,6 +1182,10 @@ func assert_knight_runtime_stabilization_contract(assertions: TestAssertions, tr
 	var hurt_duration := float(tuning.hurt_duration_seconds) if tuning != null else 0.35
 	melee.call("update_hurt", hurt_duration + 0.01)
 	assertions.assert_eq(melee.get("state"), "chase", "Hurt knight should resume chase if the player is still tracked.")
+	if sprite != null:
+		assertions.assert_eq(float(sprite.speed_scale), 1.0, "Normal hurt recovery should leave sprite playback speed restored.")
+		melee.call("play_directional_animation", "run")
+		assertions.assert_true(sprite.is_playing(), "Knight locomotion animation should be playing after normal hurt recovery.")
 
 	var health := melee.get_node_or_null("Health")
 	var max_health := int(health.get("max_health")) if health != null else 999
@@ -1301,6 +1397,11 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 	controller.call("connect_campfires")
 	controller.call("connect_knights")
 	controller.call("apply_campfire_rules")
+	await tree.process_frame
+	var detection_area := knight.get_node_or_null("DetectionArea") as Area2D
+	assertions.assert_true(detection_area != null, "Camp-linked knight should expose its personal DetectionArea.")
+	if detection_area != null:
+		assertions.assert_false(detection_area.monitoring, "Camp-linked personal DetectionArea should stay disabled while the knight is inside camp bounds.")
 	assertions.assert_true(knight.get("respawn_enabled") == true, "Knight respawn should start enabled while the linked campfire is alive.")
 	assertions.assert_eq(controller.call("get_camp_max_knight_count", campfire), 5, "Linked campfire variant should expose its max knight roster to the encounter helper.")
 	knight.call("_on_detection_body_entered", player)
@@ -1335,10 +1436,68 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 	assertions.assert_false(bool(knight.get("current_movement_uses_navigation")) == false and (knight.get("velocity") as Vector2).length() > 0.0, "Camp detection should not start direct fallback movement for the first linked knight.")
 	assertions.assert_false(bool(second_knight.get("current_movement_uses_navigation")) == false and (second_knight.get("velocity") as Vector2).length() > 0.0, "Camp detection should not start direct fallback movement for linked knights.")
 	assertions.assert_true(bool(knight.call("should_chase_player")), "Camp-linked knight tracking should maintain chase after camp aggro starts.")
+	player.transforming_forms = true
+	player.transformation_state_changed.emit(true)
 	knight.call("_on_tracking_body_exited", player)
-	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should stay active while any linked live knight still tracks the player.")
 	second_knight.call("_on_tracking_body_exited", player)
-	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should clear after all linked live knights lose tracking.")
+	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should not clear from transform-caused tracking exits.")
+	assertions.assert_true(bool(knight.get("player_in_tracking")), "Camp-linked knight should preserve tracking during Saorise transformation.")
+	assertions.assert_true(bool(second_knight.get("player_in_tracking")), "Sibling camp-linked knight should preserve tracking during Saorise transformation.")
+	player.transforming_forms = false
+	player.transformation_state_changed.emit(false)
+	await tree.physics_frame
+	await tree.physics_frame
+	await tree.physics_frame
+	player.global_position = campfire.global_position
+	await tree.physics_frame
+	campfire.emit_signal("player_tracking_exited", campfire, player)
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should clear when CampTrackingArea reports the player exited.")
+	await tree.physics_frame
+	await tree.physics_frame
+	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should refresh if the player is already inside CampAggroArea when all knights lose tracking.")
+	assertions.assert_eq(knight.get("state"), "chase", "Overlap refresh should force the first linked knight back to chase.")
+	assertions.assert_eq(second_knight.get("state"), "chase", "Overlap refresh should force sibling linked knights back to chase.")
+	player.global_position = campfire.global_position + Vector2(10000, 0)
+	await tree.physics_frame
+	campfire.emit_signal("player_tracking_exited", campfire, player)
+	await tree.physics_frame
+	await tree.physics_frame
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp aggro should stay cleared when the player is outside CampAggroArea after all knights lose tracking.")
+
+	player.global_position = campfire.global_position + Vector2(720, 0)
+	knight.global_position = campfire.global_position + Vector2(680, 0)
+	second_knight.global_position = campfire.global_position + Vector2(700, 0)
+	knight.call("refresh_personal_detection_enabled")
+	second_knight.call("refresh_personal_detection_enabled")
+	await tree.process_frame
+	if detection_area != null:
+		assertions.assert_false(detection_area.monitoring, "Camp-linked personal DetectionArea should stay disabled outside camp bounds; CampfireBase owns detection.")
+	var second_detection_area := second_knight.get_node_or_null("DetectionArea") as Area2D
+	if second_detection_area != null:
+		assertions.assert_false(second_detection_area.monitoring, "Sibling camp-linked DetectionArea should stay disabled outside camp bounds.")
+	knight.call("_on_detection_body_entered", player)
+	assertions.assert_false(bool(knight.get("personal_aggro_active")), "Camp-linked knight DetectionArea should not start personal aggro outside camp bounds.")
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp-linked knight DetectionArea should not write camp-wide aggro state.")
+	controller.call("_on_campfire_player_detected", campfire, player)
+	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Campfire detection should own camp-wide aggro state outside camp bounds.")
+	assertions.assert_eq(knight.get("state"), "chase", "Campfire detection should force the first linked knight to chase.")
+	assertions.assert_eq(second_knight.get("state"), "chase", "Campfire detection should force sibling linked knights to chase.")
+	player.transforming_forms = true
+	player.transformation_state_changed.emit(true)
+	campfire.emit_signal("player_tracking_exited", campfire, player)
+	assertions.assert_true(controller.get("camp_aggro_by_id").has(campfire_base_id), "Transform-caused camp tracking exit should not clear camp-wide aggro.")
+	assertions.assert_eq(knight.get("state"), "chase", "Camp-linked knight should keep chasing during Saorise transformation.")
+	player.transforming_forms = false
+	player.transformation_state_changed.emit(false)
+	await tree.physics_frame
+	await tree.physics_frame
+	await tree.physics_frame
+	player.global_position = campfire.global_position + Vector2(10000, 0)
+	campfire.emit_signal("player_tracking_exited", campfire, player)
+	assertions.assert_false(controller.get("camp_aggro_by_id").has(campfire_base_id), "Camp-wide aggro should clear when CampTrackingArea loses the player.")
+	assertions.assert_eq(knight.get("state"), "return_home", "Camp-linked knight should return when camp tracking ends.")
+	assertions.assert_eq(second_knight.get("state"), "return_home", "Sibling camp-linked knight should return when camp tracking ends.")
+
 	knight.global_position = original_home + Vector2(48, 0)
 	if knight.has_method("clear_active_dialogue_bubble"):
 		knight.clear_active_dialogue_bubble()
@@ -1381,6 +1540,48 @@ func assert_knight_camp_encounter_helper(assertions: TestAssertions, tree: Scene
 	assertions.assert_eq(str(campfire.get("current_variant_id")), starting_variant_id, "Campfire save restore should restore the saved variant id.")
 
 	root.queue_free()
+	await tree.process_frame
+
+
+func assert_knight_camp_level_support(assertions: TestAssertions, tree: SceneTree):
+	var level := Node2D.new()
+	var hostile_root := Node2D.new()
+	var campfire_packed: PackedScene = load(CAMPFIRE_SCENE)
+	var knight_packed: PackedScene = load(MELEE_SCENE)
+	var player := MockPlayer.new()
+	var campfire := campfire_packed.instantiate()
+	var knight := knight_packed.instantiate()
+	var support := LEVEL_SUPPORT_SCRIPT.new()
+
+	hostile_root.name = "HostileNPCs"
+	campfire.set("campfire_base_id", &"campfire_base_1")
+	knight.global_position = Vector2(96, 0)
+	level.add_child(hostile_root)
+	hostile_root.add_child(player)
+	hostile_root.add_child(campfire)
+	hostile_root.add_child(knight)
+	level.add_child(support)
+	tree.root.add_child(level)
+	knight.set("campfire_base_path", knight.get_path_to(campfire))
+	support.configure(level, hostile_root, hostile_root)
+	await tree.process_frame
+	await tree.process_frame
+
+	var controller: Node = support.call("get_knight_camp_controller")
+	assertions.assert_true(controller != null, "Shared knight camp level support should create an encounter controller.")
+	if controller != null:
+		assertions.assert_eq((controller.get("campfires") as Array).size(), 1, "Shared level support should discover campfire bases from the configured hostile root.")
+		assertions.assert_eq((controller.get("knights") as Array).size(), 1, "Shared level support should discover linked knights from the configured hostile root.")
+		assert_campfire_signal_wired(assertions, campfire, controller, "Shared level support")
+		assert_knight_signals_wired(assertions, knight, controller, "Shared level support")
+		campfire.emit_signal("player_detected", campfire, player)
+		assertions.assert_eq(knight.get("state"), "chase", "Shared level support should route campfire detection into linked knight aggro.")
+
+		var state: Dictionary = support.call("collect_level_state")
+		assertions.assert_has_key(state, "knights", "Shared level support should expose knight camp state.")
+		assertions.assert_has_key(state, "campfires", "Shared level support should expose campfire state.")
+
+	level.queue_free()
 	await tree.process_frame
 
 
@@ -1484,6 +1685,89 @@ func assert_multi_camp_identity_isolation(assertions: TestAssertions, tree: Scen
 	await tree.process_frame
 
 
+func assert_split_knight_navigation_support(assertions: TestAssertions, tree: SceneTree):
+	var level := Node2D.new()
+	level.name = "FutureCampLevel"
+	var playable_world := Node2D.new()
+	playable_world.name = "PlayableWorld"
+	var navigation := Node2D.new()
+	navigation.name = "Navigation"
+	var character_regions := Node2D.new()
+	character_regions.name = "CharacterNavigationRegions"
+	var level_region := NavigationRegion2D.new()
+	level_region.name = "LevelCharacterNavigationRegion"
+	level_region.navigation_layers = DEFAULT_CHARACTER_NAVIGATION_LAYER
+	assign_square_navigation_polygon(level_region, Vector2(-512, -512), Vector2(512, 512))
+	var source_geometry := Node2D.new()
+	source_geometry.name = "NavigationSourceGeometry"
+	source_geometry.add_to_group("navigation_polygon_source_group")
+	var environment := Node2D.new()
+	environment.name = "Environment"
+	var characters := Node2D.new()
+	characters.name = "Characters"
+	var hostile_root := Node2D.new()
+	hostile_root.name = "HostileNPCs"
+
+	level.add_child(playable_world)
+	playable_world.add_child(navigation)
+	navigation.add_child(character_regions)
+	character_regions.add_child(level_region)
+	level_region.add_child(source_geometry)
+	playable_world.add_child(environment)
+	environment.add_child(characters)
+	characters.add_child(hostile_root)
+	tree.root.add_child(level)
+
+	var support := LEVEL_SUPPORT_SCRIPT.new()
+	support.name = "KnightCampLevelSupport"
+	level.add_child(support)
+	var campfire_packed: PackedScene = load(CAMPFIRE_SCENE)
+	assertions.assert_true(campfire_packed != null, "Campfire scene should load for split navigation support.")
+	if campfire_packed == null:
+		level.queue_free()
+		await tree.process_frame
+		return
+
+	var campfire_a := campfire_packed.instantiate()
+	var campfire_b := campfire_packed.instantiate()
+	campfire_a.set("campfire_base_id", &"campfire_base_1")
+	campfire_b.set("campfire_base_id", &"campfire_base_2")
+	campfire_a.global_position = Vector2(-128, 0)
+	campfire_b.global_position = Vector2(128, 0)
+	hostile_root.add_child(campfire_a)
+	hostile_root.add_child(campfire_b)
+	await tree.process_frame
+
+	support.configure(level, hostile_root, hostile_root)
+	await tree.process_frame
+	assertions.assert_eq(level_region.navigation_polygon.get_polygon_count(), 1, "Camp support should not mutate the authored level-wide navigation polygon.")
+
+	var active_camp_region := campfire_a.call("get_active_camp_navigation_region") as NavigationRegion2D
+	assertions.assert_true(active_camp_region != null, "CampfireBase should keep the active CampNavigationRegion for linked knight pathing and camp bounds.")
+	if active_camp_region != null:
+		assertions.assert_true(active_camp_region.enabled, "CampNavigationRegion should be active for camp-linked knight pathing.")
+		assertions.assert_eq(active_camp_region.navigation_layers, CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER, "CampNavigationRegion should use the campfire-base knight navigation layer.")
+
+	var controller: Node = support.call("get_knight_camp_controller")
+	var linked_knight: Node = controller.call("get_linked_knight_by_index", campfire_a, 0) if controller != null else null
+	assertions.assert_true(linked_knight != null, "Camp support should discover a linked camp knight.")
+	if linked_knight != null:
+		var linked_agent := linked_knight.get_node_or_null("NavigationAgent2D") as NavigationAgent2D
+		assertions.assert_true(linked_agent != null, "Linked camp knight should have a NavigationAgent2D.")
+		if linked_agent != null:
+			assertions.assert_eq(linked_agent.navigation_layers, CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER, "Linked camp knights should use the camp navigation layer.")
+		var linked_detection := linked_knight.get_node_or_null("DetectionArea") as Area2D
+		var linked_tracking := linked_knight.get_node_or_null("TrackingArea") as Area2D
+		await tree.physics_frame
+		if linked_detection != null:
+			assertions.assert_false(linked_detection.monitoring, "Camp-linked knight DetectionArea should be disabled; campfire base owns detection.")
+		if linked_tracking != null:
+			assertions.assert_false(linked_tracking.monitoring, "Camp-linked knight TrackingArea should be disabled; campfire base owns tracking.")
+
+	level.queue_free()
+	await tree.process_frame
+
+
 func assert_starting_wilderness_campfire_identity_and_indexes(assertions: TestAssertions, tree: SceneTree):
 	var packed: PackedScene = load(STARTING_WILDERNESS_SCENE)
 	assertions.assert_true(packed != null, "Starting Wilderness should load for campfire identity/index coverage.")
@@ -1561,12 +1845,12 @@ func assert_knight_camp_navigation_switching(assertions: TestAssertions, tree: S
 		assertions.assert_true(bool(knight.call("should_use_navigation_for_chase", campfire.global_position + Vector2(16, 0))), "Linked knight should use NavigationAgent2D for chase.")
 		knight.call("force_aggro", inside_player)
 		assertions.assert_false(bool(knight.get("current_movement_uses_navigation")) == false and (knight.get("velocity") as Vector2).length() > 0.0, "Camp aggro should not produce non-navigation direct chase velocity.")
-		assertions.assert_true(bool(knight.call("should_use_navigation_for_chase", campfire.global_position + Vector2(360, 0))), "Linked knight should still require NavigationAgent2D when the chase target is outside the active camp polygon.")
+		assertions.assert_true(bool(knight.call("should_direct_chase_outside_camp_navigation", campfire.global_position + Vector2(360, 0))), "Linked knight should direct-chase when the chase target is outside the active camp polygon during camp aggro.")
 		knight.global_position = campfire.global_position + Vector2(360, 0)
-		assertions.assert_true(bool(knight.call("should_use_navigation_for_chase", campfire.global_position)), "Linked knight should still require NavigationAgent2D after leaving its active camp polygon.")
+		assertions.assert_true(bool(knight.call("should_direct_return_until_camp_navigation")), "Linked knight should direct-return until it reaches the active camp polygon again.")
 		region.navigation_polygon = NavigationPolygon.new()
 		knight.global_position = campfire.global_position
-		assertions.assert_true(bool(knight.call("should_use_navigation_for_chase", campfire.global_position)), "Linked knight should not switch to direct tracking when the active camp navigation polygon is empty.")
+		assertions.assert_true(bool(knight.call("should_direct_chase_outside_camp_navigation", campfire.global_position)), "Linked knight should direct-chase if the active camp navigation polygon is empty during camp aggro.")
 
 	var player := MockPlayer.new()
 	player.global_position = Vector2(240, 0)
@@ -1600,10 +1884,10 @@ func assert_knight_camp_navigation_switching(assertions: TestAssertions, tree: S
 			continue
 		layout_knight.set("player", outside_player)
 		layout_knight.set("player_in_tracking", true)
-		assertions.assert_true(bool(layout_knight.call("should_use_navigation_for_chase", outside_player.global_position)), "%s should still require NavigationAgent2D when the player is outside Layout C camp navigation." % knight_name)
+		assertions.assert_true(bool(layout_knight.call("should_direct_chase_outside_camp_navigation", outside_player.global_position)), "%s should direct-chase when the player is outside Layout C camp navigation." % knight_name)
 		layout_knight.call("chase_player")
 		assertions.assert_eq(layout_knight.get("state"), "chase", "%s should enter chase when aggroed." % knight_name)
-		assertions.assert_false(bool(layout_knight.get("current_movement_uses_navigation")) == false and (layout_knight.get("velocity") as Vector2).length() > 0.0, "%s should not direct-chase when no navigation path point is available." % knight_name)
+		assertions.assert_true(bool(layout_knight.get("current_movement_uses_navigation")) == false and (layout_knight.get("velocity") as Vector2).length() > 0.0, "%s should direct-chase outside camp navigation during active camp aggro." % knight_name)
 		var velocity_before_block: Vector2 = layout_knight.get("velocity") as Vector2
 		layout_knight.call("register_blocked_movement")
 		assertions.assert_eq(layout_knight.get("velocity"), velocity_before_block, "%s blocked chase should preserve navigation velocity for the active movement grace window." % knight_name)
@@ -1635,6 +1919,19 @@ func assert_starting_wilderness_knight_camp_wiring(assertions: TestAssertions, t
 	if flow != null:
 		assertions.assert_true(flow.get("encounter_controller") != null, "Starting Wilderness should keep its Banshee encounter controller.")
 		assertions.assert_true(flow.get("knight_camp_controller") != null, "Starting Wilderness should create a KnightCampEncounterController.")
+		assert_real_level_split_navigation_contract(assertions, flow, "Starting Wilderness")
+		var controller: Node = flow.get("knight_camp_controller")
+		if controller != null:
+			var campfire: Node = controller.call("get_campfire_base_by_index", 0)
+			var linked_knight: Node = controller.call("get_linked_knight_by_index", campfire, 0) if campfire != null else null
+			var player := MockPlayer.new()
+			level.add_child(player)
+			await tree.process_frame
+			if campfire != null and linked_knight != null:
+				assert_campfire_signal_wired(assertions, campfire, controller, "Starting Wilderness")
+				assert_knight_signals_wired(assertions, linked_knight, controller, "Starting Wilderness")
+				campfire.emit_signal("player_detected", campfire, player)
+				assertions.assert_eq(linked_knight.get("state"), "chase", "Starting Wilderness campfire signal should force linked knights to chase without manual rewiring.")
 		var state: Dictionary = flow.call("collect_level_state")
 		assertions.assert_has_key(state, "encounter", "Starting Wilderness state should keep the Banshee encounter key.")
 		assertions.assert_has_key(state, "knight_camps", "Starting Wilderness state should include level-local knight camp state.")
@@ -1647,20 +1944,146 @@ func assert_starting_wilderness_knight_camp_wiring(assertions: TestAssertions, t
 	await tree.process_frame
 
 
+func assert_weeping_woods_knight_camp_wiring(assertions: TestAssertions, tree: SceneTree):
+	var level := await instantiate_scene(assertions, tree, WEEPING_WOODS_SCENE)
+	assertions.assert_true(level != null, "Weeping Woods should instantiate for knight camp wiring test.")
+	if level == null:
+		return
+
+	var flow := level.get_node_or_null("WeepingWoodsFlowController")
+	assertions.assert_true(flow != null, "Weeping Woods should have a flow controller.")
+	if flow != null:
+		assertions.assert_true(flow.get("knight_camp_controller") != null, "Weeping Woods should create a KnightCampEncounterController for authored campfire bases.")
+		assert_real_level_split_navigation_contract(assertions, flow, "Weeping Woods")
+		var controller: Node = flow.get("knight_camp_controller")
+		if controller != null:
+			var campfires: Array = controller.get("campfires") as Array
+			var knights: Array = controller.get("knights") as Array
+			assertions.assert_eq(campfires.size(), 5, "Weeping Woods should discover all authored campfire bases.")
+			assertions.assert_true(not knights.is_empty(), "Weeping Woods camp support should discover promoted layout knights.")
+			assertions.assert_true((controller.call("validate_unique_campfire_base_ids") as Array).is_empty(), "Weeping Woods campfire_base_id values should validate as unique within the level.")
+			assertions.assert_true((controller.call("validate_campfire_linked_knights") as Array).is_empty(), "Every Weeping Woods campfire base should have linked knights after layout promotion.")
+
+			var campfire: Node = controller.call("get_campfire_base_by_index", 0)
+			var linked_knight: Node = controller.call("get_linked_knight_by_index", campfire, 0) if campfire != null else null
+			var player := MockPlayer.new()
+			level.add_child(player)
+			await tree.process_frame
+			if campfire != null and linked_knight != null:
+				assert_campfire_signal_wired(assertions, campfire, controller, "Weeping Woods")
+				assert_knight_signals_wired(assertions, linked_knight, controller, "Weeping Woods")
+				campfire.emit_signal("player_detected", campfire, player)
+				assertions.assert_eq(linked_knight.get("state"), "chase", "Weeping Woods campfire signal should force linked knights to chase without manual rewiring.")
+
+		var state: Dictionary = flow.call("collect_level_state")
+		assertions.assert_has_key(state, "knight_camps", "Weeping Woods state should include level-local knight camp state.")
+
+	level.queue_free()
+	await tree.process_frame
+
+
+func assert_banshee_village_knight_camp_support_is_available(assertions: TestAssertions, tree: SceneTree):
+	var level := await instantiate_scene(assertions, tree, BANSHEE_VILLAGE_SCENE)
+	assertions.assert_true(level != null, "Banshee Village should instantiate for knight camp support availability test.")
+	if level == null:
+		return
+
+	var flow := level.get_node_or_null("BansheeVillageFlowController")
+	assertions.assert_true(flow != null, "Banshee Village should have a flow controller.")
+	if flow != null:
+		assertions.assert_true(flow.get("knight_camp_controller") != null, "Banshee Village should create reusable knight camp support so future campfire bases work there.")
+		var state: Dictionary = flow.call("collect_level_state")
+		assertions.assert_has_key(state, "knight_camps", "Banshee Village state should include reusable knight camp state.")
+		var controller: Node = flow.get("knight_camp_controller")
+		if controller != null:
+			controller.call("refresh_members")
+			assertions.assert_true((controller.call("validate_unique_campfire_base_ids") as Array).is_empty(), "Banshee Village empty camp support should validate cleanly when no campfire bases are authored.")
+
+	level.queue_free()
+	await tree.process_frame
+
+
+func assert_real_level_split_navigation_contract(assertions: TestAssertions, flow: Node, label: String):
+	var support: Node = flow.get("knight_camp_support") if flow != null else null
+	assertions.assert_true(support != null, "%s should expose KnightCampLevelSupport for split camp/level navigation." % label)
+	if support == null:
+		return
+	for variant_id in [&"campfire_base_a", &"campfire_base_b", &"campfire_base_c"]:
+		apply_variant_to_all_campfires(flow, variant_id)
+		var controller: Node = flow.get("knight_camp_controller") if flow != null else null
+		var campfire: Node = controller.call("get_campfire_base_by_index", 0) if controller != null else null
+		var camp_region := campfire.call("get_active_camp_navigation_region") as NavigationRegion2D if campfire != null else null
+		assertions.assert_true(camp_region != null and camp_region.enabled, "%s active camp region should remain enabled for %s." % [label, variant_id])
+		if camp_region != null:
+			assertions.assert_eq(camp_region.navigation_layers, CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER, "%s active camp region should use camp layer for %s." % [label, variant_id])
+
+
+func apply_variant_to_all_campfires(flow: Node, variant_id: StringName):
+	var controller: Node = flow.get("knight_camp_controller") if flow != null else null
+	if controller == null:
+		return
+	var campfires: Array = controller.get("campfires") as Array
+	for campfire in campfires:
+		if campfire != null and campfire.has_method("select_variant_by_id") and campfire.has_method("apply_current_variant"):
+			campfire.call("select_variant_by_id", variant_id)
+			campfire.call("apply_current_variant")
+	controller.call("refresh_wiring")
+
+
+func assert_campfire_signal_wired(assertions: TestAssertions, campfire: Node, controller: Node, label: String):
+	assertions.assert_true(campfire != null, "%s should have a campfire to inspect signal wiring." % label)
+	assertions.assert_true(controller != null, "%s should have a camp controller to inspect signal wiring." % label)
+	if campfire == null or controller == null:
+		return
+
+	var callback := Callable(controller, "_on_campfire_player_detected")
+	assertions.assert_true(campfire.is_connected("player_detected", callback), "%s CampfireBase player_detected should be connected to the camp controller." % label)
+	var tracking_callback := Callable(controller, "_on_campfire_player_tracking_exited")
+	assertions.assert_true(campfire.is_connected("player_tracking_exited", tracking_callback), "%s CampfireBase player_tracking_exited should be connected to the camp controller." % label)
+
+
+func assert_knight_signals_wired(assertions: TestAssertions, knight: Node, controller: Node, label: String):
+	assertions.assert_true(knight != null, "%s should have a linked knight to inspect signal wiring." % label)
+	assertions.assert_true(controller != null, "%s should have a camp controller to inspect signal wiring." % label)
+	if knight == null or controller == null:
+		return
+
+	if knight.has_signal("defeated"):
+		assertions.assert_true(knight.is_connected("defeated", Callable(controller, "_on_knight_defeated")), "%s linked knight defeated should be connected to the camp controller." % label)
+	if knight.has_signal("player_tracking_changed"):
+		assertions.assert_false(knight.is_connected("player_tracking_changed", Callable(controller, "_on_knight_tracking_changed")), "%s linked knight tracking should not drive camp aggro; CampfireBase owns tracking." % label)
+
+
 func assert_level_navigation_authoring_contracts(assertions: TestAssertions, tree: SceneTree):
 	await assert_knight_navigation_contract(assertions, tree, STARTING_WILDERNESS_SCENE, "Starting Wilderness", false)
 	await assert_knight_navigation_contract(assertions, tree, WEEPING_WOODS_SCENE, "Weeping Woods", true)
+	await assert_knight_navigation_contract(assertions, tree, BANSHEE_VILLAGE_SCENE, "Banshee Village", false)
 
 
 func assert_knight_navigation_contract(assertions: TestAssertions, tree: SceneTree, scene_path: String, label: String, expect_campfire_base_container: bool):
 	var level := await instantiate_scene(assertions, tree, scene_path)
-	assertions.assert_true(level != null, "%s should instantiate for knight navigation authoring test." % label)
+	assertions.assert_true(level != null, "%s should instantiate for character navigation authoring test." % label)
 	if level == null:
 		return
 
 	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation") is Node2D, "%s should have PlayableWorld/Navigation." % label)
-	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation/KnightNavigationRegions") is Node2D, "%s should have KnightNavigationRegions." % label)
-	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation/KnightNavigationRegions/CampNavigationRegion") == null, "%s should leave camp-specific navigation regions on campfire layout variants." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation/CharacterNavigationRegions") is Node2D, "%s should have CharacterNavigationRegions." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation/CharacterNavigationRegions/CampNavigationRegion") == null, "%s should leave camp-specific navigation regions on campfire layout variants." % label)
+	var level_navigation_region := level.get_node_or_null("PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion") as NavigationRegion2D
+	assertions.assert_true(level_navigation_region != null, "%s should have LevelCharacterNavigationRegion for level-wide character navigation." % label)
+	if level_navigation_region != null:
+		assertions.assert_true(level_navigation_region.navigation_polygon != null, "%s LevelCharacterNavigationRegion should own a NavigationPolygon resource." % label)
+		assertions.assert_eq(level_navigation_region.navigation_layers, DEFAULT_CHARACTER_NAVIGATION_LAYER, "%s LevelCharacterNavigationRegion should use the shared character navigation layer." % label)
+		if level_navigation_region.navigation_polygon != null:
+			assertions.assert_true(level_navigation_region.navigation_polygon.get_polygon_count() > 0, "%s LevelCharacterNavigationRegion should have an initial walkable polygon for character navigation." % label)
+	var source_geometry := level.get_node_or_null("PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion/NavigationSourceGeometry")
+	assertions.assert_true(source_geometry is Node2D, "%s should have NavigationSourceGeometry under the level-wide character navigation region." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion/NavigationSourceGeometry/TerrainProps") is Node2D, "%s TerrainProps should live under NavigationSourceGeometry." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion/NavigationSourceGeometry/Buildings") is Node2D, "%s Buildings should live under NavigationSourceGeometry." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Environment/TerrainProps") == null, "%s should not keep TerrainProps under PlayableWorld/Environment after the navigation hierarchy refactor." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Environment/Buildings") == null, "%s should not keep Buildings under PlayableWorld/Environment after the navigation hierarchy refactor." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Environment/Characters") is Node2D, "%s should keep Characters outside the navigation source tree." % label)
+	assertions.assert_true(level.get_node_or_null("PlayableWorld/Environment/Interactables") is Node2D, "%s should keep Interactables outside the navigation source tree." % label)
 
 	if expect_campfire_base_container:
 		assertions.assert_true(level.get_node_or_null("PlayableWorld/Environment/Characters/HostileNPCs/CampfireBases") is Node2D, "%s should have a CampfireBases organization node for future camps." % label)

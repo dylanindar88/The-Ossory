@@ -127,7 +127,7 @@ func apply_story_save_state(state: Dictionary):
 
 func get_tent_id() -> String:
 	var id := str(tent_id)
-	return name if id == "" else id
+	return str(name) if id == "" else id
 
 
 func play_alive_visual():

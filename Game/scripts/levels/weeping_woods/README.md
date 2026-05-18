@@ -9,7 +9,7 @@ Weeping Woods follows the standard story-capable level shape:
 
 The current flow controller stores only a `state_version` placeholder. Keep it as the public place for future Weeping Woods state, including level-local NPCs, encounters, collectibles, traversal gates, boss setup, and route-specific presentation.
 
-The scene is prepared for future knight camps with `PlayableWorld/Navigation/KnightNavigationRegions` and an empty `PlayableWorld/Environment/Characters/HostileNPCs/CampfireBases` organization node. Camp-specific navigation lives on each campfire layout variant's `CampNavigationRegion`. Once campfire bases are placed here, add a `KnightCampEncounterController` provider through the flow controller, following Starting Wilderness, so campfire/knight state stays level-local.
+The scene uses the shared hostile level support for authored Banshees and campfire-base knight camps. Level-wide character navigation lives under `PlayableWorld/Navigation/CharacterNavigationRegions`; camp-specific navigation lives on each campfire layout variant's `CampNavigationRegion`. Campfire and knight state stays level-local through the flow controller's shared support helpers.
 
 Use generic save and group names for reusable systems:
 

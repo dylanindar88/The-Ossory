@@ -10,6 +10,7 @@ size = Vector2(124, 44.25)
 [node name="SmallHouse" type="Node2D"]
 y_sort_enabled = true
 texture_filter = 1
+scale = Vector2(0.45, 0.45)
 
 [node name="House-wall" type="Node2D" parent="."]
 y_sort_enabled = true
