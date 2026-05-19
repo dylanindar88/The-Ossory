@@ -116,7 +116,7 @@ func _process(delta):
 	elif not dashing:
 		regenerate_stamina(delta)
 
-func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null, incoming_damage_multiplier: float = 1.0):
+func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null):
 	if dead:
 		return "ignored"
 
@@ -139,7 +139,7 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, damage_sourc
 		damage_blocked.emit()
 		return "blocked"
 
-	var damage_amount := get_incoming_damage_amount(amount, incoming_damage_multiplier)
+	var damage_amount := get_incoming_damage_amount(amount)
 	health -= damage_amount
 	health = clamp(health, 0, max_health)
 
@@ -153,9 +153,9 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, damage_sourc
 
 	return "damaged"
 
-func get_incoming_damage_amount(_amount: int, incoming_damage_multiplier: float = 1.0) -> int:
+func get_incoming_damage_amount(_amount: int) -> int:
 	var base_damage: float = ceil(float(max_health) / float(max(hits_to_die, 1)))
-	return max(1, int(round(base_damage * maxf(incoming_damage_multiplier, 0.0))))
+	return max(1, int(base_damage))
 
 func heal(amount: int):
 	if dead:

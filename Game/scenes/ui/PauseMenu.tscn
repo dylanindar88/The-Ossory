@@ -47,7 +47,6 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="MenuView" type="VBoxContainer" parent="Overlay/Panel"]
-visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -140,6 +139,32 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 text = "Options"
+flat = true
+
+[node name="DevTravelOption" type="Control" parent="Overlay/Panel/MenuView"]
+custom_minimum_size = Vector2(280, 52)
+layout_mode = 2
+
+[node name="Background" type="TextureRect" parent="Overlay/Panel/MenuView/DevTravelOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_r8i7u")
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Button" type="Button" parent="Overlay/Panel/MenuView/DevTravelOption"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "Dev Travel"
 flat = true
 
 [node name="TitleScreenOption" type="Control" parent="Overlay/Panel/MenuView"]
@@ -308,6 +333,7 @@ layout_mode = 2
 horizontal_alignment = 1
 
 [node name="SaveSlotsView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
 layout_mode = 1
 anchors_preset = 5
 anchor_left = 0.5
@@ -658,6 +684,87 @@ grow_horizontal = 2
 grow_vertical = 2
 text = "Back"
 flat = true
+
+[node name="DevTravelView" type="VBoxContainer" parent="Overlay/Panel"]
+visible = false
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -93.0909
+offset_top = 34.1818
+offset_right = 286.909
+offset_bottom = 568.182
+grow_horizontal = 2
+scale = Vector2(0.5, 0.5)
+theme_override_constants/separation = 10
+alignment = 1
+
+[node name="TitleLabel" type="Label" parent="Overlay/Panel/DevTravelView"]
+layout_mode = 2
+text = "Dev Travel"
+horizontal_alignment = 1
+
+[node name="ScrollContainer" type="ScrollContainer" parent="Overlay/Panel/DevTravelView"]
+custom_minimum_size = Vector2(380, 410)
+layout_mode = 2
+horizontal_scroll_mode = 0
+
+[node name="DevTravelOptions" type="VBoxContainer" parent="Overlay/Panel/DevTravelView/ScrollContainer"]
+custom_minimum_size = Vector2(360, 64)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="PreviewLevelOption" type="Control" parent="Overlay/Panel/DevTravelView/ScrollContainer/DevTravelOptions"]
+custom_minimum_size = Vector2(360, 62)
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="Overlay/Panel/DevTravelView/ScrollContainer/DevTravelOptions/PreviewLevelOption"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_right = -8.0
+offset_bottom = 22.0
+grow_horizontal = 2
+text = "Example Level"
+horizontal_alignment = 1
+
+[node name="PresetDropdown" type="OptionButton" parent="Overlay/Panel/DevTravelView/ScrollContainer/DevTravelOptions/PreviewLevelOption"]
+custom_minimum_size = Vector2(240, 34)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -34.0
+offset_right = 240.0
+grow_vertical = 0
+clip_text = true
+
+[node name="TravelButton" type="Button" parent="Overlay/Panel/DevTravelView/ScrollContainer/DevTravelOptions/PreviewLevelOption"]
+custom_minimum_size = Vector2(112, 34)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -112.0
+offset_top = -34.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Travel"
+
+[node name="DevTravelStatusLabel" type="Label" parent="Overlay/Panel/DevTravelView"]
+custom_minimum_size = Vector2(380, 24)
+layout_mode = 2
+text = "Status text"
+horizontal_alignment = 1
+
+[node name="BackButton" type="Button" parent="Overlay/Panel/DevTravelView"]
+custom_minimum_size = Vector2(280, 42)
+layout_mode = 2
+text = "Back"
 
 [node name="OptionsView" type="VBoxContainer" parent="Overlay/Panel"]
 visible = false

@@ -10,6 +10,8 @@ const TITLE_SCREEN_SCENE := "res://scenes/ui/TitleScreen.tscn"
 @onready var resume_button: Button = $Overlay/Panel/MenuView/ResumeOption/Button
 @onready var save_button: Button = $Overlay/Panel/MenuView/SaveOption/Button
 @onready var options_button: Button = $Overlay/Panel/MenuView/OptionsOption/Button
+@onready var authored_dev_travel_option: Control = $Overlay/Panel/MenuView/DevTravelOption
+@onready var authored_dev_travel_button: Button = $Overlay/Panel/MenuView/DevTravelOption/Button
 @onready var title_screen_button: Button = $Overlay/Panel/MenuView/TitleScreenOption/Button
 @onready var exit_button: Button = $Overlay/Panel/MenuView/ExitOption/Button
 @onready var save_status_label: Label = $Overlay/Panel/MenuView/SaveStatusLabel
@@ -38,6 +40,7 @@ var dev_travel_options: VBoxContainer
 var dev_travel_status_label: Label
 var dev_travel_back_button: Button
 var first_dev_travel_button: Button
+var dev_travel_option_template: Control
 
 
 func _ready():
@@ -47,6 +50,9 @@ func _ready():
 	options_view.visible = false
 	save_slots_view.visible = false
 	respawn_view.visible = false
+	var authored_dev_travel_view := $Overlay/Panel.get_node_or_null("DevTravelView") as Control
+	if authored_dev_travel_view != null:
+		authored_dev_travel_view.visible = false
 	save_status_label.text = ""
 	save_slots_status_label.text = ""
 	respawn_status_label.text = ""
@@ -66,7 +72,7 @@ func _ready():
 	player_gauges_checkbox.toggled.connect(_on_player_gauges_toggled)
 	SaveManager.player_lives_changed.connect(_on_player_lives_changed)
 	connect_save_slot_buttons()
-	create_dev_travel_controls()
+	bind_dev_travel_controls()
 
 	configure_zoom_slider()
 	configure_gauge_checkboxes()
@@ -99,28 +105,24 @@ func connect_save_slot_buttons():
 		get_slot_button(slot, "DeleteButton").pressed.connect(_on_delete_slot_pressed.bind(slot))
 
 
-func create_dev_travel_controls():
+func bind_dev_travel_controls():
 	if not is_dev_travel_enabled():
+		if authored_dev_travel_option != null:
+			authored_dev_travel_option.visible = false
+			authored_dev_travel_option.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		return
 
-	create_dev_travel_menu_option()
-	create_dev_travel_view()
+	bind_dev_travel_menu_option()
+	bind_dev_travel_view()
 
 
 func is_dev_travel_enabled() -> bool:
 	return OS.is_debug_build() or Engine.is_editor_hint()
 
 
-func create_dev_travel_menu_option():
-	var source_option: Control = options_button.get_parent() as Control
-	if source_option == null:
-		return
-
-	dev_travel_option = source_option.duplicate()
-	dev_travel_option.name = "DevTravelOption"
-	menu_view.add_child(dev_travel_option)
-	menu_view.move_child(dev_travel_option, title_screen_button.get_parent().get_index())
-	dev_travel_button = dev_travel_option.get_node_or_null("Button") as Button
+func bind_dev_travel_menu_option():
+	dev_travel_option = authored_dev_travel_option
+	dev_travel_button = authored_dev_travel_button
 	if dev_travel_button != null:
 		for connection in dev_travel_button.pressed.get_connections():
 			var callable: Callable = connection.get("callable", Callable())
@@ -130,46 +132,28 @@ func create_dev_travel_menu_option():
 		dev_travel_button.pressed.connect(open_dev_travel)
 
 
-func create_dev_travel_view():
-	dev_travel_view = VBoxContainer.new()
-	dev_travel_view.name = "DevTravelView"
+func bind_dev_travel_view():
+	dev_travel_view = $Overlay/Panel.get_node_or_null("DevTravelView") as VBoxContainer
+	if dev_travel_view == null:
+		push_warning("PauseMenu dev travel is enabled, but Overlay/Panel/DevTravelView is missing from the scene.")
+		return
+
+	dev_travel_options = dev_travel_view.get_node_or_null("ScrollContainer/DevTravelOptions") as VBoxContainer
+	dev_travel_status_label = dev_travel_view.get_node_or_null("DevTravelStatusLabel") as Label
+	dev_travel_back_button = dev_travel_view.get_node_or_null("BackButton") as Button
+	if dev_travel_options == null or dev_travel_status_label == null or dev_travel_back_button == null:
+		push_warning("PauseMenu DevTravelView is missing one or more required child nodes.")
+		dev_travel_view = null
+		return
+	if not bind_dev_travel_templates():
+		dev_travel_view = null
+		return
+
+	var back_callable := Callable(self, "open_main_menu")
+	if not dev_travel_back_button.pressed.is_connected(back_callable):
+		dev_travel_back_button.pressed.connect(back_callable)
+	dev_travel_status_label.text = ""
 	dev_travel_view.visible = false
-	dev_travel_view.anchor_left = 0.5
-	dev_travel_view.anchor_right = 0.5
-	dev_travel_view.offset_left = -96.0
-	dev_travel_view.offset_top = 34.0
-	dev_travel_view.offset_right = 284.0
-	dev_travel_view.offset_bottom = 568.0
-	dev_travel_view.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	dev_travel_view.scale = Vector2(0.5, 0.5)
-	dev_travel_view.add_theme_constant_override("separation", 10)
-	dev_travel_view.alignment = BoxContainer.ALIGNMENT_CENTER
-	$Overlay/Panel.add_child(dev_travel_view)
-
-	var title_label := Label.new()
-	title_label.text = "Dev Travel"
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dev_travel_view.add_child(title_label)
-
-	var scroll := ScrollContainer.new()
-	scroll.custom_minimum_size = Vector2(380, 410)
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	dev_travel_view.add_child(scroll)
-
-	dev_travel_options = VBoxContainer.new()
-	dev_travel_options.add_theme_constant_override("separation", 6)
-	scroll.add_child(dev_travel_options)
-
-	dev_travel_status_label = Label.new()
-	dev_travel_status_label.custom_minimum_size = Vector2(380, 24)
-	dev_travel_status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dev_travel_view.add_child(dev_travel_status_label)
-
-	dev_travel_back_button = Button.new()
-	dev_travel_back_button.custom_minimum_size = Vector2(280, 42)
-	dev_travel_back_button.text = "Back"
-	dev_travel_back_button.pressed.connect(open_main_menu)
-	dev_travel_view.add_child(dev_travel_back_button)
 
 
 func open_dev_travel():
@@ -193,7 +177,9 @@ func build_dev_travel_options():
 	first_dev_travel_button = null
 	dev_travel_status_label.text = ""
 	for child in dev_travel_options.get_children():
-		child.queue_free()
+		if bool(child.get_meta("dev_generated", false)):
+			dev_travel_options.remove_child(child)
+			child.queue_free()
 
 	var entries: Array = SaveManager.get_title_dev_level_entries() if SaveManager != null and SaveManager.has_method("get_title_dev_level_entries") else []
 	for raw_entry in entries:
@@ -207,23 +193,58 @@ func add_dev_travel_level_section(entry: Dictionary):
 	if scene_path == "" or not (raw_presets is Array):
 		return
 
-	var level_label := Label.new()
-	level_label.custom_minimum_size = Vector2(360, 24)
-	level_label.text = str(entry.get("display_name", scene_path))
-	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dev_travel_options.add_child(level_label)
+	var option := dev_travel_option_template.duplicate() as Control
+	option.name = "LevelOption"
+	option.set_meta("dev_generated", true)
+	option.visible = true
+	dev_travel_options.add_child(option)
 
+	var level_label := option.get_node_or_null("LevelLabel") as Label
+	if level_label == null:
+		push_warning("Pause dev travel option template is missing a LevelLabel.")
+		return
+	level_label.text = str(entry.get("display_name", scene_path))
+
+	var preset_dropdown := option.get_node_or_null("PresetDropdown") as OptionButton
+	if preset_dropdown == null:
+		push_warning("Pause dev travel option template is missing a PresetDropdown.")
+		return
+	preset_dropdown.clear()
+	populate_dev_travel_preset_dropdown(preset_dropdown, raw_presets)
+
+	var button := option.get_node_or_null("TravelButton") as Button
+	if button == null:
+		push_warning("Pause dev travel option template is missing a TravelButton.")
+		return
+	button.text = "Travel"
+	disconnect_button_signals(button)
+	button.pressed.connect(_on_dev_travel_dropdown_pressed.bind(scene_path, preset_dropdown))
+	if first_dev_travel_button == null:
+		first_dev_travel_button = button
+
+
+func populate_dev_travel_preset_dropdown(dropdown: OptionButton, raw_presets: Array):
 	for raw_preset in raw_presets:
 		if not (raw_preset is Dictionary):
 			continue
 		var preset: Dictionary = raw_preset
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(360, 34)
-		button.text = str(preset.get("label", "Start"))
-		button.pressed.connect(_on_dev_travel_pressed.bind(scene_path, str(preset.get("preset", ""))))
-		dev_travel_options.add_child(button)
-		if first_dev_travel_button == null:
-			first_dev_travel_button = button
+		var label := str(preset.get("label", "Start"))
+		if bool(preset.get("disabled", false)):
+			var reason := str(preset.get("disabled_reason", "Unavailable"))
+			if reason != "":
+				label = "%s - %s" % [label, reason]
+		dropdown.add_item(label)
+		var item_index := dropdown.item_count - 1
+		dropdown.set_item_metadata(item_index, str(preset.get("preset", "")))
+		if bool(preset.get("disabled", false)):
+			dropdown.set_item_disabled(item_index, true)
+
+
+func _on_dev_travel_dropdown_pressed(scene_path: String, dropdown: OptionButton):
+	var preset := ""
+	if dropdown != null and dropdown.selected >= 0:
+		preset = str(dropdown.get_item_metadata(dropdown.selected))
+	_on_dev_travel_pressed(scene_path, preset)
 
 
 func _on_dev_travel_pressed(scene_path: String, preset: String):
@@ -248,13 +269,55 @@ func set_dev_travel_buttons_disabled(disabled: bool):
 		return
 
 	for child in dev_travel_options.get_children():
-		if child is Button:
-			(child as Button).disabled = disabled
+		if bool(child.get_meta("dev_generated", false)):
+			set_buttons_disabled_recursive(child, disabled)
 
 
 func set_dev_travel_view_visible(visible_value: bool):
 	if dev_travel_view != null:
 		dev_travel_view.visible = visible_value
+
+
+func bind_dev_travel_templates() -> bool:
+	dev_travel_option_template = dev_travel_options.get_node_or_null("PreviewLevelOption") as Control
+	if dev_travel_option_template == null:
+		push_warning("PauseMenu DevTravelOptions is missing authored PreviewLevelOption template.")
+		return false
+
+	if dev_travel_option_template.get_node_or_null("LevelLabel") == null:
+		push_warning("PauseMenu PreviewLevelOption is missing LevelLabel.")
+		return false
+	if dev_travel_option_template.get_node_or_null("PresetDropdown") == null:
+		push_warning("PauseMenu PreviewLevelOption is missing PresetDropdown.")
+		return false
+	if dev_travel_option_template.get_node_or_null("TravelButton") == null:
+		push_warning("PauseMenu PreviewLevelOption is missing TravelButton.")
+		return false
+
+	dev_travel_option_template.set_meta("dev_template", true)
+	dev_travel_option_template.visible = false
+	return true
+
+
+func find_child_of_type(root: Node, type_name: String) -> Node:
+	for child in root.get_children():
+		if child.get_class() == type_name:
+			return child
+	return null
+
+
+func disconnect_button_signals(button: Button):
+	for connection in button.pressed.get_connections():
+		var callable: Callable = connection.get("callable", Callable())
+		if callable.is_valid():
+			button.pressed.disconnect(callable)
+
+
+func set_buttons_disabled_recursive(root: Node, disabled: bool):
+	if root is Button:
+		(root as Button).disabled = disabled
+	for child in root.get_children():
+		set_buttons_disabled_recursive(child, disabled)
 
 
 func is_pause_toggle_event(event: InputEvent) -> bool:

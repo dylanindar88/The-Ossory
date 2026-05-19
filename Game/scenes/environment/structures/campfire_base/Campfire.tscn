@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://b25akbahmnw3f"]
+[gd_scene load_steps=16 format=3 uid="uid://b25akbahmnw3f"]
 
 [ext_resource type="Texture2D" uid="uid://bgajgb6jrq16m" path="res://art/structures/campfire.png" id="1_campfire"]
 
@@ -25,6 +25,30 @@ region = Rect2(320, 0, 80, 96)
 [sub_resource type="AtlasTexture" id="AtlasTexture_6"]
 atlas = ExtResource("1_campfire")
 region = Rect2(400, 0, 80, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_llrg6"]
+atlas = ExtResource("1_campfire")
+region = Rect2(0, 96, 80, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_7h66t"]
+atlas = ExtResource("1_campfire")
+region = Rect2(80, 96, 80, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d3kgo"]
+atlas = ExtResource("1_campfire")
+region = Rect2(160, 96, 80, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_wjte6"]
+atlas = ExtResource("1_campfire")
+region = Rect2(240, 96, 80, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_n7fk1"]
+atlas = ExtResource("1_campfire")
+region = Rect2(320, 96, 80, 96)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mysi6"]
+atlas = ExtResource("1_campfire")
+region = Rect2(400, 96, 80, 96)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_campfire"]
 animations = [{
@@ -53,7 +77,22 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_1")
+"texture": SubResource("AtlasTexture_llrg6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_7h66t")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d3kgo")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_wjte6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_n7fk1")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mysi6")
 }],
 "loop": true,
 "name": &"unlit",
@@ -71,6 +110,8 @@ collision_mask = 14
 y_sort_enabled = true
 sprite_frames = SubResource("SpriteFrames_campfire")
 animation = &"lit"
+frame = 1
+frame_progress = 0.391024
 offset = Vector2(0, -41.82)
 
 [node name="BodyCollision" type="CollisionShape2D" parent="."]

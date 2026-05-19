@@ -1,12 +1,12 @@
-[gd_scene load_steps=21 format=3 uid="uid://cd8kyptum0qfo"]
+[gd_scene load_steps=15 format=3 uid="uid://cd8kyptum0qfo"]
 
 [ext_resource type="Script" path="res://scripts/characters/saorise/health/healthUI.gd" id="1_ue8h7"]
 [ext_resource type="Texture2D" uid="uid://uq1qdekd7ra3" path="res://art/ui/HealthBarBorder.aseprite" id="2_bi2l4"]
-[ext_resource type="Texture2D" uid="uid://cuxx81ho4l855" path="res://art/ui/StaminaBarBorder.aseprite" id="3_stamina_border"]
-[ext_resource type="Texture2D" uid="uid://wj3ai48h2a5x" path="res://art/ui/WolfBarBorder.aseprite" id="4_wolf_border"]
 [ext_resource type="Texture2D" uid="uid://bdh8oajoq50ls" path="res://art/icons/stockIcon.png" id="5_stock_icon"]
 [ext_resource type="Texture2D" uid="uid://b7aiqnng4klq1" path="res://art/icons/stockCenter.png" id="6_stock_center"]
 [ext_resource type="Script" path="res://scripts/ui/LocationIndicator.gd" id="7_location_indicator"]
+[ext_resource type="PackedScene" uid="uid://vy8atp22emcw" path="res://scenes/ui/PlayerGaugeStack.tscn" id="8_gauge_stack"]
+[ext_resource type="Resource" uid="uid://dlcna0lm8gg0" path="res://resources/ui/player_gauge_preview_settings.tres" id="9_gauge_preview"]
 
 [sub_resource type="Gradient" id="Gradient_gsh0t"]
 offsets = PackedFloat32Array(0.609195)
@@ -16,43 +16,19 @@ colors = PackedColorArray(0, 0, 0, 1)
 gradient = SubResource("Gradient_gsh0t")
 width = 139
 
-[sub_resource type="Gradient" id="Gradient_7c1qb"]
+[sub_resource type="Gradient" id="Gradient_jxmls"]
 colors = PackedColorArray(0.1, 0.95, 0.2, 1, 0.1, 0.95, 0.2, 1)
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_1yure"]
-gradient = SubResource("Gradient_7c1qb")
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_va1bx"]
+gradient = SubResource("Gradient_jxmls")
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_kbd6w"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_mtmvg"]
 atlas = ExtResource("6_stock_center")
 region = Rect2(0, 0, 64, 64)
 
-[sub_resource type="AtlasTexture" id="AtlasTexture_qf40c"]
+[sub_resource type="AtlasTexture" id="AtlasTexture_hppne"]
 atlas = ExtResource("5_stock_icon")
 region = Rect2(0, 0, 64, 64)
-
-[sub_resource type="Gradient" id="Gradient_u46i8"]
-offsets = PackedFloat32Array(0.609195)
-colors = PackedColorArray(0, 0, 0, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_0fmcy"]
-gradient = SubResource("Gradient_u46i8")
-width = 139
-
-[sub_resource type="Gradient" id="Gradient_ancv0"]
-offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
-colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_nmvdo"]
-gradient = SubResource("Gradient_ancv0")
-width = 139
-
-[sub_resource type="Gradient" id="Gradient_qqn10"]
-offsets = PackedFloat32Array(0, 0.5, 1)
-colors = PackedColorArray(0.55, 0.12, 0, 1, 0.95, 0.36, 0.04, 1, 1, 0.62, 0.12, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_j8mni"]
-gradient = SubResource("Gradient_qqn10")
-width = 139
 
 [sub_resource type="LabelSettings" id="LabelSettings_4l3ai"]
 font_size = 30
@@ -69,6 +45,8 @@ layout_mode = 3
 anchors_preset = 0
 scale = Vector2(2, 2)
 script = ExtResource("1_ue8h7")
+stock_center_fps = 10.0
+gauge_preview_settings = ExtResource("9_gauge_preview")
 
 [node name="HealthBar" type="TextureProgressBar" parent="HealthUI"]
 layout_mode = 1
@@ -77,11 +55,12 @@ offset_top = 22.9
 offset_right = 294.5
 offset_bottom = 54.9
 scale = Vector2(0.702076, 1.00791)
+step = 34.0
 value = 100.0
 rounded = true
 nine_patch_stretch = true
 texture_under = SubResource("GradientTexture2D_m3wux")
-texture_progress = SubResource("GradientTexture2D_1yure")
+texture_progress = SubResource("GradientTexture2D_va1bx")
 
 [node name="Container" type="TextureRect" parent="HealthUI"]
 layout_mode = 0
@@ -106,7 +85,7 @@ offset_left = 16.0
 offset_top = 16.0
 offset_right = 32.0
 offset_bottom = 32.0
-texture = SubResource("AtlasTexture_kbd6w")
+texture = SubResource("AtlasTexture_mtmvg")
 expand_mode = 1
 stretch_mode = 5
 
@@ -115,7 +94,7 @@ layout_mode = 0
 offset_left = 16.0
 offset_right = 32.0
 offset_bottom = 16.0
-texture = SubResource("AtlasTexture_qf40c")
+texture = SubResource("AtlasTexture_hppne")
 expand_mode = 1
 stretch_mode = 5
 
@@ -125,7 +104,7 @@ offset_left = 29.8564
 offset_top = 24.0
 offset_right = 45.8564
 offset_bottom = 40.0
-texture = SubResource("AtlasTexture_qf40c")
+texture = SubResource("AtlasTexture_hppne")
 expand_mode = 1
 stretch_mode = 5
 
@@ -135,7 +114,7 @@ offset_left = 2.14359
 offset_top = 24.0
 offset_right = 18.1436
 offset_bottom = 40.0
-texture = SubResource("AtlasTexture_qf40c")
+texture = SubResource("AtlasTexture_hppne")
 expand_mode = 1
 stretch_mode = 5
 
@@ -143,11 +122,10 @@ stretch_mode = 5
 visible = false
 modulate = Color(1, 1, 1, 0.25)
 layout_mode = 0
-offset_left = -0.628949
-offset_top = 29.5597
-offset_right = 15.3711
-offset_bottom = 45.5597
-texture = SubResource("AtlasTexture_qf40c")
+offset_top = 16.0
+offset_right = 16.0
+offset_bottom = 32.0
+texture = SubResource("AtlasTexture_hppne")
 expand_mode = 1
 stretch_mode = 5
 
@@ -155,11 +133,11 @@ stretch_mode = 5
 visible = false
 modulate = Color(1, 1, 1, 0.25)
 layout_mode = 0
-offset_left = -1.1
-offset_top = 12.4
-offset_right = 14.9
-offset_bottom = 28.4
-texture = SubResource("AtlasTexture_qf40c")
+offset_left = 0.783095
+offset_top = 12.0557
+offset_right = 16.7831
+offset_bottom = 28.0557
+texture = SubResource("AtlasTexture_hppne")
 expand_mode = 1
 stretch_mode = 5
 
@@ -167,77 +145,84 @@ stretch_mode = 5
 visible = false
 modulate = Color(1, 1, 1, 0.25)
 layout_mode = 0
-offset_left = 16.3522
-offset_top = 38.9937
-offset_right = 32.3522
-offset_bottom = 54.9937
-texture = SubResource("AtlasTexture_qf40c")
+offset_left = 2.14359
+offset_top = 8.0
+offset_right = 18.1436
+offset_bottom = 24.0
+texture = SubResource("AtlasTexture_hppne")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="HudStaminaGauge" type="Control" parent="HealthUI"]
-anchors_preset = 0
+[node name="StockLayouts" type="Node2D" parent="HealthUI/StockIconCluster"]
+visible = false
+
+[node name="Stocks3" type="Node2D" parent="HealthUI/StockIconCluster/StockLayouts"]
+
+[node name="Stock1" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks3"]
+position = Vector2(16, 0)
+
+[node name="Stock2" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks3"]
+position = Vector2(29.8564, 24)
+
+[node name="Stock3" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks3"]
+position = Vector2(2.14359, 24)
+
+[node name="Stocks4" type="Node2D" parent="HealthUI/StockIconCluster/StockLayouts"]
+
+[node name="Stock1" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks4"]
+position = Vector2(16, 0)
+
+[node name="Stock2" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks4"]
+position = Vector2(32, 16)
+
+[node name="Stock3" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks4"]
+position = Vector2(16, 32)
+
+[node name="Stock4" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks4"]
+position = Vector2(0, 16)
+
+[node name="Stocks5" type="Node2D" parent="HealthUI/StockIconCluster/StockLayouts"]
+
+[node name="Stock1" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks5"]
+position = Vector2(16, 0)
+
+[node name="Stock2" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks5"]
+position = Vector2(31.2169, 12.0557)
+
+[node name="Stock3" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks5"]
+position = Vector2(25.4046, 29.9443)
+
+[node name="Stock4" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks5"]
+position = Vector2(6.59544, 29.9443)
+
+[node name="Stock5" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks5"]
+position = Vector2(0.783095, 12.0557)
+
+[node name="Stocks6" type="Node2D" parent="HealthUI/StockIconCluster/StockLayouts"]
+
+[node name="Stock1" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks6"]
+position = Vector2(16, 0)
+
+[node name="Stock2" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks6"]
+position = Vector2(29.8564, 8)
+
+[node name="Stock3" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks6"]
+position = Vector2(29.8564, 24)
+
+[node name="Stock4" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks6"]
+position = Vector2(16, 32)
+
+[node name="Stock5" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks6"]
+position = Vector2(2.14359, 24)
+
+[node name="Stock6" type="Marker2D" parent="HealthUI/StockIconCluster/StockLayouts/Stocks6"]
+position = Vector2(2.14359, 8)
+
+[node name="PlayerGaugeStack" parent="HealthUI" instance=ExtResource("8_gauge_stack")]
 offset_left = 14.0
 offset_top = 75.0
 offset_right = 194.0
-offset_bottom = 93.0
-scale = Vector2(0.796743, 2.57449)
-
-[node name="Bar" type="TextureProgressBar" parent="HealthUI/HudStaminaGauge"]
-layout_mode = 0
-offset_left = 28.8598
-offset_top = 1.44611
-offset_right = 190.86
-offset_bottom = 9.44611
-scale = Vector2(0.765816, 0.694461)
-max_value = 1.0
-value = 1.0
-rounded = true
-nine_patch_stretch = true
-texture_under = SubResource("GradientTexture2D_0fmcy")
-texture_progress = SubResource("GradientTexture2D_nmvdo")
-
-[node name="Border" type="TextureRect" parent="HealthUI/HudStaminaGauge"]
-texture_filter = 1
-layout_mode = 0
-offset_left = -3.0
-offset_top = -6.0
-offset_right = 381.0
-offset_bottom = 122.0
-scale = Vector2(0.485, 0.16)
-texture = ExtResource("3_stamina_border")
-
-[node name="HudWolfGauge" type="Control" parent="HealthUI"]
-anchors_preset = 0
-offset_left = 14.0
-offset_top = 103.0
-offset_right = 194.0
 offset_bottom = 121.0
-scale = Vector2(0.797936, 2.4827)
-
-[node name="Bar" type="TextureProgressBar" parent="HealthUI/HudWolfGauge"]
-layout_mode = 0
-offset_left = 29.2214
-offset_top = 1.59103
-offset_right = 191.221
-offset_bottom = 9.59103
-scale = Vector2(0.764496, 0.694283)
-max_value = 1.0
-value = 1.0
-rounded = true
-nine_patch_stretch = true
-texture_under = SubResource("GradientTexture2D_0fmcy")
-texture_progress = SubResource("GradientTexture2D_j8mni")
-
-[node name="Border" type="TextureRect" parent="HealthUI/HudWolfGauge"]
-texture_filter = 1
-layout_mode = 0
-offset_left = -3.0
-offset_top = -6.0
-offset_right = 381.0
-offset_bottom = 122.0
-scale = Vector2(0.485, 0.16)
-texture = ExtResource("4_wolf_border")
 
 [node name="BansheeKillCounter" type="Label" parent="."]
 visible = false

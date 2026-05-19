@@ -14,6 +14,8 @@ var damage_source: Node
 var active_attack_targets: Array[Node2D] = []
 var current_combo_part: int = 0
 var shape_controller := AttackHitboxShapeControllerScript.new()
+var profile_authoring: AttackHitboxProfileAuthoring
+var active_profile_context: StringName = &"human"
 
 var attack_profiles: Dictionary = PlayerFormDefinition.DEFAULT_ATTACK_PROFILES.duplicate(true)
 
@@ -29,6 +31,7 @@ func setup():
 
 	shape_controller.setup(attack_box)
 	collision_shape = shape_controller.collision_shape
+	profile_authoring = find_profile_authoring()
 
 	if not attack_box.area_entered.is_connected(_on_attack_hit):
 		attack_box.area_entered.connect(_on_attack_hit)
@@ -71,16 +74,39 @@ func set_attack_profiles(new_attack_profiles: Dictionary):
 	deactivate_attack_hitbox()
 
 
+func set_attack_profile_context(context: StringName):
+	active_profile_context = context
+	deactivate_attack_hitbox()
+
+
+func find_profile_authoring() -> AttackHitboxProfileAuthoring:
+	if attack_box == null:
+		return null
+	var owner := attack_box.get_parent()
+	if owner == null:
+		return null
+	for child in owner.get_children():
+		if child is AttackHitboxProfileAuthoring:
+			return child as AttackHitboxProfileAuthoring
+	return null
+
+
 func update_attackbox_shape(combo_part: int, direction: String):
 	if collision_shape == null:
 		push_warning("AttackBox has no CollisionShape2D child.")
 		return
 
-	var profile := get_attack_profile(direction, combo_part)
+	var profile: Dictionary = get_attack_profile(direction, combo_part)
+	profile["scale"] = Vector2.ONE
 	shape_controller.apply_profile(profile)
 
 
 func get_attack_profile(direction: String, combo_part: int) -> Dictionary:
+	if profile_authoring != null:
+		var authored_profile := profile_authoring.get_profile(active_profile_context, StringName(direction), combo_part)
+		if not authored_profile.is_empty():
+			return authored_profile
+
 	var direction_profiles: Dictionary = attack_profiles.get(direction, attack_profiles["right"])
 	return direction_profiles.get(combo_part, direction_profiles[1])
 

@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3 uid="uid://dfjpsxet38xfl"]
+[gd_scene load_steps=16 format=3 uid="uid://dfjpsxet38xfl"]
 
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/stateMachine.gd" id="1_q8xm5"]
 [ext_resource type="SpriteFrames" uid="uid://db1m0u34k1o83" path="res://resources/characters/hostile_npcs/banshees/banshee_animations.tres" id="2_wpb6y"]
@@ -6,6 +6,7 @@
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="4_border"]
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/banshees/health/bansheeHealthBar.gd" id="5_health_bar"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="6_effects"]
+[ext_resource type="Script" path="res://scripts/characters/shared/combat/AttackHitboxProfileAuthoring.gd" id="7_attack_profiles"]
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_k78ad"]
 radius = 3.82135
@@ -24,14 +25,14 @@ radius = 18.1544
 height = 43.3264
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_pe0u1"]
-size = Vector2(27.634, 51.0283)
+size = Vector2(27.634, 31.5142)
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_o744d"]
 radius = 120.016
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_qh50h"]
-radius = 48.2532
-height = 130.123
+radius = 30.35
+height = 78.0
 
 [sub_resource type="CircleShape2D" id="CircleShape2D_6bfd2"]
 radius = 375.0
@@ -49,7 +50,7 @@ villager_reversal_front_buffer = 0.0
 y_sort_enabled = true
 scale = Vector2(0.45, 0.45)
 sprite_frames = ExtResource("2_wpb6y")
-animation = &"hurt"
+animation = &"melee1"
 offset = Vector2(0, -48.21)
 
 [node name="MovementBox" type="CollisionShape2D" parent="."]
@@ -103,10 +104,59 @@ shape = SubResource("CapsuleShape2D_gwosy")
 [node name="AttackBox" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackBox"]
-position = Vector2(-0.00112915, -20.3286)
+position = Vector2(8.24293, -20.3286)
 rotation = -1.5708
 shape = SubResource("RectangleShape2D_pe0u1")
 debug_color = Color(0.984314, 0, 0.337255, 0.419608)
+
+[node name="AttackHitboxProfiles" type="Node" parent="."]
+script = ExtResource("7_attack_profiles")
+profiles = {
+"default": {
+"down": {
+"1": {
+"position": Vector2(0, 4),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(28, 48)
+},
+"2": {
+"position": Vector2(0, 8),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(30, 54)
+}
+},
+"right": {
+"1": {
+"position": Vector2(8.24293, -20.3286),
+"rotation": -1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(27.634, 31.5142)
+},
+"2": {
+"position": Vector2(22, -20.3286),
+"rotation": -1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(30, 54)
+}
+},
+"up": {
+"1": {
+"position": Vector2(0, -44),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(28, 48)
+},
+"2": {
+"position": Vector2(0, -48),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(30, 54)
+}
+}
+}
+}
 
 [node name="PlayerDetectionArea" type="Area2D" parent="."]
 

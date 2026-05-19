@@ -3,14 +3,14 @@ extends Resource
 
 const DEFAULT_ATTACK_PROFILES := {
 	"right": {
-		1: {"size": Vector2(41, 31), "position": Vector2(18, -25), "rotation": -PI / 2.0},
-		2: {"size": Vector2(41, 43), "position": Vector2(24, -25), "rotation": -PI / 2.0},
-		3: {"size": Vector2(41, 31), "position": Vector2(18, -25), "rotation": -PI / 2.0},
+		1: {"size": Vector2(35, 32), "position": Vector2(17.5, -32), "rotation": PI / 2.0},
+		2: {"size": Vector2(40, 32), "position": Vector2(20, -32), "rotation": PI / 2.0},
+		3: {"size": Vector2(32, 32), "position": Vector2(16, -32), "rotation": PI / 2.0},
 	},
 	"left": {
-		1: {"size": Vector2(41, 31), "position": Vector2(-18, -25), "rotation": -PI / 2.0},
-		2: {"size": Vector2(41, 43), "position": Vector2(-24, -25), "rotation": -PI / 2.0},
-		3: {"size": Vector2(41, 31), "position": Vector2(-18, -25), "rotation": -PI / 2.0},
+		1: {"size": Vector2(35, 32), "position": Vector2(-17.5, -32), "rotation": PI / 2.0},
+		2: {"size": Vector2(40, 32), "position": Vector2(-20, -32), "rotation": PI / 2.0},
+		3: {"size": Vector2(32, 32), "position": Vector2(-16, -32), "rotation": PI / 2.0},
 	},
 	"down": {
 		1: {"size": Vector2(36, 52), "position": Vector2(0, -7), "rotation": 0.0},
@@ -66,10 +66,9 @@ const DEFAULT_ATTACK_PROFILES := {
 @export var hurt_shape_rotation := 0.0
 
 @export_group("Combat")
-@export var attack_profiles: Dictionary = {}
 @export var attack_animation_prefix: StringName = &"unarmed_attack"
 @export var attack_damage_multiplier: float = 1.0
-@export var incoming_damage_multiplier: float = 1.0
+var attack_profiles: Dictionary = {}
 
 
 func get_attack_profiles() -> Dictionary:

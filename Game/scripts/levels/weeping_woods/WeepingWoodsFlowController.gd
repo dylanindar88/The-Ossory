@@ -15,6 +15,7 @@ var knight_camp_controller: KnightCampEncounterController
 func _ready():
 	setup_banshee_encounter_controller()
 	setup_knight_camp_controller()
+	apply_dev_start_preset()
 
 
 func collect_level_state() -> Dictionary:
@@ -129,3 +130,37 @@ func setup_knight_camp_controller():
 func ensure_knight_camp_controller():
 	if knight_camp_controller == null:
 		setup_knight_camp_controller()
+
+
+func apply_dev_start_preset() -> bool:
+	if SaveManager == null or not SaveManager.has_method("consume_pending_dev_start_preset"):
+		return false
+
+	var preset: String = SaveManager.consume_pending_dev_start_preset(get_parent().scene_file_path)
+	if preset == "":
+		return false
+	if not (SaveManager.has_method("is_global_dev_preset") and SaveManager.is_global_dev_preset(preset)):
+		return false
+
+	if SaveManager.has_method("apply_global_dev_progression_preset"):
+		SaveManager.apply_global_dev_progression_preset(preset)
+	apply_level_state(build_dev_level_state())
+	return true
+
+
+func build_dev_level_state() -> Dictionary:
+	return {
+		"state_version": STATE_VERSION,
+		"banshee_encounter": {
+			"state_version": 2,
+			"temporarily_cleared_banshee_paths": [],
+			"permanently_cleared_banshee_paths": [],
+			"banshees": [],
+		},
+		"knight_camps": {
+			"state_version": 1,
+			"destroyed_campfire_base_ids": [],
+			"campfires": [],
+			"knights": [],
+		},
+	}

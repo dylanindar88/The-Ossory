@@ -332,6 +332,7 @@ text = "Back"
 flat = true
 
 [node name="LoadSlotsView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
+visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -581,7 +582,6 @@ text = "Back"
 flat = true
 
 [node name="DevMenuView" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer"]
-visible = false
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -603,70 +603,130 @@ layout_mode = 2
 text = "Dev Start"
 horizontal_alignment = 1
 
-[node name="BansheeStartOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
-custom_minimum_size = Vector2(420, 44)
+[node name="GeneratedDevOptions" type="VBoxContainer" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
+custom_minimum_size = Vector2(420, 320)
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="PreviewLevelOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions"]
+custom_minimum_size = Vector2(420, 62)
 layout_mode = 2
 
-[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeStartOption"]
+[node name="LevelLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewLevelOption"]
 layout_mode = 1
-anchors_preset = 15
+anchors_preset = 10
 anchor_right = 1.0
-anchor_bottom = 1.0
+offset_left = 8.0
+offset_right = -8.0
+offset_bottom = 22.0
 grow_horizontal = 2
-grow_vertical = 2
-text = "BansheeVillage - Start"
-
-[node name="BansheeFirstReportOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
-custom_minimum_size = Vector2(420, 44)
-layout_mode = 2
-
-[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeFirstReportOption"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "BansheeVillage - First Report"
-
-[node name="BansheeSecondReportOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
-custom_minimum_size = Vector2(420, 44)
-layout_mode = 2
-
-[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeSecondReportOption"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "BansheeVillage - Second Report"
-
-[node name="BansheeThirdReportOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
-custom_minimum_size = Vector2(420, 44)
-layout_mode = 2
-
-[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/BansheeThirdReportOption"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "BansheeVillage - Third Report"
-
-[node name="StartingWildernessOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
-custom_minimum_size = Vector2(420, 44)
-layout_mode = 2
-
-[node name="Button" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/StartingWildernessOption"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 text = "Starting Wilderness"
+horizontal_alignment = 1
+
+[node name="PresetDropdown" type="OptionButton" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewLevelOption"]
+custom_minimum_size = Vector2(288, 34)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -34.0
+offset_right = 288.0
+grow_vertical = 0
+clip_text = true
+
+[node name="StartButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewLevelOption"]
+custom_minimum_size = Vector2(124, 34)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -124.0
+offset_top = -34.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Start"
+
+[node name="PreviewWeepingWoodsOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions"]
+custom_minimum_size = Vector2(420, 62)
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewWeepingWoodsOption"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_right = -8.0
+offset_bottom = 22.0
+grow_horizontal = 2
+text = "Weeping Woods"
+horizontal_alignment = 1
+
+[node name="PresetDropdown" type="OptionButton" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewWeepingWoodsOption"]
+custom_minimum_size = Vector2(288, 34)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -34.0
+offset_right = 288.0
+grow_vertical = 0
+clip_text = true
+
+[node name="StartButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewWeepingWoodsOption"]
+custom_minimum_size = Vector2(124, 34)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -124.0
+offset_top = -34.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Start"
+
+[node name="PreviewBansheeVillageOption" type="Control" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions"]
+custom_minimum_size = Vector2(420, 62)
+layout_mode = 2
+
+[node name="LevelLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewBansheeVillageOption"]
+layout_mode = 1
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 8.0
+offset_right = -8.0
+offset_bottom = 22.0
+grow_horizontal = 2
+text = "Banshee Village"
+horizontal_alignment = 1
+
+[node name="PresetDropdown" type="OptionButton" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewBansheeVillageOption"]
+custom_minimum_size = Vector2(288, 34)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -34.0
+offset_right = 288.0
+grow_vertical = 0
+clip_text = true
+
+[node name="StartButton" type="Button" parent="Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions/PreviewBansheeVillageOption"]
+custom_minimum_size = Vector2(124, 34)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -124.0
+offset_top = -34.0
+grow_horizontal = 0
+grow_vertical = 0
+text = "Start"
 
 [node name="DevStatusLabel" type="Label" parent="Control/Panel/RightContent/ViewContainer/DevMenuView"]
 custom_minimum_size = Vector2(460, 24)

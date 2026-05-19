@@ -87,10 +87,11 @@ Avoid generic `villager` wording in reusable collision, save, route, or actor AP
 
 - `AttackBox` `Area2D` nodes are stable signal and collision-mask owners.
 - Runtime attack positioning should adjust the child `CollisionShape2D`, not the `AttackBox` node.
-- Use `AttackHitboxShapeController` for melee hitbox enable/disable, editor-authored transform restore, facing flips, and temporary position/rotation/size profiles.
+- Attackbox dimensions, offsets, rotation, and scale should be authored in the character or projectile scene through `AttackHitboxProfileAuthoring`. Select the form/variant, direction, and combo/profile slot in the inspector, then edit the visible `CollisionShape2D`; those profile values are the runtime source of truth.
+- Use `AttackHitboxShapeController` for melee hitbox enable/disable, editor-authored transform restore, facing flips, and scene-authored position/rotation/size profiles.
 - When directional offsets need to track sprite or hitbox scaling, derive them from the cached editor-authored child shape dimensions instead of fixed pixels.
 - Keep damage rules, combo rules, target filtering, and actor state in the owning actor or combat manager.
-- Projectile attacks own their separate projectile hit boxes and do not use actor `AttackBox` conventions.
+- Projectile attacks own their separate projectile hit boxes, but should still use `AttackHitboxProfileAuthoring` on the projectile scene so hitbox size and shape are edited in the 2D editor instead of projectile scripts.
 - Projectile-capable actors should expose an editable `ProjectileSpawn` `Marker2D`; melee-only actors should not carry projectile-only markers.
 
 ## Knight And Campfire Pattern
@@ -147,6 +148,8 @@ Avoid generic `villager` wording in reusable collision, save, route, or actor AP
 - Preserve scene paths, node paths, route IDs, input actions, resource paths, and public APIs unless the change explicitly includes migration or call-site updates.
 - Prefer small helpers near the owning domain over broad generic engines.
 - Keep public coordinators scene-facing and move private details only when it makes the main flow easier to read.
+- Build UI layout shells in `.tscn` scenes before writing controller code. Scripts may bind authored nodes and populate data-driven rows or labels at runtime, but they should not create invisible layout containers, menu panels, HUD shells, debug views, dev-tool view structures, gauge rows, or stock icon layouts entirely in code. When UI repeats data-driven rows, keep an editor-visible preview/template row in the scene and duplicate it at runtime so authored dimensions, spacing, anchors, and styling remain the source of truth. For menu rows that must match an image or editor preview exactly, prefer fixed authored `Control` blocks with anchored children over container-driven rows that can grow from dynamic text.
+- Shared HUD/player gauges should use `PlayerGaugeStack.tscn` and `player_gauge_preview_settings.tres` so HUD and under-player Saorise gauges stay visually synchronized. Runtime scripts may update values, textures, visibility, and row ordering, but bar/border layout and stock cluster shapes should be scene-authored and previewable in the editor.
 - Update templates and validation rules with structural changes.
 - Run `Game/tools/validate_project_structure.ps1` and `git diff --check` before considering structural work done.
 

@@ -240,6 +240,8 @@ func configure_hitbox_manager():
 	if current_form != null:
 		form_damage_multiplier = current_form.attack_damage_multiplier
 	hitbox_manager.form_attack_damage_multiplier = form_damage_multiplier
+	if current_form != null and hitbox_manager.has_method("set_attack_profile_context"):
+		hitbox_manager.set_attack_profile_context(current_form.form_id)
 	if current_form != null and hitbox_manager.has_method("set_attack_profiles"):
 		hitbox_manager.set_attack_profiles(current_form.get_attack_profiles())
 
@@ -373,14 +375,7 @@ func take_damage(amount: int, ignore_invulnerability: bool = false, damage_sourc
 	if current_state and current_state.has_method("prepare_for_incoming_damage"):
 		current_state.prepare_for_incoming_damage(self)
 
-	return health.take_damage(amount, ignore_invulnerability, damage_source, get_current_form_incoming_damage_multiplier())
-
-
-func get_current_form_incoming_damage_multiplier() -> float:
-	if current_form != null:
-		return current_form.incoming_damage_multiplier
-
-	return 1.0
+	return health.take_damage(amount, ignore_invulnerability, damage_source)
 
 
 func set_dialogue_input_locked(locked: bool):

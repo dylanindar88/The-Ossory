@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://dtm57amql3svl"]
+[gd_scene load_steps=17 format=3 uid="uid://dtm57amql3svl"]
 
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightController.gd" id="1_script"]
 [ext_resource type="Resource" uid="uid://drtfbtc8aodyo" path="res://resources/characters/hostile_npcs/knights/basic_knight_melee_tuning.tres" id="2_tuning"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="5_effects"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="6_border"]
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightHealthBar.gd" id="7_health_bar"]
+[ext_resource type="Script" path="res://scripts/characters/shared/combat/AttackHitboxProfileAuthoring.gd" id="8_attack_profiles"]
 
 [sub_resource type="CircleShape2D" id="CapsuleShape2D_movement"]
 radius = 7.0
@@ -33,6 +34,7 @@ radius = 321.002
 radius = 160.0
 
 [sub_resource type="CapsuleShape2D" id="CapsuleShape2D_og1wt"]
+height = 27.7704
 
 [node name="BasicKnightMelee" type="CharacterBody2D"]
 y_sort_enabled = true
@@ -108,10 +110,42 @@ shape = SubResource("CapsuleShape2D_hurt")
 scale = Vector2(1.058, 1.14579)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackBox"]
-position = Vector2(0, -37.5287)
+position = Vector2(0, -6.98)
 scale = Vector2(1.93585, 1.30455)
 shape = SubResource("RectangleShape2D_attack")
 disabled = true
+
+[node name="AttackHitboxProfiles" type="Node" parent="."]
+script = ExtResource("8_attack_profiles")
+selected_direction = &"down"
+profiles = {
+"default": {
+"down": {
+"1": {
+"position": Vector2(0, -6.98),
+"rotation": 0.0,
+"scale": Vector2(1.93585, 1.30455),
+"size": Vector2(36, 28)
+}
+},
+"right": {
+"1": {
+"position": Vector2(13.3104, -37.5287),
+"rotation": 0.0,
+"scale": Vector2(1.93585, 1.30455),
+"size": Vector2(19.4495, 28)
+}
+},
+"up": {
+"1": {
+"position": Vector2(0, -49.75),
+"rotation": 0.0,
+"scale": Vector2(1.93585, 1.30455),
+"size": Vector2(36, 28)
+}
+}
+}
+}
 
 [node name="TrackingArea" type="Area2D" parent="."]
 visible = false
@@ -132,7 +166,7 @@ shape = SubResource("CircleShape2D_v83dc")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackRange"]
 position = Vector2(-7.27596e-12, -30)
 rotation = 1.5708
-scale = Vector2(4.23782, 2.69804)
+scale = Vector2(4.76274, 2.37663)
 shape = SubResource("CapsuleShape2D_og1wt")
 
 [node name="DialogueAnchor" type="Marker2D" parent="."]

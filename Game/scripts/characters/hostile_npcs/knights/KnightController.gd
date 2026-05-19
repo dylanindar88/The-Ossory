@@ -43,6 +43,7 @@ const HORIZONTAL_BASE_ANIMATIONS := {
 	"walk": true,
 	"run": true,
 	"attack": true,
+	"hurt": true,
 }
 const DIRECTIONAL_ANIMATIONS := {
 	"idle": {
@@ -117,6 +118,14 @@ var hurt_speed_modifier_override: float = -1.0
 var hurt_animation_hold_active: bool = false
 var hurt_animation_finishing_after_hold: bool = false
 var hurt_animation_finish_timer: float = 0.0
+var damage_knockback_timer: float = 0.0
+var damage_knockback_duration: float = 0.0
+var damage_knockback_velocity: Vector2 = Vector2.ZERO
+var damage_knockback_facing_locked: bool = false
+var damage_knockback_locked_facing_direction: String = FACING_RIGHT
+var damage_knockback_locked_horizontal_facing_direction: String = FACING_RIGHT
+var damage_knockback_locked_facing_left: bool = false
+var damage_knockback_locked_sprite_flip_h: bool = false
 var state_before_hurt: String = "idle"
 var state: String = "idle"
 var last_facing_direction: String = FACING_RIGHT
@@ -144,6 +153,7 @@ var was_engaged_before_transform_refresh: bool = false
 var pending_form_settle_physics_frames: int = 0
 var tracked_transform_signal_player: Node = null
 var attack_shape_controller := AttackHitboxShapeControllerScript.new()
+var attack_profile_authoring: AttackHitboxProfileAuthoring
 
 
 func _ready():
@@ -248,6 +258,7 @@ func configure_collision():
 		if not attack_box.area_entered.is_connected(_on_attack_box_area_entered):
 			attack_box.area_entered.connect(_on_attack_box_area_entered)
 		attack_shape_controller.setup(attack_box)
+		attack_profile_authoring = find_attack_profile_authoring()
 		set_attack_shape_enabled(false)
 
 	for area in [tracking_area, attack_range_area]:
@@ -797,7 +808,10 @@ func enter_hurt_state(duration_override: float = -1.0, speed_modifier_override: 
 
 func update_hurt(delta: float):
 	var hurt_speed_modifier := get_hurt_speed_modifier()
-	velocity = Vector2.ZERO * hurt_speed_modifier
+	if damage_knockback_timer > 0.0:
+		update_damage_knockback(delta)
+	else:
+		velocity = Vector2.ZERO * hurt_speed_modifier
 	clear_navigation_velocity()
 	if hurt_animation_finishing_after_hold:
 		hurt_animation_finish_timer = maxf(hurt_animation_finish_timer - delta, 0.0)
@@ -847,7 +861,77 @@ func get_hurt_speed_modifier() -> float:
 func clear_hurt_state_overrides():
 	hurt_duration_override = -1.0
 	hurt_speed_modifier_override = -1.0
+	clear_damage_knockback()
 	clear_hurt_animation_hold()
+
+
+func start_damage_knockback(damage_source: Node):
+	clear_damage_knockback()
+	if not should_start_damage_knockback(damage_source):
+		return
+
+	var source_node := damage_source as Node2D
+	var away_from_source: Vector2 = global_position - source_node.global_position
+	if away_from_source.length() <= 0.001:
+		away_from_source = Vector2.RIGHT if not facing_left else Vector2.LEFT
+
+	damage_knockback_duration = maxf(float(tuning.damage_knockback_duration), 0.0)
+	if damage_knockback_duration <= 0.0:
+		return
+
+	var distance := maxf(float(tuning.damage_knockback_distance), 0.0)
+	if distance <= 0.0:
+		return
+
+	lock_damage_knockback_facing()
+	damage_knockback_timer = damage_knockback_duration
+	damage_knockback_velocity = away_from_source.normalized() * (distance / damage_knockback_duration)
+
+
+func should_start_damage_knockback(damage_source: Node) -> bool:
+	if tuning == null:
+		return false
+	if not bool(tuning.damage_knockback_enabled):
+		return false
+	if damage_source == null or not (damage_source is Node2D):
+		return false
+	return damage_source.is_in_group("player") or damage_source.has_method("get_current_form_id")
+
+
+func update_damage_knockback(delta: float):
+	var step_delta := minf(delta, damage_knockback_timer)
+	damage_knockback_timer = maxf(damage_knockback_timer - delta, 0.0)
+	velocity = damage_knockback_velocity
+	TopDownMovement.move(self, velocity, step_delta)
+	restore_damage_knockback_facing()
+	if damage_knockback_timer <= 0.0:
+		clear_damage_knockback()
+
+
+func clear_damage_knockback():
+	damage_knockback_timer = 0.0
+	damage_knockback_duration = 0.0
+	damage_knockback_velocity = Vector2.ZERO
+	damage_knockback_facing_locked = false
+
+
+func lock_damage_knockback_facing():
+	damage_knockback_facing_locked = true
+	damage_knockback_locked_facing_direction = last_facing_direction
+	damage_knockback_locked_horizontal_facing_direction = last_horizontal_facing_direction
+	damage_knockback_locked_facing_left = facing_left
+	damage_knockback_locked_sprite_flip_h = sprite.flip_h if sprite != null else false
+
+
+func restore_damage_knockback_facing():
+	if not damage_knockback_facing_locked:
+		return
+
+	last_facing_direction = damage_knockback_locked_facing_direction
+	last_horizontal_facing_direction = damage_knockback_locked_horizontal_facing_direction
+	facing_left = damage_knockback_locked_facing_left
+	if sprite != null:
+		sprite.flip_h = damage_knockback_locked_sprite_flip_h
 
 
 func start_block_stun_hurt_animation_hold():
@@ -996,6 +1080,12 @@ func set_attack_shape_enabled(enabled: bool):
 
 
 func apply_directional_attack_shape_offset():
+	if attack_profile_authoring != null:
+		var profile := attack_profile_authoring.get_profile(&"default", StringName(last_facing_direction), 1)
+		if not profile.is_empty():
+			attack_shape_controller.apply_profile(profile)
+			return
+
 	if last_facing_direction == FACING_UP:
 		attack_shape_controller.apply_offset(Vector2(0.0, -get_scaled_attack_box_offset(UP_ATTACK_BOX_OFFSET_RATIO)))
 		return
@@ -1013,6 +1103,15 @@ func get_scaled_attack_box_offset(offset_ratio: float) -> float:
 		return 0.0
 
 	return base_height * offset_ratio
+
+
+func find_attack_profile_authoring() -> AttackHitboxProfileAuthoring:
+	if attack_box == null:
+		return null
+	for child in get_children():
+		if child is AttackHitboxProfileAuthoring:
+			return child as AttackHitboxProfileAuthoring
+	return null
 
 
 func hit_current_attack_overlaps():
@@ -1034,13 +1133,14 @@ func _on_attack_box_area_entered(area: Area2D):
 			on_attack_blocked()
 
 
-func take_damage(amount: int, ignore_invulnerability: bool = false, _damage_source: Node = null):
+func take_damage(amount: int, ignore_invulnerability: bool = false, damage_source: Node = null):
 	if dead or not damage_enabled or health == null:
 		return false
 
 	var applied: bool = health.take_damage(amount, ignore_invulnerability) == true
 	if applied and not dead:
 		enter_hurt_state()
+		start_damage_knockback(damage_source)
 	return applied
 
 
@@ -1056,6 +1156,7 @@ func _on_died():
 	clear_active_dialogue_bubble()
 	set_body_collision_enabled(false)
 	set_combat_enabled(false)
+	clear_combat_engagement()
 	play_animation("death")
 	defeated.emit(self)
 
@@ -1074,6 +1175,7 @@ func set_combat_enabled(enabled: bool):
 			(area as Area2D).set_deferred("monitoring", enabled)
 	refresh_personal_detection_enabled()
 	set_attack_shape_enabled(false)
+	update_combat_engagement()
 
 
 func cache_authored_body_collision_state():
@@ -1322,11 +1424,13 @@ func start_personal_aggro(target: Node):
 	reset_navigation_progress()
 	change_state("chase")
 	chase_player()
+	update_combat_engagement()
 	player_tracking_changed.emit(self)
 
 
 func clear_personal_aggro():
 	personal_aggro_active = false
+	update_combat_engagement()
 
 
 func force_aggro(target: Node):
@@ -1343,6 +1447,7 @@ func force_aggro(target: Node):
 		change_state("chase")
 		chase_player()
 	refresh_personal_detection_enabled()
+	update_combat_engagement()
 
 
 func return_to_camp():
@@ -1358,6 +1463,7 @@ func return_to_camp():
 	reset_navigation_progress()
 	change_state(STATE_RETURN_HOME)
 	refresh_personal_detection_enabled()
+	update_combat_engagement()
 
 
 func has_active_player_tracking() -> bool:
@@ -1662,6 +1768,7 @@ func change_state(new_state: String):
 	if state == new_state:
 		if state == STATE_RETURN_HOME:
 			apply_return_home_navigation_distances()
+		update_combat_engagement()
 		return
 	var old_state := state
 	state = new_state
@@ -1669,6 +1776,18 @@ func change_state(new_state: String):
 		apply_return_home_navigation_distances()
 	elif old_state == STATE_RETURN_HOME:
 		restore_authored_navigation_distances()
+	update_combat_engagement()
+
+
+func update_combat_engagement():
+	if CombatStateManager == null:
+		return
+	CombatStateManager.set_hostile_engaged(self, is_currently_engaging_player())
+
+
+func clear_combat_engagement():
+	if CombatStateManager != null:
+		CombatStateManager.clear_hostile(self)
 
 
 func apply_return_home_navigation_distances():
@@ -1746,6 +1865,7 @@ func _on_tracking_body_entered(body: Node2D):
 			player_detected.emit(self, body)
 		elif not camp_aggro_active and state == DEFAULT_BEHAVIOR_IDLE:
 			play_directional_animation("idle")
+		update_combat_engagement()
 		player_tracking_changed.emit(self)
 
 
@@ -1760,6 +1880,10 @@ func _on_tracking_body_exited(body: Node2D):
 		if personal_aggro_active:
 			clear_personal_aggro()
 			return_to_camp()
+			update_combat_engagement()
+			player_tracking_changed.emit(self)
+			return
+		update_combat_engagement()
 		player_tracking_changed.emit(self)
 
 

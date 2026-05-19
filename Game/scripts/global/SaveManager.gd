@@ -32,6 +32,14 @@ const QUEST_STAGE_REPORTED := "reported"
 const QUEST_STAGE_REWARD_CLAIMED := "reward_claimed"
 const BANSHEE_VARIANT_CORRUPTED_MELEE := "corrupted_melee"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED := "corrupted_strong_ranged"
+const DEV_PRESET_START := "start"
+const DEV_PRESET_BANSHEE_COMBAT_ENABLED := "banshee_combat_enabled"
+const DEV_PRESET_WOLF_TRANSFORMATION_UNLOCKED := "wolf_transformation_unlocked"
+const DEV_PRESET_UPGRADED_BANSHEES_ENABLED := "upgraded_banshees_enabled"
+const DEV_PRESET_BISHOP_DEFEATED := "bishop_defeated"
+const STORY_FLAG_WOLF_TRANSFORMATION_UNLOCKED := "wolf_transformation_unlocked_by_dulluhan"
+const STORY_FLAG_VINCENT_HOUSE_DIALOGUE_COMPLETED := "vincent_house_dialogue_completed"
+const STORY_FLAG_BISHOP_CONFRONTATION_ACCEPTED := "bishop_confrontation_accepted"
 const BANSHEE_VILLAGE_SCENE := "res://scenes/levels/BansheeVillage.tscn"
 const STARTING_WILDERNESS_SCENE := "res://scenes/levels/StartingWilderness.tscn"
 const WEEPING_WOODS_SCENE := "res://scenes/levels/WeepingWoods.tscn"
@@ -49,12 +57,11 @@ const LEVEL_DISPLAY_REGISTRY := {
 		"progression_state_key": "",
 		"progression_names": {},
 		"dev_presets": [
-			{"label": "Intro", "preset": "intro"},
-			{"label": "Banshees Active", "preset": "banshees_active"},
-			{"label": "Wolf Unlocked", "preset": "wolf_unlocked"},
-			{"label": "Vincent Revealed", "preset": "vincent_revealed"},
-			{"label": "Bishop Available", "preset": "bishop_available"},
-			{"label": "Bishop Defeated", "preset": "bishop_defeated"},
+			{"label": "Start", "preset": DEV_PRESET_START},
+			{"label": "Banshee combat enabled", "preset": DEV_PRESET_BANSHEE_COMBAT_ENABLED},
+			{"label": "Wolf transformation unlocked", "preset": DEV_PRESET_WOLF_TRANSFORMATION_UNLOCKED},
+			{"label": "Upgraded Banshees enabled", "preset": DEV_PRESET_UPGRADED_BANSHEES_ENABLED},
+			{"label": "Bishop defeated (not implemented yet)", "preset": DEV_PRESET_BISHOP_DEFEATED, "disabled": true, "disabled_reason": "Bishop fight is not implemented yet."},
 		],
 	},
 	WEEPING_WOODS_SCENE: {
@@ -66,7 +73,11 @@ const LEVEL_DISPLAY_REGISTRY := {
 		"progression_state_key": "",
 		"progression_names": {},
 		"dev_presets": [
-			{"label": "Start", "preset": ""},
+			{"label": "Start", "preset": DEV_PRESET_START},
+			{"label": "Banshee combat enabled", "preset": DEV_PRESET_BANSHEE_COMBAT_ENABLED},
+			{"label": "Wolf transformation unlocked", "preset": DEV_PRESET_WOLF_TRANSFORMATION_UNLOCKED},
+			{"label": "Upgraded Banshees enabled", "preset": DEV_PRESET_UPGRADED_BANSHEES_ENABLED},
+			{"label": "Bishop defeated (not implemented yet)", "preset": DEV_PRESET_BISHOP_DEFEATED, "disabled": true, "disabled_reason": "Bishop fight is not implemented yet."},
 		],
 	},
 	BANSHEE_VILLAGE_SCENE: {
@@ -93,9 +104,18 @@ const LEVEL_DISPLAY_REGISTRY := {
 		},
 		"dev_presets": [
 			{"label": "Start", "preset": "start"},
-			{"label": "First Report", "preset": "first_banshee_report_ready"},
-			{"label": "Second Report", "preset": "second_banshee_report_ready"},
-			{"label": "Third Report", "preset": "third_banshee_report_ready"},
+			{"label": "Banshee combat enabled + first Banshee hunt start", "preset": "banshee_combat_first_hunt_start"},
+			{"label": "First report available", "preset": "first_report_available"},
+			{"label": "Dulluhan visible", "preset": "dulluhan_visible"},
+			{"label": "Wolf transformation unlocked", "preset": "wolf_transformation_unlocked"},
+			{"label": "Second Banshee hunt start", "preset": "second_hunt_start"},
+			{"label": "Second report available", "preset": "second_report_available"},
+			{"label": "Dulluhan in front of house", "preset": "dulluhan_in_front_of_house"},
+			{"label": "Upgraded Banshees enabled", "preset": "upgraded_banshees_enabled"},
+			{"label": "Third Banshee hunt start", "preset": "third_hunt_start"},
+			{"label": "Third report available + Bishop request", "preset": "third_report_available_bishop_request"},
+			{"label": "Bishop request still available", "preset": "bishop_request_still_available"},
+			{"label": "Bishop defeated (not implemented yet)", "preset": DEV_PRESET_BISHOP_DEFEATED, "disabled": true, "disabled_reason": "Bishop fight is not implemented yet."},
 		],
 	},
 }
@@ -125,6 +145,7 @@ var pending_player_travel_state: Dictionary = {}
 var pending_player_travel_message_text: String = ""
 var pending_player_travel_message_timeout: float = 0.0
 var respawn_load_pending: bool = false
+var death_checkpoint_restore_pending: bool = false
 var pending_new_game_slot: int = -1
 var pending_dev_start_scene_path: String = ""
 var pending_dev_start_preset: String = ""
@@ -395,12 +416,9 @@ func autosave_level_entered(level: Node) -> bool:
 	return save_game("level_enter", level)
 
 
-func autosave_level_exiting(level: Node) -> bool:
-	if should_skip_autosave("level_exit"):
-		last_error = ""
-		return false
-
-	return save_game("level_exit", level)
+func autosave_level_exiting(_level: Node) -> bool:
+	last_error = ""
+	return false
 
 
 func save_game(reason: String = "manual", level: Node = null) -> bool:
@@ -521,6 +539,7 @@ func apply_pending_scene_load():
 		apply_pending_player_travel_state(get_current_level())
 		clear_pending_scene_load()
 		respawn_load_pending = false
+		death_checkpoint_restore_pending = false
 		set_tree_paused_safely(false)
 		await settle_scene_transition_gate()
 		hide_scene_transition_gate()
@@ -541,6 +560,8 @@ func apply_pending_scene_load():
 	var save_reason: String = pending_scene_load_save_reason
 	clear_pending_scene_load()
 	respawn_load_pending = false
+	if load_succeeded:
+		death_checkpoint_restore_pending = false
 	hide_scene_transition_gate()
 	if save_reason != "":
 		save_game(save_reason, get_current_level())
@@ -815,6 +836,75 @@ func consume_pending_dev_start_preset(scene_path: String) -> String:
 	return preset
 
 
+func normalize_global_dev_preset(preset: String) -> String:
+	match preset:
+		"", "intro":
+			return DEV_PRESET_START
+		"banshees_active":
+			return DEV_PRESET_BANSHEE_COMBAT_ENABLED
+		"wolf_unlocked":
+			return DEV_PRESET_WOLF_TRANSFORMATION_UNLOCKED
+		"vincent_revealed", "bishop_available":
+			return DEV_PRESET_UPGRADED_BANSHEES_ENABLED
+		"bishop_defeated":
+			return DEV_PRESET_BISHOP_DEFEATED
+		_:
+			return preset
+
+
+func is_global_dev_preset(preset: String) -> bool:
+	return [
+		DEV_PRESET_START,
+		DEV_PRESET_BANSHEE_COMBAT_ENABLED,
+		DEV_PRESET_WOLF_TRANSFORMATION_UNLOCKED,
+		DEV_PRESET_UPGRADED_BANSHEES_ENABLED,
+		DEV_PRESET_BISHOP_DEFEATED,
+		"bishop_available",
+		"intro",
+		"banshees_active",
+		"wolf_unlocked",
+		"vincent_revealed",
+		"bishop_defeated",
+		"",
+	].has(preset)
+
+
+func apply_global_dev_progression_preset(preset: String):
+	var normalized_preset := normalize_global_dev_preset(preset)
+	var banshees_active: bool = normalized_preset != DEV_PRESET_START
+	var wolf_unlocked: bool = [
+		DEV_PRESET_WOLF_TRANSFORMATION_UNLOCKED,
+		DEV_PRESET_UPGRADED_BANSHEES_ENABLED,
+		DEV_PRESET_BISHOP_DEFEATED,
+	].has(normalized_preset)
+	var upgraded_banshees: bool = [
+		DEV_PRESET_UPGRADED_BANSHEES_ENABLED,
+		DEV_PRESET_BISHOP_DEFEATED,
+	].has(normalized_preset)
+	var bishop_request_available: bool = preset == "bishop_available"
+	var bishop_defeated: bool = normalized_preset == DEV_PRESET_BISHOP_DEFEATED
+
+	set_story_flag(STORY_FLAG_WOLF_TRANSFORMATION_UNLOCKED, wolf_unlocked)
+	set_story_flag(STORY_FLAG_VINCENT_HOUSE_DIALOGUE_COMPLETED, upgraded_banshees or bishop_defeated)
+	set_story_flag(STORY_FLAG_BISHOP_CONFRONTATION_ACCEPTED, bishop_defeated)
+	if wolf_unlocked:
+		unlock_upgrade(&"wolf_transformation")
+		set_stat_level(&"wolf_transformation", 0)
+	else:
+		lock_upgrade(&"wolf_transformation")
+	var bishop_stage: String = QUEST_STAGE_NOT_AVAILABLE
+	if bishop_request_available:
+		bishop_stage = QUEST_STAGE_REQUEST_AVAILABLE
+	elif bishop_defeated:
+		bishop_stage = QUEST_STAGE_BISHOP_DEFEATED
+	set_quest_stage(QUEST_BANSHEE_VILLAGE_BISHOP, bishop_stage)
+	set_banshee_world_rule("banshees_hostile_enabled", banshees_active)
+	set_banshee_world_rule("player_can_damage_banshees", banshees_active)
+	set_banshee_world_rule("wolf_permanent_clear_enabled", wolf_unlocked or bishop_defeated)
+	set_banshee_world_rule("combat_variant", BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED if upgraded_banshees or bishop_defeated else BANSHEE_VARIANT_CORRUPTED_MELEE)
+	set_banshee_world_rule("vincent_upgrades_enabled", upgraded_banshees or bishop_defeated)
+
+
 func start_dev_scene(scene_path: String, preset: String = "") -> bool:
 	if not OS.is_debug_build() and not Engine.is_editor_hint():
 		return false
@@ -969,7 +1059,13 @@ func spend_life_and_respawn_player_in_place() -> bool:
 	player_lives = max(player_lives - 1, 0)
 	player_lives_changed.emit(player_lives, get_max_player_lives())
 	if player_lives <= 0:
-		last_error = "No lives remaining."
+		respawn_load_pending = true
+		if load_death_checkpoint():
+			return true
+		respawn_load_pending = false
+		death_checkpoint_restore_pending = false
+		player_lives_changed.emit(player_lives, get_max_player_lives())
+		last_error = "No death checkpoint save exists."
 		return false
 
 	if player.has_method("soft_respawn_in_place"):
@@ -982,6 +1078,37 @@ func spend_life_and_respawn_player_in_place() -> bool:
 
 	last_error = ""
 	return true
+
+
+func load_death_checkpoint() -> bool:
+	if not save_exists(AUTOSAVE_SLOT):
+		last_error = "No death checkpoint save exists."
+		return false
+
+	death_checkpoint_restore_pending = true
+	respawn_load_pending = true
+	var load_succeeded: bool = load_save_slot_from_any_level(AUTOSAVE_SLOT)
+	if not is_scene_load_pending():
+		respawn_load_pending = false
+	if not load_succeeded:
+		death_checkpoint_restore_pending = false
+		respawn_load_pending = false
+	return load_succeeded
+
+
+func restore_player_full_after_death_checkpoint(level: Node):
+	var player: Node = get_tree().get_first_node_in_group("player")
+	if player == null and level != null:
+		player = level.get_node_or_null("Player")
+	if player == null:
+		return
+
+	if player.has_method("restore_after_load"):
+		player.restore_after_load()
+
+	var health_node: Node = player.get_node_or_null("Health")
+	if health_node != null and health_node.has_method("restore_full_after_respawn"):
+		health_node.restore_full_after_respawn()
 
 
 func delete_save(slot: int) -> bool:
@@ -1115,14 +1242,20 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 	apply_upgrade_state(data.get("upgrade_state", {}))
 	apply_story_flags(data.get("story_flags", {}))
 	apply_quest_states(data.get("quest_states", {}))
+	var restore_full_after_death_checkpoint: bool = death_checkpoint_restore_pending
 	var repaired_dead_player_save: bool = is_saved_player_dead(data.get("player", {}))
 	if not preserve_current_lives:
-		var saved_lives: int = int(data.get("player_lives", get_max_player_lives()))
-		player_lives = clamp(saved_lives, 0, get_max_player_lives())
-		if repaired_dead_player_save and player_lives <= 0:
-			player_lives = 1
-		player_lives_changed.emit(player_lives, get_max_player_lives())
+		if restore_full_after_death_checkpoint:
+			reset_player_lives()
+		else:
+			var saved_lives: int = int(data.get("player_lives", get_max_player_lives()))
+			player_lives = clamp(saved_lives, 0, get_max_player_lives())
+			if repaired_dead_player_save and player_lives <= 0:
+				player_lives = 1
+			player_lives_changed.emit(player_lives, get_max_player_lives())
 	apply_player_state(level, data.get("player", {}))
+	if restore_full_after_death_checkpoint:
+		restore_player_full_after_death_checkpoint(level)
 	if not uses_level_owned_hostile_state(level):
 		apply_defeated_hostiles(level, data.get("defeated_hostiles", []))
 	if not uses_level_owned_non_hostile_npc_state(level):
@@ -1130,6 +1263,8 @@ func apply_save_to_current_level(data: Dictionary, preserve_current_lives: bool 
 	apply_level_state(level, current_level_state)
 	if not verify_level_state_after_apply(level, current_level_state, int(data.get("slot", 0)), current_level_state_source):
 		return false
+	if restore_full_after_death_checkpoint:
+		death_checkpoint_restore_pending = false
 	set_tree_paused_safely(false)
 	last_error = ""
 	return true

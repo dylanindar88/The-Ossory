@@ -1,4 +1,4 @@
-[gd_scene load_steps=24 format=3 uid="uid://dr1wuuboj1mse"]
+[gd_scene load_steps=25 format=3 uid="uid://dr1wuuboj1mse"]
 
 [ext_resource type="PackedScene" uid="uid://cd8kyptum0qfo" path="res://scenes/ui/HUD.tscn" id="1_oucve"]
 [ext_resource type="TileSet" uid="uid://bgv1k3142wgna" path="res://resources/terrain/GroundTileSet.tres" id="2_7dp7q"]
@@ -13,6 +13,7 @@
 [ext_resource type="PackedScene" uid="uid://c0y1cuxwefgpj" path="res://scenes/characters/npcs/celtic_villagers/FemaleVillager.tscn" id="5_8cm5o"]
 [ext_resource type="PackedScene" uid="uid://dfjpsxet38xfl" path="res://scenes/characters/hostile_npcs/banshees/Banshee.tscn" id="5_ilqwd"]
 [ext_resource type="Script" path="res://scripts/interactions/RouteExitArea.gd" id="5_tky46"]
+[ext_resource type="PackedScene" uid="uid://dtm57amql3svl" path="res://scenes/characters/hostile_npcs/knights/BasicKnightMelee.tscn" id="6_4r6e8"]
 [ext_resource type="PackedScene" uid="uid://c6tskk6wfmvhc" path="res://scenes/environment/structures/campfire_base/CampfireBase.tscn" id="6_r2qka"]
 [ext_resource type="Script" path="res://scripts/levels/starting_wilderness/StartingWildernessFlowController.gd" id="7_flow"]
 [ext_resource type="Script" path="res://scripts/levels/shared/LevelInteractionRouter.gd" id="8_interaction_router"]
@@ -105,6 +106,7 @@ layer_0/tile_data = PackedInt32Array(-65491, 65536, 25, -131027, 65536, 24, -196
 y_sort_enabled = true
 
 [node name="Houses" type="Node2D" parent="PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion/NavigationSourceGeometry/Buildings"]
+y_sort_enabled = true
 
 [node name="House" parent="PlayableWorld/Navigation/CharacterNavigationRegions/LevelCharacterNavigationRegion/NavigationSourceGeometry/Buildings/Houses" instance=ExtResource("3_g71c5")]
 position = Vector2(2608, -1174)
@@ -130,6 +132,31 @@ position = Vector2(1491, -1164)
 [node name="HostileNPCs" type="Node2D" parent="PlayableWorld/Environment/Characters"]
 y_sort_enabled = true
 position = Vector2(-1, 0)
+
+[node name="Knights" type="Node2D" parent="PlayableWorld/Environment/Characters/HostileNPCs"]
+y_sort_enabled = true
+
+[node name="MeleeKnights" type="Node2D" parent="PlayableWorld/Environment/Characters/HostileNPCs/Knights"]
+y_sort_enabled = true
+
+[node name="MeleeKnight1" parent="PlayableWorld/Environment/Characters/HostileNPCs/Knights/MeleeKnights" instance=ExtResource("6_4r6e8")]
+position = Vector2(1072, -447)
+home_facing_direction = "up"
+
+[node name="MeleeKnight2" parent="PlayableWorld/Environment/Characters/HostileNPCs/Knights/MeleeKnights" instance=ExtResource("6_4r6e8")]
+position = Vector2(2010, -1112)
+home_facing_direction = "down"
+
+[node name="MeleeKnight3" parent="PlayableWorld/Environment/Characters/HostileNPCs/Knights/MeleeKnights" instance=ExtResource("6_4r6e8")]
+position = Vector2(3886, -830)
+home_facing_direction = "down"
+
+[node name="MeleeKnight4" parent="PlayableWorld/Environment/Characters/HostileNPCs/Knights/MeleeKnights" instance=ExtResource("6_4r6e8")]
+position = Vector2(2766, -1405)
+home_facing_direction = "down"
+
+[node name="RangedKnights" type="Node2D" parent="PlayableWorld/Environment/Characters/HostileNPCs/Knights"]
+y_sort_enabled = true
 
 [node name="Banshees" type="Node2D" parent="PlayableWorld/Environment/Characters/HostileNPCs"]
 
@@ -187,7 +214,7 @@ position = Vector2(3612, -1484)
 campfire_base_id = &"campfire_base_2"
 
 [node name="Saorise" parent="PlayableWorld/Environment/Characters" instance=ExtResource("3_m6gn6")]
-position = Vector2(1193, -1161)
+position = Vector2(1188, -1159)
 
 [node name="InteriorRooms" type="Node2D" parent="PlayableWorld/Environment"]
 

@@ -20,10 +20,10 @@ const STORY_FLAG_VINCENT_HOUSE_DIALOGUE_COMPLETED: String = "vincent_house_dialo
 const STORY_FLAG_WOLF_TRANSFORMATION_UNLOCKED: String = "wolf_transformation_unlocked_by_dulluhan"
 const BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED: String = "corrupted_strong_ranged"
 const BANSHEE_VARIANT_CORRUPTED_MELEE: String = "corrupted_melee"
-const DEV_PRESET_INTRO: String = "intro"
-const DEV_PRESET_BANSHEES_ACTIVE: String = "banshees_active"
-const DEV_PRESET_WOLF_UNLOCKED: String = "wolf_unlocked"
-const DEV_PRESET_VINCENT_REVEALED: String = "vincent_revealed"
+const DEV_PRESET_INTRO: String = "start"
+const DEV_PRESET_BANSHEES_ACTIVE: String = "banshee_combat_enabled"
+const DEV_PRESET_WOLF_UNLOCKED: String = "wolf_transformation_unlocked"
+const DEV_PRESET_VINCENT_REVEALED: String = "upgraded_banshees_enabled"
 const DEV_PRESET_BISHOP_AVAILABLE: String = "bishop_available"
 const DEV_PRESET_BISHOP_DEFEATED: String = "bishop_defeated"
 const VILLAGER_BANSHEE_DEFEAT_RESUME_PATROL: String = "resume_patrol"
@@ -164,58 +164,15 @@ func apply_dev_start_preset() -> bool:
 
 
 func is_valid_dev_preset(preset: String) -> bool:
-	return [
-		DEV_PRESET_INTRO,
-		DEV_PRESET_BANSHEES_ACTIVE,
-		DEV_PRESET_WOLF_UNLOCKED,
-		DEV_PRESET_VINCENT_REVEALED,
-		DEV_PRESET_BISHOP_AVAILABLE,
-		DEV_PRESET_BISHOP_DEFEATED,
-	].has(preset)
+	return SaveManager != null and SaveManager.has_method("is_global_dev_preset") and SaveManager.is_global_dev_preset(preset)
 
 
 func apply_dev_story_state(preset: String):
 	if SaveManager == null:
 		return
 
-	var banshees_active: bool = preset != DEV_PRESET_INTRO
-	var wolf_unlocked: bool = [
-		DEV_PRESET_WOLF_UNLOCKED,
-		DEV_PRESET_VINCENT_REVEALED,
-		DEV_PRESET_BISHOP_AVAILABLE,
-		DEV_PRESET_BISHOP_DEFEATED,
-	].has(preset)
-	var vincent_revealed: bool = [
-		DEV_PRESET_VINCENT_REVEALED,
-		DEV_PRESET_BISHOP_AVAILABLE,
-		DEV_PRESET_BISHOP_DEFEATED,
-	].has(preset)
-	var bishop_available: bool = preset == DEV_PRESET_BISHOP_AVAILABLE
-	var bishop_defeated: bool = preset == DEV_PRESET_BISHOP_DEFEATED
-
-	if SaveManager.has_method("set_story_flag"):
-		SaveManager.set_story_flag(STORY_FLAG_WOLF_TRANSFORMATION_UNLOCKED, wolf_unlocked)
-		SaveManager.set_story_flag(STORY_FLAG_VINCENT_HOUSE_DIALOGUE_COMPLETED, vincent_revealed)
-	if SaveManager.has_method("unlock_upgrade") and SaveManager.has_method("lock_upgrade"):
-		if wolf_unlocked:
-			SaveManager.unlock_upgrade(&"wolf_transformation")
-			if SaveManager.has_method("set_stat_level"):
-				SaveManager.set_stat_level(&"wolf_transformation", 0)
-		else:
-			SaveManager.lock_upgrade(&"wolf_transformation")
-	if SaveManager.has_method("set_quest_stage"):
-		var bishop_stage: String = SaveManager.QUEST_STAGE_NOT_AVAILABLE
-		if bishop_available:
-			bishop_stage = SaveManager.QUEST_STAGE_REQUEST_AVAILABLE
-		elif bishop_defeated:
-			bishop_stage = SaveManager.QUEST_STAGE_BISHOP_DEFEATED
-		SaveManager.set_quest_stage(QUEST_BANSHEE_VILLAGE_BISHOP, bishop_stage)
-	if SaveManager.has_method("set_banshee_world_rule"):
-		SaveManager.set_banshee_world_rule("banshees_hostile_enabled", banshees_active)
-		SaveManager.set_banshee_world_rule("player_can_damage_banshees", banshees_active)
-		SaveManager.set_banshee_world_rule("wolf_permanent_clear_enabled", wolf_unlocked)
-		SaveManager.set_banshee_world_rule("combat_variant", BANSHEE_VARIANT_CORRUPTED_STRONG_RANGED if vincent_revealed or bishop_defeated else BANSHEE_VARIANT_CORRUPTED_MELEE)
-		SaveManager.set_banshee_world_rule("vincent_upgrades_enabled", vincent_revealed or bishop_defeated)
+	if SaveManager.has_method("apply_global_dev_progression_preset"):
+		SaveManager.apply_global_dev_progression_preset(preset)
 
 
 func build_dev_level_state() -> Dictionary:

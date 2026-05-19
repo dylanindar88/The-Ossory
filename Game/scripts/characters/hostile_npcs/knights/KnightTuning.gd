@@ -11,6 +11,9 @@ extends Resource
 @export var hurt_duration_seconds: float = 0.35
 @export var block_stun_duration: float = 1.0
 @export var block_stun_move_speed_modifier: float = 0.15
+@export var damage_knockback_enabled: bool = true
+@export var damage_knockback_distance: float = 14.0
+@export var damage_knockback_duration: float = 0.12
 
 @export_group("Movement")
 @export var walk_speed: float = 48.0

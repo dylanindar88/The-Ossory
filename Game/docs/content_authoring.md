@@ -9,6 +9,8 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 - Resource files use `snake_case.tres` and live under `res://resources/`.
 - Dialogue with multiple story states uses `*_story_profile.tres`.
 - Character animation data should be external `SpriteFrames` resources under `res://resources/characters/...`, not embedded in character scenes.
+- UI menus, HUD panels, debug views, dev-tool views, gauge rows, and stock icon layouts should have their editable layout shell and preview rows authored in `.tscn` scenes first. Runtime scripts may replace preview content with data-driven rows, but should bind existing containers instead of creating the layout structure from scratch. Repeated runtime rows should duplicate an authored preview/template row so edits made in the Godot 2D editor are reflected in game. When rows need to fit a specific background image, use fixed `Control` blocks with anchored child controls instead of container rows that can expand from dynamic labels or dropdown text.
+- HUD and Saorise under-player stamina/transformation gauges should instance the shared `PlayerGaugeStack.tscn` and use the shared preview settings resource. Tune shared gauge shape and stock cluster layouts in the editor; scripts should only drive live values, visibility, and active-row ordering.
 
 ## Folder Patterns
 
@@ -97,7 +99,7 @@ Use this as the quick checklist before adding new levels, NPCs, hostile entities
 2. Add animation/tuning resources under `res://resources/characters/hostile_npcs/<entity_group>/`.
 3. Add hostile actors to `hostile_npcs` and their hurt boxes to `enemies`.
 4. Use separate tuning resources for variants that share code but need different stats.
-5. Keep `AttackBox` as the stable `Area2D` owner and adjust its child `CollisionShape2D` through `AttackHitboxShapeController` for runtime attack positions. Directional offsets should derive from the authored child shape dimensions when they need to scale with sprite or hitbox edits.
+5. Keep `AttackBox` as the stable `Area2D` owner and tune attackbox profiles with `AttackHitboxProfileAuthoring` in the scene. Select the form/variant, direction, and combo/profile slot in the inspector, then edit the visible child `CollisionShape2D`; scripts should apply those authored profiles through `AttackHitboxShapeController` instead of hardcoded hitbox dimensions.
 6. If the hostile has a hurt animation, route non-lethal damage through a short hurt/stun state that cancels active attack hitboxes and resumes normal behavior afterward. Lethal damage should go directly to death.
 7. Keep scene-facing methods on the actor coordinator/state machine.
 8. Move private lifecycle, sensors, combat areas, or save adapters into helpers only when they reduce real complexity.

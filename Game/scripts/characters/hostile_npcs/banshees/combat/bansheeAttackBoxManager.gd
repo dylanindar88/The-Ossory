@@ -9,6 +9,7 @@ var current_combo_part: int = 0
 var banshee: Node
 var active_attack_targets: Array[Node2D] = []
 var shape_controller := AttackHitboxShapeControllerScript.new()
+var profile_authoring: AttackHitboxProfileAuthoring
 
 
 func setup():
@@ -22,6 +23,7 @@ func setup():
 
 	shape_controller.setup(attack_box)
 	collision_shape = shape_controller.collision_shape
+	profile_authoring = find_profile_authoring()
 
 	if not attack_box.area_entered.is_connected(_on_attack_hit):
 		attack_box.area_entered.connect(_on_attack_hit)
@@ -48,11 +50,29 @@ func deactivate_attack_hitbox():
 
 
 func update_attackbox_facing(facing_left: bool):
+	if profile_authoring != null:
+		var direction := &"left" if facing_left else &"right"
+		var profile := profile_authoring.get_profile(&"default", direction, current_combo_part)
+		if not profile.is_empty():
+			shape_controller.apply_profile(profile)
+			return
 	shape_controller.apply_horizontal_flip(facing_left)
 
 
 func get_attack_collision_shape() -> CollisionShape2D:
 	return shape_controller.find_attack_collision_shape()
+
+
+func find_profile_authoring() -> AttackHitboxProfileAuthoring:
+	if attack_box == null:
+		return null
+	var owner := attack_box.get_parent()
+	if owner == null:
+		return null
+	for child in owner.get_children():
+		if child is AttackHitboxProfileAuthoring:
+			return child as AttackHitboxProfileAuthoring
+	return null
 
 
 func _on_attack_hit(area: Area2D):

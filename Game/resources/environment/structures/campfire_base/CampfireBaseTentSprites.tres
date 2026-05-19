@@ -1,0 +1,54 @@
+[gd_resource type="SpriteFrames" load_steps=6 format=3 uid="uid://dmrf4h2pwp0xb"]
+
+[ext_resource type="Texture2D" uid="uid://denqr87skatn3" path="res://art/structures/tent.png" id="1_ug8i6"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_fe3gc"]
+atlas = ExtResource("1_ug8i6")
+region = Rect2(0, 0, 256, 224)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lgysq"]
+atlas = ExtResource("1_ug8i6")
+region = Rect2(0, 224, 256, 224)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_6epyh"]
+atlas = ExtResource("1_ug8i6")
+region = Rect2(0, 448, 256, 224)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_m2omd"]
+atlas = ExtResource("1_ug8i6")
+region = Rect2(0, 672, 256, 224)
+
+[resource]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_fe3gc")
+}],
+"loop": true,
+"name": &"alive",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lgysq")
+}],
+"loop": true,
+"name": &"alive_flipped",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_6epyh")
+}],
+"loop": false,
+"name": &"destroyed",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_m2omd")
+}],
+"loop": true,
+"name": &"destroyed_flipped",
+"speed": 5.0
+}]

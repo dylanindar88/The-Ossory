@@ -25,5 +25,5 @@ invulnerability_time = 0.75
 max_stamina = 100.0
 stamina_regen_rate = 15.0
 stamina_exhaustion_recovery_ratio = 0.75
-parry_bonus_time = 2.0
+parry_bonus_time = 3.0
 parry_damage_multiplier = 2.0

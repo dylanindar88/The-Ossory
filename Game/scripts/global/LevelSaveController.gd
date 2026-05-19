@@ -1,7 +1,7 @@
 extends Node
 
 @export var autosave_on_enter: bool = true
-@export var autosave_on_exit: bool = true
+@export var autosave_on_exit: bool = false
 
 var level: Node
 

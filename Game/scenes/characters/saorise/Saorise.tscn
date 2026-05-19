@@ -1,4 +1,4 @@
-[gd_scene load_steps=18 format=3 uid="uid://u16duk15fe7q"]
+[gd_scene load_steps=16 format=3 uid="uid://u16duk15fe7q"]
 
 [ext_resource type="Script" path="res://scripts/characters/saorise/stateMachine.gd" id="1_e5y1c"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="2_1beex"]
@@ -7,25 +7,11 @@
 [ext_resource type="Script" path="res://scripts/characters/saorise/health/saoriseHealth.gd" id="4_q0m2k"]
 [ext_resource type="Script" path="res://scripts/ui/PlayerStaminaBar.gd" id="5_2813q"]
 [ext_resource type="SpriteFrames" uid="uid://cvmwrihq7kyud" path="res://resources/characters/saorise/sprites/wolfMovement.tres" id="5_db6kb"]
-[ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="8_bg1ki"]
 [ext_resource type="Resource" uid="uid://bnorp2nbf1cjh" path="res://resources/characters/saorise/forms/human_form.tres" id="8_human_form"]
 [ext_resource type="Resource" uid="uid://bjt3jxdpfurt" path="res://resources/characters/saorise/forms/wolf_form.tres" id="9_wolf_form"]
-
-[sub_resource type="Gradient" id="Gradient_stamina_under"]
-offsets = PackedFloat32Array(0.609195)
-colors = PackedColorArray(0, 0, 0, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_stamina_under"]
-gradient = SubResource("Gradient_stamina_under")
-width = 44
-
-[sub_resource type="Gradient" id="Gradient_stamina_progress"]
-offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
-colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
-
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_stamina_progress"]
-gradient = SubResource("Gradient_stamina_progress")
-width = 44
+[ext_resource type="PackedScene" uid="uid://vy8atp22emcw" path="res://scenes/ui/PlayerGaugeStack.tscn" id="10_gauge_stack"]
+[ext_resource type="Resource" uid="uid://dlcna0lm8gg0" path="res://resources/ui/player_gauge_preview_settings.tres" id="11_gauge_preview"]
+[ext_resource type="Script" path="res://scripts/characters/shared/combat/AttackHitboxProfileAuthoring.gd" id="12_attack_profiles"]
 
 [sub_resource type="CircleShape2D" id="CapsuleShape2D_res46"]
 radius = 6.0
@@ -35,7 +21,7 @@ radius = 10.3697
 height = 36.0944
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_36swi"]
-size = Vector2(41, 31)
+size = Vector2(45, 58.0001)
 
 [node name="Saorise" type="CharacterBody2D"]
 y_sort_enabled = true
@@ -49,6 +35,19 @@ safe_margin = 0.04
 script = ExtResource("1_e5y1c")
 form_definitions = Array[Resource("res://scripts/characters/saorise/PlayerFormDefinition.gd")]([ExtResource("8_human_form"), ExtResource("9_wolf_form")])
 
+[node name="Stamina" type="Node2D" parent="."]
+texture_filter = 2
+scale = Vector2(0.832062, 1)
+script = ExtResource("5_2813q")
+gauge_preview_settings = ExtResource("11_gauge_preview")
+
+[node name="PlayerGaugeStack" parent="Stamina" instance=ExtResource("10_gauge_stack")]
+offset_left = -26.0455
+offset_top = 2.0
+offset_right = 153.954
+offset_bottom = 48.0
+scale = Vector2(0.36, 0.36)
+
 [node name="Forms" type="Node2D" parent="."]
 
 [node name="HumanForm" type="Node2D" parent="Forms"]
@@ -59,7 +58,8 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.28, 0.28)
 sprite_frames = ExtResource("2_injfk")
-animation = &"dash_up"
+animation = &"unarmed_attack_down"
+frame_progress = 0.735846
 offset = Vector2(0, -90)
 
 [node name="WolfForm" type="Node2D" parent="Forms"]
@@ -70,37 +70,13 @@ texture_filter = 1
 position = Vector2(0, -1)
 scale = Vector2(0.4, 0.4)
 sprite_frames = ExtResource("5_db6kb")
-animation = &"idle_down"
+animation = &"attack"
+frame_progress = 0.017982
 offset = Vector2(0, -61.545)
 
 [node name="Effects" parent="." instance=ExtResource("2_1beex")]
 z_index = 100
 position = Vector2(0, -57.75)
-
-[node name="Stamina" type="Node2D" parent="."]
-texture_filter = 2
-scale = Vector2(0.832062, 1)
-
-[node name="StaminaBar" type="TextureProgressBar" parent="Stamina"]
-z_as_relative = false
-offset_left = -14.0
-offset_top = 2.0
-offset_right = 14.0
-offset_bottom = 5.0
-value = 50.0
-rounded = true
-nine_patch_stretch = true
-texture_under = SubResource("GradientTexture2D_stamina_under")
-texture_progress = SubResource("GradientTexture2D_stamina_progress")
-script = ExtResource("5_2813q")
-
-[node name="StaminaBarBorder" type="TextureRect" parent="Stamina"]
-offset_left = -21.0
-offset_top = -3.0
-offset_right = 363.0
-offset_bottom = 125.0
-scale = Vector2(0.109314, 0.102298)
-texture = ExtResource("8_bg1ki")
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(0, -24)
@@ -127,7 +103,140 @@ shape = SubResource("CapsuleShape2D_h3xvf")
 [node name="AttackBox" type="Area2D" parent="."]
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="AttackBox"]
-position = Vector2(18, -32)
-rotation = -1.5708
+position = Vector2(29.0001, -20.5)
+rotation = 1.5708
 shape = SubResource("RectangleShape2D_36swi")
 debug_color = Color(0.984314, 0, 0.337255, 0.419608)
+
+[node name="AttackHitboxProfiles" type="Node" parent="."]
+script = ExtResource("12_attack_profiles")
+allowed_contexts = Array[StringName]([&"human", &"wolf"])
+selected_context = &"wolf"
+selected_combo_part = 3
+force_unit_collision_shape_scale = true
+profiles = {
+"human": {
+"down": {
+"1": {
+"position": Vector2(0, -4),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(40, 40)
+},
+"2": {
+"position": Vector2(0, 4.76837e-07),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(40, 48)
+},
+"3": {
+"position": Vector2(0, -1.5),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(40, 45)
+}
+},
+"right": {
+"1": {
+"position": Vector2(18, -32),
+"rotation": 1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(32, 36)
+},
+"2": {
+"position": Vector2(20, -32),
+"rotation": 1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(32, 40)
+},
+"3": {
+"position": Vector2(16, -32),
+"rotation": 1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(32, 32)
+}
+},
+"up": {
+"1": {
+"position": Vector2(-1, -52.5313),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(40, 37.0625)
+},
+"2": {
+"position": Vector2(-1, -55.5),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(40, 43)
+},
+"3": {
+"position": Vector2(-1, -53),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(40, 38)
+}
+}
+},
+"wolf": {
+"down": {
+"1": {
+"position": Vector2(0, 4.75),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(48, 58.5)
+},
+"2": {
+"position": Vector2(0, 5),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(48, 58)
+},
+"3": {
+"position": Vector2(0, 4.75),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(48, 58.5)
+}
+},
+"right": {
+"1": {
+"position": Vector2(29, -20.5),
+"rotation": 1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(45, 58)
+},
+"2": {
+"position": Vector2(29, -30.5),
+"rotation": 1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(65, 58.0001)
+},
+"3": {
+"position": Vector2(29.0001, -20.5),
+"rotation": 1.5708,
+"scale": Vector2(1, 1),
+"size": Vector2(45, 58.0001)
+}
+},
+"up": {
+"1": {
+"position": Vector2(0, -44),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(46, 40)
+},
+"2": {
+"position": Vector2(0, -44),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(46, 40)
+},
+"3": {
+"position": Vector2(0, -44),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(46, 40)
+}
+}
+}
+}

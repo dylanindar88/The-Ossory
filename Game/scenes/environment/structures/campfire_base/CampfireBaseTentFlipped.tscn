@@ -1,47 +1,10 @@
-[gd_scene load_steps=11 format=3 uid="uid://bqevujpatxmlg"]
+[gd_scene load_steps=8 format=3 uid="uid://bqevujpatxmlg"]
 
 [ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseTent.gd" id="1_jrimr"]
-[ext_resource type="Texture2D" uid="uid://denqr87skatn3" path="res://art/structures/tent.png" id="2_gvwbc"]
+[ext_resource type="SpriteFrames" uid="uid://dmrf4h2pwp0xb" path="res://resources/environment/structures/campfire_base/CampfireBaseTentSprites.tres" id="2_4430c"]
 [ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseComponentHealthBar.gd" id="3_abnia"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="4_48iq3"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="5_effects"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_fe3gc"]
-atlas = ExtResource("2_gvwbc")
-region = Rect2(0, 0, 256, 224)
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_lgysq"]
-atlas = ExtResource("2_gvwbc")
-region = Rect2(0, 224, 256, 224)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_tent"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_fe3gc")
-}],
-"loop": true,
-"name": &"alive",
-"speed": 5.0
-}, {
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_lgysq")
-}],
-"loop": true,
-"name": &"alive_flipped",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": false,
-"name": &"destroyed",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"destroyed_flipped",
-"speed": 5.0
-}]
 
 [sub_resource type="Gradient" id="Gradient_health_under"]
 offsets = PackedFloat32Array(0)
@@ -54,18 +17,18 @@ width = 44
 [node name="CampfireBaseTent" type="StaticBody2D"]
 y_sort_enabled = true
 script = ExtResource("1_jrimr")
-max_health = 120
+max_health = 90
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 y_sort_enabled = true
 scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_tent")
+sprite_frames = ExtResource("2_4430c")
 animation = &"alive_flipped"
 offset = Vector2(0, -50)
 
 [node name="BodyCollision" type="CollisionPolygon2D" parent="."]
 position = Vector2(0, -8.00573)
-polygon = PackedVector2Array(-58, 2, -57.1558, 0.835911, -56, 0, -49.7666, -3.37556, -40.1288, -7.87322, -29.4144, -12.8733, -20.1201, -17.2106, -14.0548, -20.0464, -12.3393, -20.8402, -10.894, -21.0762, -9.47816, -21.0172, -7.56881, -20.6789, -5, -20, 10, -13, 21.9396, -7.83692, 58.7877, 9.02137, 59.6136, 9.53755, 60, 10, 60, 11, 59.6136, 11.5433, 59, 12, 57, 13, 48, 18, 39.8436, 22.3501, 33, 26, 23.9838, 30.7454, 17.5536, 34.1297, 15.0848, 35.3142, 12.3457, 36.6018, 10.6133, 36.7189, 9.11498, 36.555, 7.52303, 35.8058, 6, 35, -8, 28, -44, 10, -56.9184, 3.88647, -58, 3)
+polygon = PackedVector2Array(-57.5798, 1.98464, -57.4864, 1.37681, -57.1308, 0.855913, -56, 0, -49.7666, -3.37556, -40.1288, -7.87322, -29.4144, -12.8733, -20.1201, -17.2106, -14.0548, -20.0464, -12.3393, -20.8402, -10.894, -21.0762, -9.47816, -21.0172, -7.56881, -20.6789, -5, -20, 10, -13, 21.9396, -7.83692, 58.7877, 9.02137, 59.6136, 9.53755, 60, 10, 60, 11, 59.6136, 11.5433, 59, 12, 57, 13, 48, 18, 39.8436, 22.3501, 33, 26, 23.9838, 30.7454, 17.5536, 34.1297, 15.0848, 35.3142, 12.3457, 36.6018, 10.6133, 36.7189, 9.11498, 36.555, 7.52303, 35.8058, 6, 35, -8, 28, -44, 10, -56.3561, 3.54194, -57.1737, 2.85693)
 
 [node name="HealthBarDisplay" type="Node2D" parent="."]
 visible = false

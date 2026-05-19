@@ -16,7 +16,7 @@ collision_mask = 2
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CampAggroArea"]
 rotation = 1.5708
-scale = Vector2(25.7897, 22.1976)
+scale = Vector2(22.9007, 22.6662)
 shape = SubResource("CapsuleShape2D_gu6fo")
 
 [node name="CampTrackingArea" type="Area2D" parent="."]
@@ -25,7 +25,7 @@ collision_mask = 2
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CampTrackingArea"]
 rotation = 1.5708
-scale = Vector2(36, 31)
+scale = Vector2(31.946, 31.4902)
 shape = SubResource("CapsuleShape2D_tracking")
 
 [node name="LayoutRoot" type="Node2D" parent="."]

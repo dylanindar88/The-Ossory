@@ -30,12 +30,9 @@ const ENCOUNTER_CONTROLLER_SCRIPT := preload("res://scripts/levels/shared/Knight
 const LEVEL_SUPPORT_SCRIPT := preload("res://scripts/levels/shared/KnightCampLevelSupport.gd")
 const CHARACTER_NAVIGATION_SETTINGS := preload("res://scripts/levels/shared/CharacterNavigationSettings.gd")
 const SAORISE_ATTACK_BOX_MANAGER_SCRIPT := preload("res://scripts/characters/saorise/combat/attackBoxManager.gd")
+const SAORISE_ATTACK_STATE_SCRIPT := preload("res://scripts/characters/saorise/state_machine/attackState.gd")
 const BANSHEE_ATTACK_BOX_MANAGER_SCRIPT := preload("res://scripts/characters/hostile_npcs/banshees/combat/bansheeAttackBoxManager.gd")
 const TOP_DOWN_MOVEMENT_SCRIPT := preload("res://scripts/characters/shared/movement/TopDownMovement.gd")
-const PREVIOUS_MELEE_ATTACK_BOX_HEIGHT := 28.0 * 1.06767
-const HORIZONTAL_ATTACK_BOX_OFFSET_RATIO := 24.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
-const UP_ATTACK_BOX_OFFSET_RATIO := 10.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
-const DOWN_ATTACK_BOX_OFFSET_RATIO := 25.0 / PREVIOUS_MELEE_ATTACK_BOX_HEIGHT
 const DEFAULT_CHARACTER_NAVIGATION_LAYER := CHARACTER_NAVIGATION_SETTINGS.DEFAULT_CHARACTER_NAVIGATION_LAYER
 const CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER := CHARACTER_NAVIGATION_SETTINGS.CAMPFIRE_BASE_KNIGHT_NAVIGATION_LAYER
 
@@ -74,6 +71,8 @@ func run(assertions: TestAssertions, tree: SceneTree, _save_manager: Node):
 	assert_tree_trunk_tile_collision_contract(assertions)
 	await assert_projectile_spawn_marker_contracts(assertions, tree)
 	await assert_melee_knight_animation_contract(assertions, tree)
+	await assert_saorise_frame_sliced_attack_contract(assertions, tree)
+	await assert_saorise_incoming_damage_parity(assertions, tree)
 	await assert_shared_attack_box_shape_convention(assertions, tree)
 	await assert_knight_player_combat_contract(assertions, tree)
 	await assert_campfire_component_scene_contracts(assertions, tree)
@@ -85,6 +84,7 @@ func run(assertions: TestAssertions, tree: SceneTree, _save_manager: Node):
 	await assert_knight_home_default_and_aggro_contract(assertions, tree)
 	await assert_knight_transform_aggro_contract(assertions, tree)
 	await assert_knight_runtime_stabilization_contract(assertions, tree)
+	await assert_knight_damage_knockback_facing_lock(assertions, tree)
 	await assert_knight_camp_encounter_helper(assertions, tree)
 	await assert_knight_camp_level_support(assertions, tree)
 	await assert_split_knight_navigation_support(assertions, tree)
@@ -128,6 +128,10 @@ func assert_knight_scene_contracts(assertions: TestAssertions, tree: SceneTree):
 			assertions.assert_eq(float(ranged_tuning.block_stun_duration), 1.0, "Ranged knight block stun duration should default to banshee timing.")
 			assertions.assert_eq(float(melee_tuning.block_stun_move_speed_modifier), 0.15, "Melee knight block stun movement modifier should default to banshee timing.")
 			assertions.assert_eq(float(ranged_tuning.block_stun_move_speed_modifier), 0.15, "Ranged knight block stun movement modifier should default to banshee timing.")
+			assertions.assert_true(bool(melee_tuning.damage_knockback_enabled), "Melee knight damage knockback should be tunable and enabled by default.")
+			assertions.assert_true(bool(ranged_tuning.damage_knockback_enabled), "Ranged knight damage knockback should be tunable and enabled by default.")
+			assertions.assert_ne(float(melee_tuning.damage_knockback_distance), float(ranged_tuning.damage_knockback_distance), "Melee and ranged knights should be able to use different knockback distances.")
+			assertions.assert_ne(float(melee_tuning.damage_knockback_duration), float(ranged_tuning.damage_knockback_duration), "Melee and ranged knights should be able to use different knockback durations.")
 			assertions.assert_true(ranged_tuning.projectile_scene != null, "Ranged tuning should point to the arrow projectile scene.")
 
 	if melee != null:
@@ -312,10 +316,406 @@ func assert_melee_knight_animation_contract(assertions: TestAssertions, tree: Sc
 	await tree.process_frame
 
 
+func assert_saorise_frame_sliced_attack_contract(assertions: TestAssertions, tree: SceneTree):
+	var saorise := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	assertions.assert_true(saorise != null, "Saorise should instantiate for frame-sliced attack contract.")
+	if saorise == null:
+		return
+
+	var sprite := saorise.get("sprite") as AnimatedSprite2D
+	assertions.assert_true(sprite != null and sprite.sprite_frames != null, "Saorise should expose human SpriteFrames for frame-sliced attack checks.")
+	if sprite == null or sprite.sprite_frames == null:
+		saorise.queue_free()
+		await tree.process_frame
+		return
+
+	var frames := sprite.sprite_frames
+	for animation_name in ["unarmed_attack", "unarmed_attack_up", "unarmed_attack_down"]:
+		assertions.assert_true(frames.has_animation(animation_name), "Saorise should have %s animation." % animation_name)
+		if frames.has_animation(animation_name):
+			assertions.assert_true(frames.get_frame_count(animation_name) >= 16, "%s should include all three combo slices." % animation_name)
+			assertions.assert_false(frames.get_animation_loop(animation_name), "%s should not loop." % animation_name)
+
+	for old_animation_name in ["unarmed_attack_1", "unarmed_attack_2", "unarmed_attack_3", "unarmed_attack_up1", "unarmed_attack_up2", "unarmed_attack_up3", "unarmed_attack_down1", "unarmed_attack_down2", "unarmed_attack_down3"]:
+		assertions.assert_false(frames.has_animation(old_animation_name), "Saorise should not require old split combo animation %s." % old_animation_name)
+
+	var attack_state = SAORISE_ATTACK_STATE_SCRIPT.new()
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 1, "right", "unarmed_attack", 0, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 2, "right", "unarmed_attack", 6, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 3, "right", "unarmed_attack", 11, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 1, "left", "unarmed_attack", 0, true)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 2, "up", "unarmed_attack_up", 6, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 3, "down", "unarmed_attack_down", 11, false)
+	assert_frame_sliced_attack_duration(assertions, attack_state, saorise, 1, "unarmed_attack", 6)
+	assert_frame_sliced_attack_duration(assertions, attack_state, saorise, 2, "unarmed_attack", 5)
+	assert_frame_sliced_attack_duration(assertions, attack_state, saorise, 3, "unarmed_attack", 5)
+
+	attack_state.combo_part = 2
+	attack_state.attack_direction = "right"
+	attack_state.play_attack_animation(saorise)
+	sprite.set_frame_and_progress(7, 0.25)
+	attack_state.animation_duration = attack_state.get_attack_slice_duration(saorise, "unarmed_attack", 2)
+	attack_state.attack_timer = attack_state.animation_duration * 0.5
+	attack_state.attack_direction = "up"
+	attack_state.transition_attack_animation(saorise)
+	assertions.assert_eq(str(sprite.animation), "unarmed_attack_up", "Direction switching should use the target directional sliced animation.")
+	assertions.assert_eq(sprite.frame, 7, "Direction switching should preserve progress inside the current combo slice.")
+	assertions.assert_true(absf(sprite.frame_progress - 0.0) <= 0.0001, "Direction switching should seek to a stable sliced attack frame.")
+
+	attack_state.combo_part = 2
+	attack_state.attack_direction = "right"
+	attack_state.play_attack_animation(saorise)
+	sprite.set_frame_and_progress(11, 0.0)
+	attack_state.maintain_attack_slice_frame(saorise)
+	assertions.assert_eq(sprite.frame, 10, "Sliced attack playback should clamp at the active combo part end frame.")
+
+	var wolf_form_changed: bool = bool(saorise.call("set_form", &"wolf"))
+	assertions.assert_true(wolf_form_changed, "Saorise should switch to wolf form for frame-sliced wolf attack checks.")
+	await tree.process_frame
+	frames = sprite.sprite_frames
+	for animation_name in ["attack", "attack_up", "attack_down"]:
+		assertions.assert_true(frames.has_animation(animation_name), "Wolf Saorise should have %s animation." % animation_name)
+		if frames.has_animation(animation_name):
+			assertions.assert_true(frames.get_frame_count(animation_name) >= 16, "%s should include all three wolf combo slices." % animation_name)
+			assertions.assert_false(frames.get_animation_loop(animation_name), "%s should not loop." % animation_name)
+
+	for old_wolf_animation_name in ["attack_1", "attack_2", "attack_3", "attack_up1", "attack_up2", "attack_up3", "attack_down1", "attack_down2", "attack_down3"]:
+		assertions.assert_false(frames.has_animation(old_wolf_animation_name), "Wolf Saorise should not require old split combo animation %s." % old_wolf_animation_name)
+
+	attack_state.combo_part = 0
+	attack_state.attack_direction = "right"
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 1, "right", "attack", 0, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 2, "right", "attack", 6, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 3, "right", "attack", 11, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 1, "left", "attack", 0, true)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 2, "up", "attack_up", 6, false)
+	assert_frame_sliced_attack_part(assertions, attack_state, saorise, 3, "down", "attack_down", 11, false)
+	assert_frame_sliced_attack_duration(assertions, attack_state, saorise, 1, "attack", 6)
+	assert_frame_sliced_attack_duration(assertions, attack_state, saorise, 2, "attack", 5)
+	assert_frame_sliced_attack_duration(assertions, attack_state, saorise, 3, "attack", 5)
+
+	saorise.queue_free()
+	await tree.process_frame
+
+
+func assert_saorise_incoming_damage_parity(assertions: TestAssertions, tree: SceneTree):
+	var saorise := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	assertions.assert_true(saorise != null, "Saorise should instantiate for incoming damage parity checks.")
+	if saorise == null:
+		return
+
+	var health: Node = saorise.get_node_or_null("Health")
+	assertions.assert_true(health != null, "Saorise should expose Health for incoming damage parity checks.")
+	if health == null:
+		saorise.queue_free()
+		await tree.process_frame
+		return
+
+	var max_health: int = int(health.get("max_health"))
+	var expected_damage: int = int(ceil(float(max_health) / float(max(int(health.get("hits_to_die")), 1))))
+
+	saorise.call("set_form", &"human")
+	health.set("health", max_health)
+	health.set("dead", false)
+	health.set("invulnerable", false)
+	saorise.call("take_damage", 1, false, null)
+	var human_health_after_hit: int = int(health.get("health"))
+
+	saorise.call("set_form", &"wolf")
+	health.set("health", max_health)
+	health.set("dead", false)
+	health.set("invulnerable", false)
+	saorise.call("take_damage", 1, false, null)
+	var wolf_health_after_hit: int = int(health.get("health"))
+
+	assertions.assert_eq(human_health_after_hit, max_health - expected_damage, "Human form should take the standard incoming hit damage.")
+	assertions.assert_eq(wolf_health_after_hit, human_health_after_hit, "Wolf form should take the same incoming hit damage as human form.")
+
+	saorise.queue_free()
+	await tree.process_frame
+
+
+func assert_frame_sliced_attack_part(assertions: TestAssertions, attack_state: Object, saorise: Node, combo_part: int, direction: String, expected_animation: String, expected_frame: int, expected_flip_h: bool):
+	attack_state.combo_part = combo_part
+	attack_state.attack_direction = direction
+	var duration: float = attack_state.play_attack_animation(saorise)
+	var sprite := saorise.get("sprite") as AnimatedSprite2D
+	assertions.assert_eq(str(sprite.animation), expected_animation, "Combo part %d %s attack should use %s." % [combo_part, direction, expected_animation])
+	assertions.assert_eq(sprite.frame, expected_frame, "Combo part %d %s attack should start at the authored slice frame." % [combo_part, direction])
+	assertions.assert_eq(sprite.flip_h, expected_flip_h, "Combo part %d %s attack should use the expected horizontal flip." % [combo_part, direction])
+	assertions.assert_true(duration > 0.0, "Combo part %d %s attack should have a positive sliced duration." % [combo_part, direction])
+
+
+func assert_frame_sliced_attack_duration(assertions: TestAssertions, attack_state: Object, saorise: Node, combo_part: int, animation_name: String, expected_frame_count: int):
+	var sprite := saorise.get("sprite") as AnimatedSprite2D
+	var sprite_frames := sprite.sprite_frames if sprite != null else null
+	if sprite_frames == null or not sprite_frames.has_animation(animation_name):
+		assertions.assert_true(false, "Saorise should have %s for sliced duration checks." % animation_name)
+		return
+
+	var animation_speed: float = sprite_frames.get_animation_speed(animation_name)
+	var expected_duration: float = float(expected_frame_count) / animation_speed
+	var actual_duration: float = attack_state.get_attack_slice_duration(saorise, animation_name, combo_part)
+	assertions.assert_true(absf(actual_duration - expected_duration) <= 0.0001, "Combo part %d should use %d sliced frames." % [combo_part, expected_frame_count])
+
+
 func assert_shared_attack_box_shape_convention(assertions: TestAssertions, tree: SceneTree):
+	await assert_scene_authored_attackbox_profile_contract(assertions, tree)
 	assert_saorise_attack_box_shape_convention(assertions)
 	assert_banshee_attack_box_shape_convention(assertions)
 	await assert_knight_attack_box_shape_convention(assertions, tree)
+
+
+func assert_scene_authored_attackbox_profile_contract(assertions: TestAssertions, tree: SceneTree):
+	var saorise := await instantiate_scene(assertions, tree, SAORISE_SCENE)
+	var melee := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	var ranged := await instantiate_scene(assertions, tree, RANGED_SCENE)
+	var banshee := await instantiate_scene(assertions, tree, BANSHEE_SCENE)
+	var banshee_projectile := await instantiate_scene(assertions, tree, "res://scenes/characters/hostile_npcs/banshees/banshee_projectile.tscn")
+	var knight_projectile := await instantiate_scene(assertions, tree, PROJECTILE_SCENE)
+
+	assert_attackbox_profile_node(assertions, saorise, "Saorise", [&"human", &"wolf"], [&"right", &"up", &"down"], 3)
+	assert_attackbox_profile_node(assertions, melee, "Melee knight", [&"default"], [&"right", &"up", &"down"], 1)
+	assert_attackbox_profile_node(assertions, ranged, "Ranged knight", [&"default"], [&"right", &"up", &"down"], 1)
+	assert_attackbox_profile_node(assertions, banshee, "Banshee", [&"default"], [&"right", &"up", &"down"], 2)
+	assert_attackbox_profile_node(assertions, banshee_projectile, "Banshee projectile", [&"default"], [&"default"], 1)
+	assert_attackbox_profile_node(assertions, knight_projectile, "Knight arrow projectile", [&"default"], [&"default"], 1)
+
+	var profile_node := get_attackbox_profile_node(saorise)
+	if profile_node != null:
+		var right_profile: Dictionary = profile_node.get_profile(&"human", &"right", 2)
+		var left_profile: Dictionary = profile_node.get_profile(&"human", &"left", 2)
+		assertions.assert_eq(left_profile.get("position"), Vector2(-20, -32), "Saorise left attack profile should mirror the authored right profile.")
+		assertions.assert_eq(right_profile.get("size"), left_profile.get("size"), "Mirrored left/right attack profiles should preserve size.")
+		assert_saorise_attackbox_profile_data_is_clean(assertions, profile_node)
+		assert_saorise_runtime_attackbox_profiles_match_authored(assertions, saorise, profile_node)
+		assert_attackbox_profile_edit_persistence(assertions, profile_node)
+
+	free_nodes([saorise, melee, ranged, banshee, banshee_projectile, knight_projectile])
+	await tree.process_frame
+
+
+func assert_attackbox_profile_edit_persistence(assertions: TestAssertions, profile_node: AttackHitboxProfileAuthoring):
+	assert_attackbox_profile_selection_persists(
+		assertions,
+		profile_node,
+		&"wolf",
+		&"right",
+		2,
+		Vector2(83, 29),
+		Vector2(41, -18),
+		"Wolf right combo part 2"
+	)
+	assert_attackbox_profile_selection_persists(
+		assertions,
+		profile_node,
+		&"wolf",
+		&"up",
+		2,
+		Vector2(47, 31),
+		Vector2(2, -61),
+		"Wolf up combo part 2"
+	)
+	assert_attackbox_profile_selection_persists(
+		assertions,
+		profile_node,
+		&"wolf",
+		&"down",
+		3,
+		Vector2(51, 35),
+		Vector2(-3, -6),
+		"Wolf down combo part 3"
+	)
+	assert_attackbox_profile_selection_persists(
+		assertions,
+		profile_node,
+		&"human",
+		&"right",
+		2,
+		Vector2(61, 27),
+		Vector2(24, -35),
+		"Human right combo part 2"
+	)
+	assert_attackbox_profile_selection_persists(
+		assertions,
+		profile_node,
+		&"wolf",
+		&"",
+		2,
+		Vector2(73, 24),
+		Vector2(36, -24),
+		"Blank direction wolf combo part 2"
+	)
+
+	var wolf_profiles: Dictionary = profile_node.get_context_profiles(&"wolf")
+	assertions.assert_false(wolf_profiles.has(""), "Blank selected direction should normalize to right instead of creating wolf/blank direction profile data.")
+	assertions.assert_eq(profile_node.get_exact_profile(&"wolf", &"right", 2).get("size"), Vector2(73, 24), "Blank direction edits should persist into wolf/right combo part 2.")
+	assert_saorise_attackbox_rejects_profile_scale(assertions, profile_node)
+	assert_invalid_attackbox_profile_selection_does_not_create_partial_keys(assertions, profile_node)
+
+
+func assert_attackbox_profile_selection_persists(assertions: TestAssertions, profile_node: AttackHitboxProfileAuthoring, context: StringName, direction: StringName, combo_part: int, edited_size: Vector2, edited_position: Vector2, label: String):
+	profile_node.selected_context = context
+	profile_node.selected_direction = direction
+	profile_node.selected_combo_part = combo_part
+	profile_node.apply_selected_profile_to_shape()
+
+	var collision_shape: CollisionShape2D = profile_node.get_collision_shape()
+	assertions.assert_true(collision_shape != null and collision_shape.shape is RectangleShape2D, "Saorise profile authoring should expose an editable rectangle for %s persistence checks." % label)
+	if collision_shape == null or not (collision_shape.shape is RectangleShape2D):
+		return
+
+	(collision_shape.shape as RectangleShape2D).size = edited_size
+	collision_shape.position = edited_position
+	profile_node.commit_visible_shape_to_last_profile()
+
+	profile_node.selected_combo_part = 1 if combo_part != 1 else 3
+	profile_node.apply_selected_profile_to_shape()
+	profile_node.selected_combo_part = combo_part
+	profile_node.apply_selected_profile_to_shape()
+
+	var stored_profile: Dictionary = profile_node.get_exact_profile(context, direction, combo_part)
+	assertions.assert_eq(stored_profile.get("size"), edited_size, "%s attackbox edits should persist when changing preview selections." % label)
+	assertions.assert_eq(stored_profile.get("position"), edited_position, "%s attackbox position edits should persist when changing preview selections." % label)
+	assertions.assert_eq(stored_profile.get("scale"), Vector2.ONE, "%s attackbox edits should keep Saorise profile scale unit-sized." % label)
+
+
+func assert_saorise_attackbox_rejects_profile_scale(assertions: TestAssertions, profile_node: AttackHitboxProfileAuthoring):
+	profile_node.selected_context = &"wolf"
+	profile_node.selected_direction = &"right"
+	profile_node.selected_combo_part = 2
+	profile_node.apply_selected_profile_to_shape()
+
+	var collision_shape: CollisionShape2D = profile_node.get_collision_shape()
+	assertions.assert_true(collision_shape != null and collision_shape.shape is RectangleShape2D, "Saorise scale normalization should have an editable rectangle.")
+	if collision_shape == null or not (collision_shape.shape is RectangleShape2D):
+		return
+
+	(collision_shape.shape as RectangleShape2D).size = Vector2(24, 13)
+	collision_shape.position = Vector2(18, -23)
+	collision_shape.scale = Vector2(2, 3)
+	profile_node.write_selected_profile(profile_node.read_profile_from_shape())
+
+	var stored_profile: Dictionary = profile_node.get_exact_profile(&"wolf", &"right", 2)
+	assertions.assert_eq(stored_profile.get("size"), Vector2(24, 13), "Saorise should store the visible rectangle size without baking collision shape scale.")
+	assertions.assert_eq(stored_profile.get("position"), Vector2(18, -23), "Saorise should still store the edited profile position.")
+	assertions.assert_eq(stored_profile.get("scale"), Vector2.ONE, "Saorise should reject non-unit attackbox profile scale.")
+	assertions.assert_eq(collision_shape.scale, Vector2.ONE, "Saorise editor attackbox scale should snap back to unit scale.")
+
+
+func assert_saorise_attackbox_profile_data_is_clean(assertions: TestAssertions, profile_node: AttackHitboxProfileAuthoring):
+	var profile_data: Dictionary = profile_node.profiles
+	assertions.assert_true(bool(profile_node.get("force_unit_collision_shape_scale")), "Saorise attackbox profiles should force unit scale so editor rectangle size is the runtime hitbox size.")
+	assertions.assert_false(bool(profile_node.get("normalize_rectangle_scale_into_size")), "Saorise attackbox profiles should not bake collision shape scale into rectangle size.")
+	for invalid_context in ["", "h", "hu", "hum", "huma", "w", "wo", "wol"]:
+		assertions.assert_false(profile_data.has(invalid_context), "Saorise attackbox profiles should not keep accidental %s context data." % invalid_context)
+
+	for context in [&"human", &"wolf"]:
+		var context_profiles: Dictionary = profile_node.get_context_profiles(context)
+		assertions.assert_false(context_profiles.has(""), "Saorise %s attackbox profiles should not keep blank direction data." % context)
+		for invalid_direction in ["d", "do", "dow", "l", "le", "lef", "r", "ri", "rig", "righ", "u"]:
+			assertions.assert_false(context_profiles.has(invalid_direction), "Saorise %s attackbox profiles should not keep accidental %s direction data." % [context, invalid_direction])
+		for direction in [&"right", &"up", &"down"]:
+			for combo_part in range(1, 4):
+				var profile: Dictionary = profile_node.get_exact_profile(context, direction, combo_part)
+				assertions.assert_false(profile.is_empty(), "Saorise should define exact profile %s/%s/%d." % [context, direction, combo_part])
+				assertions.assert_eq(profile.get("scale"), Vector2.ONE, "Saorise %s/%s/%d profile scale should stay unit-sized." % [context, direction, combo_part])
+
+
+func assert_invalid_attackbox_profile_selection_does_not_create_partial_keys(assertions: TestAssertions, profile_node: AttackHitboxProfileAuthoring):
+	profile_node.selected_context = &"wolf"
+	profile_node.selected_direction = &"rig"
+	profile_node.selected_combo_part = 3
+	profile_node.apply_selected_profile_to_shape()
+
+	var collision_shape: CollisionShape2D = profile_node.get_collision_shape()
+	if collision_shape != null and collision_shape.shape is RectangleShape2D:
+		(collision_shape.shape as RectangleShape2D).size = Vector2(91, 37)
+		collision_shape.position = Vector2(31, -33)
+		profile_node.write_selected_profile(profile_node.read_profile_from_shape())
+
+	var wolf_profiles: Dictionary = profile_node.get_context_profiles(&"wolf")
+	assertions.assert_false(wolf_profiles.has("rig"), "Invalid partial direction should not create a wolf/rig profile.")
+
+	profile_node.selected_context = &"wol"
+	profile_node.selected_direction = &"right"
+	profile_node.selected_combo_part = 3
+	profile_node.apply_selected_profile_to_shape()
+	if collision_shape != null and collision_shape.shape is RectangleShape2D:
+		(collision_shape.shape as RectangleShape2D).size = Vector2(92, 38)
+		profile_node.write_selected_profile(profile_node.read_profile_from_shape())
+	assertions.assert_false(profile_node.profiles.has("wol"), "Invalid partial context should not create a wol profile.")
+
+
+func assert_saorise_runtime_attackbox_profiles_match_authored(assertions: TestAssertions, saorise: Node, profile_node: AttackHitboxProfileAuthoring):
+	var hitbox_manager: Object = saorise.get("hitbox_manager")
+	var collision_shape: CollisionShape2D = profile_node.get_collision_shape()
+	var attack_box: Area2D = saorise.get_node_or_null("AttackBox") as Area2D
+	assertions.assert_true(attack_box != null, "Saorise should expose its AttackBox for runtime scale checks.")
+	assertions.assert_true(hitbox_manager != null, "Saorise should expose its hitbox manager for runtime attackbox parity checks.")
+	assertions.assert_true(collision_shape != null and collision_shape.shape is RectangleShape2D, "Saorise should expose a rectangle attack shape for runtime attackbox parity checks.")
+	if hitbox_manager == null or collision_shape == null or not (collision_shape.shape is RectangleShape2D) or attack_box == null:
+		return
+	assertions.assert_eq(attack_box.scale, Vector2.ONE, "Saorise AttackBox should not be scaled by either form.")
+	assertions.assert_eq(collision_shape.scale, Vector2.ONE, "Saorise AttackBox CollisionShape2D should start with unit scale.")
+
+	for context in [&"human", &"wolf"]:
+		saorise.call("set_form", context)
+		assertions.assert_eq(attack_box.scale, Vector2.ONE, "Switching to %s should not scale Saorise AttackBox." % context)
+		assertions.assert_eq(collision_shape.scale, Vector2.ONE, "Switching to %s should not scale Saorise AttackBox CollisionShape2D." % context)
+		for direction in [&"right", &"up", &"down"]:
+			for combo_part in range(1, 4):
+				var expected_profile: Dictionary = profile_node.get_exact_profile(context, direction, combo_part)
+				hitbox_manager.activate_attack_hitbox(combo_part, str(direction))
+				var rectangle: RectangleShape2D = collision_shape.shape as RectangleShape2D
+				var expected_size: Vector2 = expected_profile.get("size")
+				var expected_scale: Vector2 = expected_profile.get("scale")
+				assertions.assert_eq((collision_shape.shape as RectangleShape2D).size, expected_profile.get("size"), "Runtime %s/%s/%d attackbox size should match authored profile." % [context, direction, combo_part])
+				assertions.assert_eq(collision_shape.position, expected_profile.get("position"), "Runtime %s/%s/%d attackbox position should match authored profile." % [context, direction, combo_part])
+				assertions.assert_eq(collision_shape.rotation, expected_profile.get("rotation"), "Runtime %s/%s/%d attackbox rotation should match authored profile." % [context, direction, combo_part])
+				assertions.assert_eq(collision_shape.scale, expected_profile.get("scale"), "Runtime %s/%s/%d attackbox scale should match authored profile." % [context, direction, combo_part])
+				assertions.assert_eq(get_attackbox_effective_size(rectangle.size, collision_shape.scale), get_attackbox_effective_size(expected_size, expected_scale), "Runtime %s/%s/%d effective attackbox size should match authored profile exactly." % [context, direction, combo_part])
+				assertions.assert_eq(get_attackbox_effective_size(rectangle.size, collision_shape.scale), expected_size, "Runtime %s/%s/%d effective attackbox size should equal the authored rectangle size." % [context, direction, combo_part])
+				hitbox_manager.deactivate_attack_hitbox()
+
+	saorise.call("set_form", &"wolf")
+	var right_profile: Dictionary = profile_node.get_exact_profile(&"wolf", &"right", 2)
+	var left_profile: Dictionary = profile_node.get_profile(&"wolf", &"left", 2)
+	var right_position: Vector2 = right_profile.get("position")
+	assertions.assert_eq(left_profile.get("size"), right_profile.get("size"), "Wolf left attackbox should mirror right size without separate left data.")
+	assertions.assert_eq(left_profile.get("position"), Vector2(-right_position.x, right_position.y), "Wolf left attackbox should mirror right position without separate left data.")
+
+
+func get_attackbox_effective_size(size: Vector2, scale: Vector2) -> Vector2:
+	return Vector2(size.x * absf(scale.x), size.y * absf(scale.y))
+
+
+func assert_attackbox_profile_node(assertions: TestAssertions, actor: Node, label: String, contexts: Array, directions: Array, combo_count: int):
+	assertions.assert_true(actor != null, "%s should instantiate for attackbox profile checks." % label)
+	if actor == null:
+		return
+
+	var profile_node := get_attackbox_profile_node(actor)
+	assertions.assert_true(profile_node != null, "%s should have scene-authored AttackHitboxProfiles." % label)
+	if profile_node == null:
+		return
+
+	var collision_shape: CollisionShape2D = profile_node.get_collision_shape()
+	assertions.assert_true(collision_shape != null and collision_shape.shape is RectangleShape2D, "%s attackbox profile node should bind to an authored RectangleShape2D." % label)
+	for context in contexts:
+		for direction in directions:
+			for combo_part in range(1, combo_count + 1):
+				var profile: Dictionary = profile_node.get_profile(context, direction, combo_part)
+				assertions.assert_false(profile.is_empty(), "%s should define profile %s/%s/%d." % [label, context, direction, combo_part])
+
+
+func get_attackbox_profile_node(actor: Node) -> AttackHitboxProfileAuthoring:
+	if actor == null:
+		return null
+	for child in actor.get_children():
+		if child is AttackHitboxProfileAuthoring:
+			return child as AttackHitboxProfileAuthoring
+	return null
 
 
 func assert_saorise_attack_box_shape_convention(assertions: TestAssertions):
@@ -384,39 +784,44 @@ func assert_knight_attack_box_shape_convention(assertions: TestAssertions, tree:
 		return
 
 	var base_area_position: Vector2 = attack_box.position
-	var base_shape_position: Vector2 = collision_shape.position
-	var base_shape_height := get_rectangle_shape_height(collision_shape)
-	var expected_horizontal_offset := base_shape_height * HORIZONTAL_ATTACK_BOX_OFFSET_RATIO
-	var expected_up_offset := base_shape_height * UP_ATTACK_BOX_OFFSET_RATIO
-	var expected_down_offset := base_shape_height * DOWN_ATTACK_BOX_OFFSET_RATIO
+	var profile_node := get_attackbox_profile_node(melee)
+	assertions.assert_true(profile_node != null, "Melee knight attack shape should be driven by scene-authored attackbox profiles.")
+	if profile_node == null:
+		melee.queue_free()
+		await tree.process_frame
+		return
+	var right_profile: Dictionary = profile_node.get_profile(&"default", &"right", 1)
+	var left_profile: Dictionary = profile_node.get_profile(&"default", &"left", 1)
+	var up_profile: Dictionary = profile_node.get_profile(&"default", &"up", 1)
+	var down_profile: Dictionary = profile_node.get_profile(&"default", &"down", 1)
 
 	melee.set("last_facing_direction", "right")
 	melee.set("last_horizontal_facing_direction", "right")
 	melee.call("apply_directional_attack_shape_offset")
 	assertions.assert_eq(attack_box.position, base_area_position, "Knight horizontal attacks should keep the AttackBox area stable.")
-	assertions.assert_true(is_vector_approx(collision_shape.position, base_shape_position + Vector2(expected_horizontal_offset, 0)), "Knight right attacks should project the child attack shape in front of the knight.")
+	assertions.assert_eq(collision_shape.position, right_profile.get("position"), "Knight right attacks should use the scene-authored right profile.")
 
 	melee.set("last_facing_direction", "left")
 	melee.set("last_horizontal_facing_direction", "left")
 	melee.call("apply_directional_attack_shape_offset")
 	assertions.assert_eq(attack_box.position, base_area_position, "Knight left attacks should keep the AttackBox area stable.")
-	assertions.assert_true(is_vector_approx(collision_shape.position, base_shape_position + Vector2(-expected_horizontal_offset, 0)), "Knight left attacks should project the child attack shape in front of the knight.")
+	assertions.assert_eq(collision_shape.position, left_profile.get("position"), "Knight left attacks should mirror the scene-authored right profile.")
 
 	melee.set("last_facing_direction", "up")
 	melee.call("apply_directional_attack_shape_offset")
 	assertions.assert_eq(attack_box.position, base_area_position, "Knight up attacks should keep the AttackBox area stable.")
-	assertions.assert_true(is_vector_approx(collision_shape.position, base_shape_position + Vector2(0, -expected_up_offset)), "Knight up attacks should move the child attack shape up proportionally to the authored shape height.")
+	assertions.assert_eq(collision_shape.position, up_profile.get("position"), "Knight up attacks should use the scene-authored up profile.")
 
 	melee.call("set_attack_shape_enabled", false)
-	assertions.assert_eq(collision_shape.position, base_shape_position, "Knight attack shape should restore after disable.")
+	assertions.assert_eq(collision_shape.position, right_profile.get("position"), "Knight attack shape should restore to the editor preview profile after disable.")
 
 	melee.set("last_facing_direction", "down")
 	melee.call("apply_directional_attack_shape_offset")
 	assertions.assert_eq(attack_box.position, base_area_position, "Knight down attacks should keep the AttackBox area stable.")
-	assertions.assert_true(is_vector_approx(collision_shape.position, base_shape_position + Vector2(0, expected_down_offset)), "Knight down attacks should move the child attack shape down proportionally to the authored shape height.")
+	assertions.assert_eq(collision_shape.position, down_profile.get("position"), "Knight down attacks should use the scene-authored down profile.")
 
 	await melee.call("activate_melee_hitbox")
-	assertions.assert_eq(collision_shape.position, base_shape_position, "Knight attack shape should restore after the melee hit window closes.")
+	assertions.assert_eq(collision_shape.position, right_profile.get("position"), "Knight attack shape should restore after the melee hit window closes.")
 
 	melee.queue_free()
 	await tree.process_frame
@@ -471,6 +876,7 @@ func assert_melee_knight_block_stun_contract(assertions: TestAssertions, tree: S
 		await trigger_melee_overlap_hit(tree, melee, player)
 		assertions.assert_eq(int(health.get("health")), starting_health, "Blocking should prevent melee knight damage.")
 		assertions.assert_eq(str(melee.get("state")), "hurt", "Blocking a melee knight should put the knight in hurt stun.")
+		assertions.assert_eq(float(melee.get("damage_knockback_timer")), 0.0, "Blocked melee knight self-stun should not start player-damage knockback.")
 		assertions.assert_true(absf(float(melee.get("hurt_timer")) - float(tuning.block_stun_duration)) <= 0.001, "Melee knight block stun should use knight tuning.")
 		assertions.assert_true(absf(float(melee.get("attack_cooldown_timer")) - float(tuning.attack_cooldown)) <= 0.001, "Blocked melee knight should reset attack cooldown from tuning.")
 		if sprite != null and sprite.sprite_frames != null and sprite.sprite_frames.has_animation("hurt"):
@@ -668,13 +1074,6 @@ func get_animation_duration(frames: SpriteFrames, animation_name: String) -> flo
 	for frame_index in range(frames.get_frame_count(animation_name)):
 		duration += frames.get_frame_duration(animation_name, frame_index) / speed
 	return duration
-
-
-func get_rectangle_shape_height(collision_shape: CollisionShape2D) -> float:
-	if collision_shape == null or not (collision_shape.shape is RectangleShape2D):
-		return 0.0
-
-	return (collision_shape.shape as RectangleShape2D).size.y * abs(collision_shape.scale.y)
 
 
 func is_vector_approx(actual: Vector2, expected: Vector2) -> bool:
@@ -1173,7 +1572,15 @@ func assert_knight_runtime_stabilization_contract(assertions: TestAssertions, tr
 	await tree.process_frame
 	assertions.assert_true(applied, "Non-lethal knight damage should be applied.")
 	assertions.assert_eq(melee.get("state"), "hurt", "Non-lethal knight damage should enter hurt state.")
-	assertions.assert_eq(melee.get("velocity"), Vector2.ZERO, "Hurt knight should be stunned with zero velocity.")
+	assertions.assert_true(float(melee.get("damage_knockback_timer")) > 0.0, "Non-lethal Saorise damage should start the knight damage knockback timer.")
+	assertions.assert_true((melee.get("damage_knockback_velocity") as Vector2).x > 0.0, "Damage knockback should push the knight away from Saorise.")
+	var position_before_knockback: Vector2 = melee.global_position
+	melee.call("update_hurt", float(tuning.damage_knockback_duration) * 0.5)
+	assertions.assert_true(melee.global_position.x > position_before_knockback.x, "Damage knockback should move the knight away from Saorise during hurt.")
+	assertions.assert_true(float(melee.get("damage_knockback_timer")) > 0.0, "Damage knockback should remain active during its configured window.")
+	melee.call("update_hurt", float(tuning.damage_knockback_duration))
+	assertions.assert_eq(float(melee.get("damage_knockback_timer")), 0.0, "Damage knockback should clear after its configured duration.")
+	assertions.assert_eq(melee.get("damage_knockback_velocity"), Vector2.ZERO, "Damage knockback velocity should clear after the window.")
 	assertions.assert_true(melee.get("attack_has_dealt_damage") == true, "Hurt should cancel any pending one-stage attack damage window.")
 	if attack_box != null:
 		assertions.assert_false(attack_box.monitoring, "Hurt should disable the melee AttackBox monitoring.")
@@ -1196,6 +1603,7 @@ func assert_knight_runtime_stabilization_contract(assertions: TestAssertions, tr
 	await tree.process_frame
 	assertions.assert_true(bool(melee.get("dead")), "Lethal knight damage should enter death state.")
 	assertions.assert_ne(melee.get("state"), "hurt", "Lethal knight damage should not leave the knight in hurt state.")
+	assertions.assert_eq(float(melee.get("damage_knockback_timer")), 0.0, "Lethal knight damage should not leave damage knockback active.")
 
 	var navigation_agent := melee.get_node_or_null("NavigationAgent2D") as NavigationAgent2D
 	assertions.assert_true(movement_box != null and movement_box.disabled, "Dead knight body collision should be disabled so it cannot create invisible walls.")
@@ -1228,6 +1636,68 @@ func assert_knight_runtime_stabilization_contract(assertions: TestAssertions, tr
 	melee.queue_free()
 	player.queue_free()
 	await tree.process_frame
+
+
+func assert_knight_damage_knockback_facing_lock(assertions: TestAssertions, tree: SceneTree):
+	var right_facing_knight := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	assertions.assert_true(right_facing_knight != null, "Right-facing knight should instantiate for knockback facing lock.")
+	if right_facing_knight == null:
+		return
+
+	var right_hit_player := MockPlayer.new()
+	tree.root.add_child(right_hit_player)
+	await tree.process_frame
+	right_facing_knight.global_position = Vector2.ZERO
+	right_hit_player.global_position = Vector2(32, 0)
+	right_facing_knight.call("update_facing", Vector2.RIGHT)
+	right_facing_knight.call("play_directional_animation", "idle")
+	var right_sprite := right_facing_knight.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	right_facing_knight.call("take_damage", 1, true, right_hit_player)
+	assertions.assert_true((right_facing_knight.get("damage_knockback_velocity") as Vector2).x < 0.0, "Right-facing knight should be pushed left when hit from the right.")
+	right_facing_knight.call("update_hurt", get_knight_damage_knockback_half_duration(right_facing_knight))
+	assertions.assert_eq(right_facing_knight.get("last_horizontal_facing_direction"), "right", "Knockback should not change right-facing horizontal intent.")
+	assertions.assert_false(bool(right_facing_knight.get("facing_left")), "Knockback should not flip a right-facing knight to left.")
+	if right_sprite != null:
+		assertions.assert_false(right_sprite.flip_h, "Right-facing hurt animation should stay unflipped while knockback moves left.")
+	right_facing_knight.queue_free()
+	right_hit_player.queue_free()
+	await tree.process_frame
+
+	var left_facing_knight := await instantiate_scene(assertions, tree, MELEE_SCENE)
+	assertions.assert_true(left_facing_knight != null, "Left-facing knight should instantiate for knockback facing lock.")
+	if left_facing_knight == null:
+		return
+
+	var left_hit_player := MockPlayer.new()
+	tree.root.add_child(left_hit_player)
+	await tree.process_frame
+	left_facing_knight.global_position = Vector2.ZERO
+	left_hit_player.global_position = Vector2(-32, 0)
+	left_facing_knight.call("update_facing", Vector2.LEFT)
+	left_facing_knight.call("play_directional_animation", "idle")
+	var left_sprite := left_facing_knight.get_node_or_null("AnimatedSprite2D") as AnimatedSprite2D
+	left_facing_knight.call("take_damage", 1, true, left_hit_player)
+	assertions.assert_true((left_facing_knight.get("damage_knockback_velocity") as Vector2).x > 0.0, "Left-facing knight should be pushed right when hit from the left.")
+	left_facing_knight.call("update_hurt", get_knight_damage_knockback_half_duration(left_facing_knight))
+	assertions.assert_eq(left_facing_knight.get("last_horizontal_facing_direction"), "left", "Knockback should not change left-facing horizontal intent.")
+	assertions.assert_true(bool(left_facing_knight.get("facing_left")), "Knockback should not flip a left-facing knight to right.")
+	if left_sprite != null:
+		assertions.assert_true(left_sprite.flip_h, "Left-facing hurt animation should stay flipped while knockback moves right.")
+	left_facing_knight.call("update_hurt", get_knight_damage_knockback_full_duration(left_facing_knight))
+	left_facing_knight.call("update_facing", Vector2.RIGHT)
+	assertions.assert_eq(left_facing_knight.get("last_horizontal_facing_direction"), "right", "Knight facing should update normally after knockback clears.")
+	left_facing_knight.queue_free()
+	left_hit_player.queue_free()
+	await tree.process_frame
+
+
+func get_knight_damage_knockback_half_duration(knight: Node) -> float:
+	return maxf(get_knight_damage_knockback_full_duration(knight) * 0.5, 0.01)
+
+
+func get_knight_damage_knockback_full_duration(knight: Node) -> float:
+	var tuning: Resource = knight.get("tuning") as Resource
+	return float(tuning.damage_knockback_duration) if tuning != null else 0.12
 
 
 func assert_campfire_wolf_damage_contract(assertions: TestAssertions, tree: SceneTree):

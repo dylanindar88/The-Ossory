@@ -2,19 +2,53 @@
 extends Control
 
 const HEALTH_BAR_COLOR = preload("res://scripts/ui/HealthBarColor.gd")
+const DEFAULT_PLAYER_TUNING: PlayerTuning = preload("res://resources/characters/saorise/player_tuning.tres")
 const STOCK_ICON_FRAME_SECONDS := 0.28
 const STOCK_ICON_SPENT_ALPHA := 0.25
 const STOCK_ICON_SIZE := Vector2(16.0, 16.0)
 const STOCK_ICON_CLUSTER_CENTER := Vector2(24.0, 24.0)
 const STOCK_ICON_RADIUS := 16.0
 
+@export_group("Health Tuning")
+@export var player_tuning: PlayerTuning = DEFAULT_PLAYER_TUNING:
+	set(value):
+		player_tuning = value if value != null else DEFAULT_PLAYER_TUNING
+		refresh_editor_preview_if_needed()
+
+@export_group("Health Editor Display")
+@export_range(0, 20, 1) var display_hits_taken: int = 0:
+	set(value):
+		display_hits_taken = maxi(value, 0)
+		refresh_editor_preview_if_needed()
+
+@export_group("Stock Preview")
 @export_range(1.0, 30.0, 0.5) var stock_center_fps: float = 8.0
+@export_range(3, 6, 1) var preview_max_stocks: int = 3:
+	set(value):
+		preview_max_stocks = clampi(value, 3, 6)
+		refresh_editor_preview_if_needed()
+@export_range(0, 6, 1) var preview_current_stocks: int = 3:
+	set(value):
+		preview_current_stocks = clampi(value, 0, 6)
+		refresh_editor_preview_if_needed()
+@export var preview_lost_life_faded: bool = false:
+	set(value):
+		preview_lost_life_faded = value
+		refresh_editor_preview_if_needed()
+@export var preview_animated_stock: bool = true:
+	set(value):
+		preview_animated_stock = value
+		refresh_editor_preview_if_needed()
+
+@export_group("Gauge Preview")
+@export var gauge_preview_settings: PlayerGaugePreviewSettings
 
 @onready var health_bar: TextureProgressBar = $HealthBar
-@onready var stamina_gauge: Control = $HudStaminaGauge
-@onready var stamina_bar: TextureProgressBar = $HudStaminaGauge/Bar
-@onready var wolf_gauge: Control = $HudWolfGauge
-@onready var wolf_bar: TextureProgressBar = $HudWolfGauge/Bar
+@onready var gauge_stack: Control = $PlayerGaugeStack
+@onready var stamina_gauge: Control = $PlayerGaugeStack/StaminaGauge
+@onready var stamina_bar: TextureProgressBar = $PlayerGaugeStack/StaminaGauge/Bar
+@onready var wolf_gauge: Control = $PlayerGaugeStack/TransformationGauge
+@onready var wolf_bar: TextureProgressBar = $PlayerGaugeStack/TransformationGauge/Bar
 @onready var stock_icon_cluster: Control = $StockIconCluster
 @onready var stock_center: TextureRect = $StockIconCluster/StockCenter
 
@@ -158,7 +192,11 @@ func setup_stock_icons(editor_preview: bool = false):
 	cache_stock_frame_textures()
 	cache_stock_center_frame_textures()
 	if editor_preview:
-		update_stock_icons(3, 3)
+		var max_preview_stocks: int = clampi(preview_max_stocks, 3, stock_icons.size())
+		var current_preview_stocks: int = clampi(preview_current_stocks, 0, max_preview_stocks)
+		if preview_lost_life_faded:
+			current_preview_stocks = mini(current_preview_stocks, max_preview_stocks - 1)
+		update_stock_icons(current_preview_stocks, max_preview_stocks, true)
 		return
 
 	var lives_callback: Callable = Callable(self, "_on_player_lives_changed")
@@ -183,18 +221,16 @@ func setup_editor_preview():
 	setup_stock_icons(true)
 
 	hud_gauges_enabled = true
-	health_bar.min_value = 0.0
-	health_bar.max_value = 100.0
-	health_bar.value = 100.0
-	update_health_bar_color()
+	apply_health_editor_preview()
 
 	if stamina_gauge != null:
-		stamina_gauge.visible = true
-	configure_hud_gauge_bar(stamina_bar, 1.0, 1.0, stamina_progress_texture)
+		stamina_gauge.visible = should_show_stamina_preview()
+	configure_hud_gauge_bar(stamina_bar, get_stamina_preview_value(), get_preview_max_value(), stamina_progress_texture)
 
 	if wolf_gauge != null:
-		wolf_gauge.visible = true
-	configure_hud_gauge_bar(wolf_bar, 1.0, 1.0, cooldown_progress_texture)
+		wolf_gauge.visible = should_show_transformation_preview()
+	configure_hud_gauge_bar(wolf_bar, get_wolf_preview_value(), get_preview_max_value(), get_wolf_preview_texture())
+	apply_preview_gauge_stack()
 
 
 func _on_health_changed(current_health: int, max_health: int):
@@ -270,7 +306,7 @@ func update_hud_gauges():
 	update_wolf_gauge()
 
 
-func update_stock_icons(current_lives: int, max_lives: int):
+func update_stock_icons(current_lives: int, max_lives: int, editor_preview: bool = false):
 	if stock_icon_cluster == null:
 		return
 
@@ -291,14 +327,29 @@ func update_stock_icons(current_lives: int, max_lives: int):
 		if not stock_frame_textures.is_empty():
 			icon.texture = stock_frame_textures[0]
 
-	update_animated_stock_frame()
+	if editor_preview and not preview_animated_stock:
+		animated_stock_index = -1
+	else:
+		update_animated_stock_frame()
 	update_stock_process()
 
 
 func get_stock_icon_position(visible_stock_count: int, index: int) -> Vector2:
+	var authored_marker := get_stock_layout_marker(visible_stock_count, index)
+	if authored_marker != null:
+		return authored_marker.position
+
 	var start_angle: float = -PI * 0.5
 	var angle: float = start_angle + TAU * float(index) / float(maxi(visible_stock_count, 1))
 	return STOCK_ICON_CLUSTER_CENTER + Vector2(cos(angle), sin(angle)) * STOCK_ICON_RADIUS - STOCK_ICON_SIZE * 0.5
+
+
+func get_stock_layout_marker(visible_stock_count: int, index: int) -> Node2D:
+	var layouts_root := stock_icon_cluster.get_node_or_null("StockLayouts") if stock_icon_cluster != null else null
+	if layouts_root == null:
+		return null
+
+	return layouts_root.get_node_or_null("Stocks%d/Stock%d" % [visible_stock_count, index + 1]) as Node2D
 
 
 func is_debug_stock_test_event(event: InputEvent) -> bool:
@@ -476,6 +527,93 @@ func create_gauge_textures():
 	transformation_progress_texture = create_transformation_progress_texture()
 	cooldown_progress_texture = create_cooldown_progress_texture()
 	gauge_under_texture = create_under_texture()
+
+
+func refresh_editor_preview_if_needed():
+	if Engine.is_editor_hint() and is_inside_tree():
+		call_deferred("setup_editor_preview")
+
+
+func apply_health_editor_preview():
+	if health_bar == null:
+		return
+
+	health_bar.min_value = 0
+	health_bar.max_value = get_tuned_max_health()
+	health_bar.step = get_tuned_damage_per_hit()
+	health_bar.value = get_display_current_health()
+	update_health_bar_color()
+
+
+func get_tuned_max_health() -> int:
+	return maxi(player_tuning.max_health if player_tuning != null else DEFAULT_PLAYER_TUNING.max_health, 1)
+
+
+func get_tuned_damage_per_hit() -> int:
+	var tuning_hits_to_die: int = player_tuning.hits_to_die if player_tuning != null else DEFAULT_PLAYER_TUNING.hits_to_die
+	var safe_hits_to_die: int = maxi(tuning_hits_to_die, 1)
+	return maxi(1, int(ceil(float(get_tuned_max_health()) / float(safe_hits_to_die))))
+
+
+func get_display_current_health() -> int:
+	var damage_taken: int = get_tuned_damage_per_hit() * maxi(display_hits_taken, 0)
+	return clampi(get_tuned_max_health() - damage_taken, 0, get_tuned_max_health())
+
+
+func get_preview_min_value() -> float:
+	return gauge_preview_settings.preview_min_value if gauge_preview_settings != null else 0.0
+
+
+func get_preview_max_value() -> float:
+	return gauge_preview_settings.preview_max_value if gauge_preview_settings != null else 100.0
+
+
+func get_preview_step() -> float:
+	return gauge_preview_settings.preview_step if gauge_preview_settings != null else 1.0
+
+
+func get_stamina_preview_value() -> float:
+	return gauge_preview_settings.stamina_preview_value if gauge_preview_settings != null else 65.0
+
+
+func get_wolf_preview_value() -> float:
+	if gauge_preview_settings == null:
+		return 45.0
+	if gauge_preview_settings.wolf_preview_mode == "transformation":
+		return gauge_preview_settings.transformation_preview_value
+	if gauge_preview_settings.wolf_preview_mode == "full":
+		return gauge_preview_settings.preview_max_value
+	return gauge_preview_settings.cooldown_preview_value
+
+
+func get_wolf_preview_texture() -> Texture2D:
+	if gauge_preview_settings != null and gauge_preview_settings.wolf_preview_mode == "transformation":
+		return transformation_progress_texture
+	return cooldown_progress_texture
+
+
+func should_show_stamina_preview() -> bool:
+	return gauge_preview_settings == null or gauge_preview_settings.show_stamina_preview
+
+
+func should_show_transformation_preview() -> bool:
+	return gauge_preview_settings == null or gauge_preview_settings.show_transformation_preview
+
+
+func apply_preview_gauge_stack():
+	if gauge_stack == null:
+		return
+
+	var row_index := 0
+	if stamina_gauge != null and stamina_gauge.visible:
+		stamina_gauge.position.y = float(row_index) * get_preview_row_spacing()
+		row_index += 1
+	if wolf_gauge != null and wolf_gauge.visible:
+		wolf_gauge.position.y = float(row_index) * get_preview_row_spacing()
+
+
+func get_preview_row_spacing() -> float:
+	return gauge_preview_settings.row_spacing if gauge_preview_settings != null else 28.0
 
 
 func create_under_texture() -> Texture2D:

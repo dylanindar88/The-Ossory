@@ -1,40 +1,10 @@
-[gd_scene load_steps=10 format=3 uid="uid://oxvqtqnktad3"]
+[gd_scene load_steps=8 format=3 uid="uid://oxvqtqnktad3"]
 
 [ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseTent.gd" id="1_tent"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="2_border"]
-[ext_resource type="Texture2D" uid="uid://denqr87skatn3" path="res://art/structures/tent.png" id="2_d2dlp"]
+[ext_resource type="SpriteFrames" uid="uid://dmrf4h2pwp0xb" path="res://resources/environment/structures/campfire_base/CampfireBaseTentSprites.tres" id="2_my0gc"]
 [ext_resource type="Script" path="res://scripts/environment/structures/campfire_base/CampfireBaseComponentHealthBar.gd" id="3_health_bar"]
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="4_effects"]
-
-[sub_resource type="AtlasTexture" id="AtlasTexture_fe3gc"]
-atlas = ExtResource("2_d2dlp")
-region = Rect2(0, 0, 256, 224)
-
-[sub_resource type="SpriteFrames" id="SpriteFrames_tent"]
-animations = [{
-"frames": [{
-"duration": 1.0,
-"texture": SubResource("AtlasTexture_fe3gc")
-}],
-"loop": true,
-"name": &"alive",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"alive_flipped",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": false,
-"name": &"destroyed",
-"speed": 5.0
-}, {
-"frames": [],
-"loop": true,
-"name": &"destroyed_flipped",
-"speed": 5.0
-}]
 
 [sub_resource type="Gradient" id="Gradient_health_under"]
 offsets = PackedFloat32Array(0)
@@ -47,12 +17,12 @@ width = 44
 [node name="CampfireBaseTent" type="StaticBody2D"]
 y_sort_enabled = true
 script = ExtResource("1_tent")
-max_health = 120
+max_health = 90
 
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 y_sort_enabled = true
 scale = Vector2(0.5, 0.5)
-sprite_frames = SubResource("SpriteFrames_tent")
+sprite_frames = ExtResource("2_my0gc")
 animation = &"alive"
 offset = Vector2(0, -50)
 

@@ -32,6 +32,7 @@ func configure_hit_box():
 	if hit_box == null:
 		return
 
+	apply_authored_hitbox_profile()
 	hit_box.monitoring = true
 	hit_box.monitorable = true
 	hit_box.collision_layer = 0
@@ -81,3 +82,17 @@ func hit_current_overlaps():
 
 	for area in hit_box.get_overlapping_areas():
 		_on_hit_box_area_entered(area)
+
+
+func apply_authored_hitbox_profile():
+	var profile_authoring := find_profile_authoring()
+	if profile_authoring == null:
+		return
+	profile_authoring.apply_profile_to_shape(&"default", &"default", 1)
+
+
+func find_profile_authoring() -> AttackHitboxProfileAuthoring:
+	for child in get_children():
+		if child is AttackHitboxProfileAuthoring:
+			return child as AttackHitboxProfileAuthoring
+	return null

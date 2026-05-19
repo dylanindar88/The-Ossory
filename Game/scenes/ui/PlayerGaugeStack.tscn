@@ -1,0 +1,93 @@
+[gd_scene load_steps=9 format=3 uid="uid://vy8atp22emcw"]
+
+[ext_resource type="Texture2D" uid="uid://cuxx81ho4l855" path="res://art/ui/StaminaBarBorder.aseprite" id="1_stamina_border"]
+[ext_resource type="Texture2D" uid="uid://wj3ai48h2a5x" path="res://art/ui/WolfBarBorder.aseprite" id="2_wolf_border"]
+
+[sub_resource type="Gradient" id="Gradient_under"]
+offsets = PackedFloat32Array(0.609195)
+colors = PackedColorArray(0, 0, 0, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_under"]
+gradient = SubResource("Gradient_under")
+width = 139
+
+[sub_resource type="Gradient" id="Gradient_stamina"]
+offsets = PackedFloat32Array(0.00574713, 0.494253, 1)
+colors = PackedColorArray(0.0470588, 0.313726, 1, 1, 0.0470588, 0.780392, 1, 1, 0.282353, 1, 0.870588, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_stamina"]
+gradient = SubResource("Gradient_stamina")
+width = 139
+
+[sub_resource type="Gradient" id="Gradient_wolf"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.55, 0.12, 0, 1, 0.95, 0.36, 0.04, 1, 1, 0.62, 0.12, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_wolf"]
+gradient = SubResource("Gradient_wolf")
+width = 139
+
+[node name="PlayerGaugeStack" type="Control"]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 180.0
+offset_bottom = 46.0
+
+[node name="StaminaGauge" type="Control" parent="."]
+anchors_preset = 0
+offset_right = 180.0
+offset_bottom = 18.0
+scale = Vector2(0.796743, 2.57449)
+
+[node name="Bar" type="TextureProgressBar" parent="StaminaGauge"]
+layout_mode = 0
+offset_left = 28.8598
+offset_top = 1.44611
+offset_right = 190.86
+offset_bottom = 9.44611
+scale = Vector2(0.765816, 0.694461)
+value = 65.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_under")
+texture_progress = SubResource("GradientTexture2D_stamina")
+
+[node name="Border" type="TextureRect" parent="StaminaGauge"]
+texture_filter = 1
+layout_mode = 0
+offset_left = -3.0
+offset_top = -6.0
+offset_right = 381.0
+offset_bottom = 122.0
+scale = Vector2(0.485, 0.16)
+texture = ExtResource("1_stamina_border")
+
+[node name="TransformationGauge" type="Control" parent="."]
+anchors_preset = 0
+offset_top = 28.0
+offset_right = 180.0
+offset_bottom = 46.0
+scale = Vector2(0.797936, 2.4827)
+
+[node name="Bar" type="TextureProgressBar" parent="TransformationGauge"]
+layout_mode = 0
+offset_left = 29.2214
+offset_top = 1.59103
+offset_right = 191.221
+offset_bottom = 9.59103
+scale = Vector2(0.764496, 0.694283)
+value = 45.0
+rounded = true
+nine_patch_stretch = true
+texture_under = SubResource("GradientTexture2D_under")
+texture_progress = SubResource("GradientTexture2D_wolf")
+
+[node name="Border" type="TextureRect" parent="TransformationGauge"]
+texture_filter = 1
+layout_mode = 0
+offset_left = -3.0
+offset_top = -6.0
+offset_right = 381.0
+offset_bottom = 122.0
+scale = Vector2(0.485, 0.16)
+texture = ExtResource("2_wolf_border")

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="PlayerGaugePreviewSettings" load_steps=2 format=3 uid="uid://dlcna0lm8gg0"]
+
+[ext_resource type="Script" path="res://scripts/ui/PlayerGaugePreviewSettings.gd" id="1_settings"]
+
+[resource]
+script = ExtResource("1_settings")
+preview_min_value = 0.0
+preview_max_value = 100.0
+preview_step = 1.0
+stamina_preview_value = 65.0
+transformation_preview_value = 80.0
+cooldown_preview_value = 45.0
+row_spacing = 28.0
+show_stamina_preview = true
+show_transformation_preview = true
+wolf_preview_mode = "cooldown"

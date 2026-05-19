@@ -1,4 +1,4 @@
-[gd_scene load_steps=16 format=3 uid="uid://w810ta712mw1"]
+[gd_scene load_steps=17 format=3 uid="uid://w810ta712mw1"]
 
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightController.gd" id="1_script"]
 [ext_resource type="Resource" uid="uid://hflwkg33u51c" path="res://resources/characters/hostile_npcs/knights/basic_knight_ranged_tuning.tres" id="2_tuning"]
@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://cn4omnbpnf7vq" path="res://scenes/ui/EffectList.tscn" id="5_effects"]
 [ext_resource type="Texture2D" uid="uid://bsyprchjp8urt" path="res://art/ui/StatBarBorder.aseprite" id="6_border"]
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightHealthBar.gd" id="7_health_bar"]
+[ext_resource type="Script" path="res://scripts/characters/shared/combat/AttackHitboxProfileAuthoring.gd" id="8_attack_profiles"]
 
 [sub_resource type="CircleShape2D" id="CapsuleShape2D_movement"]
 radius = 7.0
@@ -104,6 +105,37 @@ shape = SubResource("CapsuleShape2D_hurt")
 position = Vector2(20, -18)
 shape = SubResource("RectangleShape2D_attack")
 disabled = true
+
+[node name="AttackHitboxProfiles" type="Node" parent="."]
+script = ExtResource("8_attack_profiles")
+profiles = {
+"default": {
+"down": {
+"1": {
+"position": Vector2(0, 2),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(24, 24)
+}
+},
+"right": {
+"1": {
+"position": Vector2(20, -18),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(24, 24)
+}
+},
+"up": {
+"1": {
+"position": Vector2(0, -38),
+"rotation": 0.0,
+"scale": Vector2(1, 1),
+"size": Vector2(24, 24)
+}
+}
+}
+}
 
 [node name="DetectionArea" type="Area2D" parent="."]
 visible = false

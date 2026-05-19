@@ -32,8 +32,6 @@ func interact(_player: Node2D):
 
 	if SaveManager != null and SaveManager.has_method("prepare_current_level_for_route_exit"):
 		SaveManager.prepare_current_level_for_route_exit()
-	if SaveManager != null and SaveManager.has_method("save_game"):
-		SaveManager.save_game("route_exit_%s" % get_route_save_id(), get_tree().current_scene)
 
 	if SaveManager != null and SaveManager.has_method("change_scene_to_file_and_load"):
 		SaveManager.change_scene_to_file_and_load(destination_scene_path, SaveManager.AUTOSAVE_SLOT, false, "route_enter_%s" % get_route_save_id(), destination_entry_marker_path)

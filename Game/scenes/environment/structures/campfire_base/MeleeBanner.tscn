@@ -1,10 +1,14 @@
-[gd_scene load_steps=4 format=3 uid="uid://blw02gkknkwpg"]
+[gd_scene load_steps=5 format=3 uid="uid://blw02gkknkwpg"]
 
 [ext_resource type="Texture2D" uid="uid://clbrjyc14tnb5" path="res://art/structures/melee_banner.png" id="1_banner"]
 
 [sub_resource type="AtlasTexture" id="AtlasTexture_banner"]
 atlas = ExtResource("1_banner")
 region = Rect2(0, 0, 48, 64)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_5w40s"]
+atlas = ExtResource("1_banner")
+region = Rect2(0, 64, 48, 64)
 
 [sub_resource type="SpriteFrames" id="SpriteFrames_banner"]
 animations = [{
@@ -18,7 +22,7 @@ animations = [{
 }, {
 "frames": [{
 "duration": 1.0,
-"texture": SubResource("AtlasTexture_banner")
+"texture": SubResource("AtlasTexture_5w40s")
 }],
 "loop": true,
 "name": &"ruined",
@@ -32,5 +36,5 @@ collision_mask = 14
 [node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
 y_sort_enabled = true
 sprite_frames = SubResource("SpriteFrames_banner")
-animation = &"intact"
+animation = &"ruined"
 offset = Vector2(0, -32.625)

@@ -1,20 +1,26 @@
-extends TextureProgressBar
+@tool
+extends Node2D
 
 const GAUGE_STAMINA := "stamina"
 const GAUGE_TRANSFORMATION := "transformation"
-const COOLDOWN_ROW_GAP := 4.0
 
-@onready var stamina_container: Node2D = get_parent() as Node2D
-@onready var player_node: Node = stamina_container.get_parent()
-@onready var health_node: Node = player_node.get_node_or_null("Health")
-@onready var template_border: TextureRect = stamina_container.get_node_or_null("StaminaBarBorder") as TextureRect
+@export var gauge_preview_settings: PlayerGaugePreviewSettings:
+	set(value):
+		gauge_preview_settings = value
+		refresh_editor_preview_if_needed()
+
+@onready var player_node: Node = get_parent()
+@onready var health_node: Node = player_node.get_node_or_null("Health") if player_node != null else null
+@onready var gauge_stack: Control = $PlayerGaugeStack
+@onready var stamina_row: Control = $PlayerGaugeStack/StaminaGauge
+@onready var stamina_bar: TextureProgressBar = $PlayerGaugeStack/StaminaGauge/Bar
+@onready var transformation_row: Control = $PlayerGaugeStack/TransformationGauge
+@onready var transformation_bar: TextureProgressBar = $PlayerGaugeStack/TransformationGauge/Bar
 
 var showing_transformation_timer: bool = false
 var stamina_progress_texture: Texture2D
 var transformation_progress_texture: Texture2D
 var cooldown_progress_texture: Texture2D
-var under_texture: Texture2D
-var border_texture: Texture2D
 var stamina_current: float = 0.0
 var stamina_max: float = 0.0
 var transformation_current: float = 0.0
@@ -22,35 +28,17 @@ var transformation_max: float = 0.0
 var cooldown_current: float = 0.0
 var cooldown_max: float = 0.0
 var cooldown_active: bool = false
-var row_spacing: float = 16.0
-
-var template_bar_left: float = 0.0
-var template_bar_top: float = 0.0
-var template_bar_right: float = 0.0
-var template_bar_bottom: float = 0.0
-var template_border_left: float = 0.0
-var template_border_top: float = 0.0
-var template_border_right: float = 0.0
-var template_border_bottom: float = 0.0
-var template_border_scale: Vector2 = Vector2.ONE
-var template_border_texture_filter: CanvasItem.TextureFilter = CanvasItem.TEXTURE_FILTER_PARENT_NODE
-
-var stamina_row: Node2D
-var stamina_bar: TextureProgressBar
-var stamina_gauge_border: TextureRect
-var transformation_row: Node2D
-var transformation_bar: TextureProgressBar
-var transformation_gauge_border: TextureRect
 var player_gauges_enabled: bool = true
 
 
 func _ready():
-	stamina_container.visible = false
+	if Engine.is_editor_hint():
+		call_deferred("setup_editor_preview")
+		return
+
+	visible = false
 	player_gauges_enabled = should_show_player_gauges()
-	cache_template_values()
-	transformation_progress_texture = create_transformation_progress_texture()
-	cooldown_progress_texture = create_cooldown_progress_texture()
-	hide_template_nodes()
+	cache_gauge_textures()
 
 	if health_node != null:
 		stamina_max = health_node.max_stamina
@@ -59,12 +47,12 @@ func _ready():
 		if not health_node.stamina_changed.is_connected(_on_stamina_changed):
 			health_node.stamina_changed.connect(_on_stamina_changed)
 
-	if player_node.has_signal("transformation_timer_changed"):
+	if player_node != null and player_node.has_signal("transformation_timer_changed"):
 		var timer_callback: Callable = Callable(self, "_on_transformation_timer_changed")
 		if not player_node.is_connected("transformation_timer_changed", timer_callback):
 			player_node.connect("transformation_timer_changed", timer_callback)
 
-	if player_node.has_signal("transformation_cooldown_changed"):
+	if player_node != null and player_node.has_signal("transformation_cooldown_changed"):
 		var cooldown_callback: Callable = Callable(self, "_on_transformation_cooldown_changed")
 		if not player_node.is_connected("transformation_cooldown_changed", cooldown_callback):
 			player_node.connect("transformation_cooldown_changed", cooldown_callback)
@@ -74,12 +62,19 @@ func _ready():
 		if not SaveManager.is_connected("gauge_display_settings_changed", settings_callback):
 			SaveManager.connect("gauge_display_settings_changed", settings_callback)
 
-	call_deferred("finish_gauge_setup")
-
-
-func finish_gauge_setup():
-	create_gauge_rows()
 	update_display()
+
+
+func setup_editor_preview():
+	cache_gauge_textures()
+	visible = true
+	if stamina_row != null:
+		stamina_row.visible = should_show_stamina_preview()
+		configure_gauge_bar(stamina_bar, get_stamina_preview_value(), get_preview_max_value(), stamina_progress_texture)
+	if transformation_row != null:
+		transformation_row.visible = should_show_transformation_preview()
+		configure_gauge_bar(transformation_bar, get_wolf_preview_value(), get_preview_max_value(), get_wolf_preview_texture())
+	apply_visible_gauge_positions([GAUGE_STAMINA, GAUGE_TRANSFORMATION], true)
 
 
 func _on_stamina_changed(current_stamina: float, max_stamina: float):
@@ -111,13 +106,14 @@ func _on_gauge_display_settings_changed(_show_hud_gauges: bool, show_player_gaug
 
 func update_display():
 	if not player_gauges_enabled:
-		stamina_container.visible = false
+		visible = false
 		return
 
 	if not has_gauge_rows():
-		stamina_container.visible = false
+		visible = false
 		return
 
+	cache_gauge_textures()
 	var visible_gauges: Array[String] = []
 
 	if showing_transformation_timer:
@@ -140,29 +136,36 @@ func update_display():
 
 func set_visible_gauges(visible_gauges: Array[String]):
 	if not has_gauge_rows():
-		stamina_container.visible = false
+		visible = false
 		return
 
-	stamina_container.visible = not visible_gauges.is_empty()
+	visible = not visible_gauges.is_empty()
 	stamina_row.visible = false
 	transformation_row.visible = false
+	apply_visible_gauge_positions(visible_gauges, false)
 
-	for index in range(visible_gauges.size()):
-		var gauge_id: String = visible_gauges[index]
+
+func apply_visible_gauge_positions(visible_gauges: Array[String], editor_preview: bool):
+	var row_index := 0
+	for gauge_id in visible_gauges:
 		var row := get_gauge_row(gauge_id)
 		if row == null:
 			continue
+		if editor_preview and gauge_id == GAUGE_STAMINA and not should_show_stamina_preview():
+			continue
+		if editor_preview and gauge_id == GAUGE_TRANSFORMATION and not should_show_transformation_preview():
+			continue
 
-		row.position = Vector2(0.0, float(index) * row_spacing)
+		row.position.y = float(row_index) * get_row_spacing()
 		row.visible = true
+		row_index += 1
 
 
-func get_gauge_row(gauge_id: String) -> Node2D:
+func get_gauge_row(gauge_id: String) -> Control:
 	if gauge_id == GAUGE_STAMINA:
 		return stamina_row
 	if gauge_id == GAUGE_TRANSFORMATION:
 		return transformation_row
-
 	return null
 
 
@@ -170,91 +173,26 @@ func configure_gauge_bar(bar: TextureProgressBar, current: float, max_amount: fl
 	if bar == null:
 		return
 
-	bar.min_value = 0.0
-	bar.max_value = max_amount
-	bar.value = current
-	bar.texture_progress = progress_texture
+	var safe_max: float = maxf(max_amount, 1.0)
+	bar.min_value = get_preview_min_value() if Engine.is_editor_hint() else 0.0
+	bar.max_value = safe_max
+	bar.step = get_preview_step() if Engine.is_editor_hint() else bar.step
+	bar.value = clamp(current, 0.0, safe_max)
+	if progress_texture != null:
+		bar.texture_progress = progress_texture
 
 
 func has_gauge_rows() -> bool:
-	return stamina_row != null and transformation_row != null
+	return stamina_row != null and transformation_row != null and stamina_bar != null and transformation_bar != null
 
 
-func cache_template_values():
-	stamina_progress_texture = texture_progress
-	under_texture = texture_under
-	template_bar_left = offset_left
-	template_bar_top = offset_top
-	template_bar_right = offset_right
-	template_bar_bottom = offset_bottom
-
-	if template_border == null:
-		row_spacing = template_bar_bottom - template_bar_top + COOLDOWN_ROW_GAP
-		return
-
-	border_texture = template_border.texture
-	template_border_left = template_border.offset_left
-	template_border_top = template_border.offset_top
-	template_border_right = template_border.offset_right
-	template_border_bottom = template_border.offset_bottom
-	template_border_scale = template_border.scale
-	template_border_texture_filter = template_border.texture_filter
-
-	var border_height: float = (template_border_bottom - template_border_top) * template_border_scale.y
-	var bar_height: float = template_bar_bottom - template_bar_top
-	row_spacing = maxf(border_height, bar_height) + COOLDOWN_ROW_GAP
-
-
-func create_gauge_rows():
-	stamina_row = create_gauge_row("StaminaGauge", stamina_progress_texture)
-	stamina_bar = stamina_row.get_node("Bar") as TextureProgressBar
-	stamina_gauge_border = stamina_row.get_node("Border") as TextureRect
-
-	transformation_row = create_gauge_row("TransformationGauge", cooldown_progress_texture)
-	transformation_bar = transformation_row.get_node("Bar") as TextureProgressBar
-	transformation_gauge_border = transformation_row.get_node("Border") as TextureRect
-
-
-func create_gauge_row(row_name: String, progress_texture: Texture2D) -> Node2D:
-	var row := Node2D.new()
-	row.name = row_name
-	row.visible = false
-	stamina_container.add_child(row)
-
-	var bar := TextureProgressBar.new()
-	bar.name = "Bar"
-	bar.z_as_relative = true
-	bar.z_index = 1
-	bar.offset_left = template_bar_left
-	bar.offset_top = template_bar_top
-	bar.offset_right = template_bar_right
-	bar.offset_bottom = template_bar_bottom
-	bar.rounded = rounded
-	bar.nine_patch_stretch = nine_patch_stretch
-	bar.texture_under = under_texture
-	bar.texture_progress = progress_texture
-	row.add_child(bar)
-
-	var border := TextureRect.new()
-	border.name = "Border"
-	border.z_as_relative = true
-	border.z_index = 2
-	border.offset_left = template_border_left
-	border.offset_top = template_border_top
-	border.offset_right = template_border_right
-	border.offset_bottom = template_border_bottom
-	border.scale = template_border_scale
-	border.texture_filter = template_border_texture_filter
-	border.texture = border_texture
-	row.add_child(border)
-
-	return row
-
-
-func hide_template_nodes():
-	visible = false
-	if template_border != null:
-		template_border.visible = false
+func cache_gauge_textures():
+	if stamina_progress_texture == null and stamina_bar != null:
+		stamina_progress_texture = stamina_bar.texture_progress
+	if transformation_progress_texture == null:
+		transformation_progress_texture = create_transformation_progress_texture()
+	if cooldown_progress_texture == null and transformation_bar != null:
+		cooldown_progress_texture = transformation_bar.texture_progress
 
 
 func create_transformation_progress_texture() -> Texture2D:
@@ -268,22 +206,7 @@ func create_transformation_progress_texture() -> Texture2D:
 
 	var gradient_texture := GradientTexture2D.new()
 	gradient_texture.gradient = gradient
-	gradient_texture.width = 44
-	return gradient_texture
-
-
-func create_cooldown_progress_texture() -> Texture2D:
-	var gradient := Gradient.new()
-	gradient.offsets = PackedFloat32Array([0.0, 0.5, 1.0])
-	gradient.colors = PackedColorArray([
-		Color(0.55, 0.12, 0.0, 1.0),
-		Color(0.95, 0.36, 0.04, 1.0),
-		Color(1.0, 0.62, 0.12, 1.0),
-	])
-
-	var gradient_texture := GradientTexture2D.new()
-	gradient_texture.gradient = gradient
-	gradient_texture.width = 44
+	gradient_texture.width = 139
 	return gradient_texture
 
 
@@ -293,3 +216,52 @@ func should_show_player_gauges() -> bool:
 		return bool(settings.get("show_player_gauges", true))
 
 	return true
+
+
+func refresh_editor_preview_if_needed():
+	if Engine.is_editor_hint() and is_inside_tree():
+		call_deferred("setup_editor_preview")
+
+
+func get_preview_min_value() -> float:
+	return gauge_preview_settings.preview_min_value if gauge_preview_settings != null else 0.0
+
+
+func get_preview_max_value() -> float:
+	return gauge_preview_settings.preview_max_value if gauge_preview_settings != null else 100.0
+
+
+func get_preview_step() -> float:
+	return gauge_preview_settings.preview_step if gauge_preview_settings != null else 1.0
+
+
+func get_stamina_preview_value() -> float:
+	return gauge_preview_settings.stamina_preview_value if gauge_preview_settings != null else 65.0
+
+
+func get_wolf_preview_value() -> float:
+	if gauge_preview_settings == null:
+		return 45.0
+	if gauge_preview_settings.wolf_preview_mode == "transformation":
+		return gauge_preview_settings.transformation_preview_value
+	if gauge_preview_settings.wolf_preview_mode == "full":
+		return gauge_preview_settings.preview_max_value
+	return gauge_preview_settings.cooldown_preview_value
+
+
+func get_wolf_preview_texture() -> Texture2D:
+	if gauge_preview_settings != null and gauge_preview_settings.wolf_preview_mode == "transformation":
+		return transformation_progress_texture
+	return cooldown_progress_texture
+
+
+func should_show_stamina_preview() -> bool:
+	return gauge_preview_settings == null or gauge_preview_settings.show_stamina_preview
+
+
+func should_show_transformation_preview() -> bool:
+	return gauge_preview_settings == null or gauge_preview_settings.show_transformation_preview
+
+
+func get_row_spacing() -> float:
+	return gauge_preview_settings.row_spacing if gauge_preview_settings != null else 28.0

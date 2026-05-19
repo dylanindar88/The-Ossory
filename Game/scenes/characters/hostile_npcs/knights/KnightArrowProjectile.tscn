@@ -1,6 +1,7 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/characters/hostile_npcs/knights/KnightArrowProjectile.gd" id="1_script"]
+[ext_resource type="Script" path="res://scripts/characters/shared/combat/AttackHitboxProfileAuthoring.gd" id="2_attack_profiles"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_arrow"]
 size = Vector2(24, 6)
@@ -15,6 +16,16 @@ collision_mask = 2
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="HitBox"]
 shape = SubResource("RectangleShape2D_arrow")
+
+[node name="AttackHitboxProfiles" type="Node" parent="."]
+script = ExtResource("2_attack_profiles")
+hitbox_area_path = NodePath("../HitBox")
+collision_shape_path = NodePath("../HitBox/CollisionShape2D")
+selected_context = &"default"
+selected_direction = &"default"
+selected_combo_part = 1
+mirror_left_from_right = false
+profiles = { &"default": { &"default": { "1": { "position": Vector2(0, 0), "rotation": 0.0, "scale": Vector2(1, 1), "size": Vector2(24, 6) } } } }
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
 scale = Vector2(1, 0.25)

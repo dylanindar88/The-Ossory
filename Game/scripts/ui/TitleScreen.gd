@@ -26,6 +26,7 @@ var pending_new_game_slot: int = 0
 var pending_delete_slot: int = 0
 var syncing_gauge_checkboxes: bool = false
 var first_dev_button: Button
+var dev_level_option_template: Control
 
 
 func _ready():
@@ -86,11 +87,19 @@ func connect_dev_buttons():
 
 func build_dev_menu_from_registry():
 	first_dev_button = null
-	hide_static_dev_buttons()
 
-	var generated_options: VBoxContainer = get_or_create_generated_dev_options()
+	var generated_options: VBoxContainer = get_authored_dev_options()
+	if generated_options == null:
+		push_warning("TitleScreen dev menu is missing Control/Panel/RightContent/ViewContainer/DevMenuView/GeneratedDevOptions.")
+		return
+
+	if not bind_dev_option_templates(generated_options):
+		return
+
 	for child in generated_options.get_children():
-		child.queue_free()
+		if bool(child.get_meta("dev_generated", false)):
+			generated_options.remove_child(child)
+			child.queue_free()
 
 	var entries: Array = []
 	if SaveManager != null and SaveManager.has_method("get_title_dev_level_entries"):
@@ -102,57 +111,109 @@ func build_dev_menu_from_registry():
 		if not (raw_entry is Dictionary):
 			continue
 		var entry: Dictionary = raw_entry
-		add_dev_level_section(generated_options, entry)
+		add_dev_level_option(generated_options, entry)
 
 
-func hide_static_dev_buttons():
-	for node_name in ["BansheeStartOption", "BansheeFirstReportOption", "BansheeSecondReportOption", "BansheeThirdReportOption", "StartingWildernessOption"]:
-		var node: Node = dev_menu_view.get_node_or_null(node_name)
-		if node is CanvasItem:
-			(node as CanvasItem).visible = false
-		if node is Control:
-			(node as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+func get_authored_dev_options() -> VBoxContainer:
+	return dev_menu_view.get_node_or_null("GeneratedDevOptions") as VBoxContainer
 
 
-func get_or_create_generated_dev_options() -> VBoxContainer:
-	var existing: VBoxContainer = dev_menu_view.get_node_or_null("GeneratedDevOptions") as VBoxContainer
-	if existing != null:
-		return existing
+func bind_dev_option_templates(parent: VBoxContainer) -> bool:
+	dev_level_option_template = parent.get_node_or_null("PreviewLevelOption") as Control
+	if dev_level_option_template == null:
+		push_warning("TitleScreen dev menu is missing authored PreviewLevelOption template.")
+		return false
 
-	var generated_options: VBoxContainer = VBoxContainer.new()
-	generated_options.name = "GeneratedDevOptions"
-	generated_options.custom_minimum_size = Vector2(420, 320)
-	generated_options.add_theme_constant_override("separation", 8)
-	dev_menu_view.add_child(generated_options)
-	var status_index: int = dev_status_label.get_index()
-	dev_menu_view.move_child(generated_options, status_index)
-	return generated_options
+	if dev_level_option_template.get_node_or_null("LevelLabel") == null:
+		push_warning("TitleScreen PreviewLevelOption is missing LevelLabel.")
+		return false
+	if dev_level_option_template.get_node_or_null("PresetDropdown") == null:
+		push_warning("TitleScreen PreviewLevelOption is missing PresetDropdown.")
+		return false
+	if dev_level_option_template.get_node_or_null("StartButton") == null:
+		push_warning("TitleScreen PreviewLevelOption is missing StartButton.")
+		return false
+
+	for child in parent.get_children():
+		if child is Control and str(child.name).begins_with("Preview"):
+			child.set_meta("dev_template", true)
+			(child as Control).visible = false
+	return true
 
 
-func add_dev_level_section(parent: VBoxContainer, entry: Dictionary):
+func add_dev_level_option(parent: VBoxContainer, entry: Dictionary):
 	var scene_path: String = str(entry.get("scene_path", ""))
 	var display_name: String = str(entry.get("display_name", scene_path))
 	var raw_presets: Variant = entry.get("dev_presets", [])
 	if scene_path == "" or not (raw_presets is Array):
 		return
 
-	var level_label: Label = Label.new()
-	level_label.custom_minimum_size = Vector2(420, 24)
-	level_label.text = display_name
-	level_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	parent.add_child(level_label)
+	var option := dev_level_option_template.duplicate() as Control
+	option.name = "LevelOption"
+	option.set_meta("dev_generated", true)
+	option.visible = true
+	parent.add_child(option)
 
+	var level_label := option.get_node_or_null("LevelLabel") as Label
+	if level_label == null:
+		push_warning("TitleScreen dev option template is missing a LevelLabel.")
+		return
+	level_label.text = display_name
+
+	var preset_dropdown := option.get_node_or_null("PresetDropdown") as OptionButton
+	if preset_dropdown == null:
+		push_warning("TitleScreen dev option template is missing a PresetDropdown.")
+		return
+	preset_dropdown.clear()
+	populate_dev_preset_dropdown(preset_dropdown, raw_presets)
+
+	var button := option.get_node_or_null("StartButton") as Button
+	if button == null:
+		push_warning("TitleScreen dev option template is missing a StartButton.")
+		return
+	button.text = "Start"
+	disconnect_button_signals(button)
+	button.pressed.connect(_on_dev_start_dropdown_pressed.bind(scene_path, preset_dropdown))
+	if first_dev_button == null:
+		first_dev_button = button
+
+
+func populate_dev_preset_dropdown(dropdown: OptionButton, raw_presets: Array):
 	for raw_preset in raw_presets:
 		if not (raw_preset is Dictionary):
 			continue
 		var preset_data: Dictionary = raw_preset
-		var button: Button = Button.new()
-		button.custom_minimum_size = Vector2(420, 38)
-		button.text = str(preset_data.get("label", "Start"))
-		button.pressed.connect(_on_dev_start_pressed.bind(scene_path, str(preset_data.get("preset", ""))))
-		parent.add_child(button)
-		if first_dev_button == null:
-			first_dev_button = button
+		var label := str(preset_data.get("label", "Start"))
+		if bool(preset_data.get("disabled", false)):
+			var reason := str(preset_data.get("disabled_reason", "Unavailable"))
+			if reason != "":
+				label = "%s - %s" % [label, reason]
+		dropdown.add_item(label)
+		var item_index := dropdown.item_count - 1
+		dropdown.set_item_metadata(item_index, str(preset_data.get("preset", "")))
+		if bool(preset_data.get("disabled", false)):
+			dropdown.set_item_disabled(item_index, true)
+
+
+func _on_dev_start_dropdown_pressed(scene_path: String, dropdown: OptionButton):
+	var preset := ""
+	if dropdown != null and dropdown.selected >= 0:
+		preset = str(dropdown.get_item_metadata(dropdown.selected))
+	_on_dev_start_pressed(scene_path, preset)
+
+
+func find_child_of_type(root: Node, type_name: String) -> Node:
+	for child in root.get_children():
+		if child.get_class() == type_name:
+			return child
+	return null
+
+
+func disconnect_button_signals(button: Button):
+	for connection in button.pressed.get_connections():
+		var callable: Callable = connection.get("callable", Callable())
+		if callable.is_valid():
+			button.pressed.disconnect(callable)
 
 
 func is_dev_menu_event(event: InputEvent) -> bool:
